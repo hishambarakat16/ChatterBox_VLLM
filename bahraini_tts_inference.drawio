@@ -1,0 +1,139 @@
+<mxfile host="Electron" agent="Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) draw.io/29.5.2 Chrome/142.0.7444.265 Electron/39.6.1 Safari/537.36" version="29.5.2">
+  <diagram id="bahraini-tts-inf" name="Inference Pipeline">
+    <mxGraphModel dx="1342" dy="864" grid="1" gridSize="10" guides="1" tooltips="1" connect="1" arrows="1" fold="1" page="1" pageScale="1" pageWidth="1900" pageHeight="580" math="0" shadow="0">
+      <root>
+        <mxCell id="0" />
+        <mxCell id="1" parent="0" />
+        <mxCell id="t1" parent="1" style="text;html=1;strokeColor=none;fillColor=none;align=center;verticalAlign=middle;fontSize=22;fontStyle=1;fontColor=#1A2A6A;" value="Bahraini TTS  ·  Inference Pipeline" vertex="1">
+          <mxGeometry height="30" width="1040" x="430" y="10" as="geometry" />
+        </mxCell>
+        <mxCell id="t2" parent="1" style="text;html=1;strokeColor=none;fillColor=none;align=center;verticalAlign=middle;fontSize=12;fontColor=#555555;" value="Deterministic dialect front end  →  FastSpeech 2 acoustic model  →  HiFi-GAN / BigVGAN vocoder" vertex="1">
+          <mxGeometry height="18" width="1400" x="250" y="40" as="geometry" />
+        </mxCell>
+        <mxCell id="n_in" parent="1" style="shape=parallelogram;perimeter=parallelogramPerimeter;whiteSpace=wrap;html=1;fixedSize=0;strokeWidth=2;fontSize=12;fillColor=#FFF3CD;strokeColor=#D4930A;fontColor=#7A4500;" value="&lt;b&gt;Bahraini Arabic Text&lt;/b&gt;&lt;br/&gt;raw input string" vertex="1">
+          <mxGeometry height="60" width="134" x="30" y="234" as="geometry" />
+        </mxCell>
+        <mxCell id="g_fe" parent="1" style="rounded=1;whiteSpace=wrap;html=1;arcSize=8;strokeWidth=2;fillColor=#DDEEFF;strokeColor=#3565C0;verticalAlign=top;fontSize=12;fontStyle=1;fontColor=#1A3A90;" value="&lt;b&gt;Dialect Front End&lt;/b&gt;" vertex="1">
+          <mxGeometry height="202" width="300" x="208" y="164" as="geometry" />
+        </mxCell>
+        <mxCell id="n_textnorm" parent="1" style="rounded=1;whiteSpace=wrap;html=1;arcSize=14;strokeWidth=1.5;fontSize=12;fillColor=#B8D8FF;strokeColor=#2A55A0;fontColor=#0A2A70;verticalAlign=middle;" value="&lt;b&gt;Text Normalization&lt;/b&gt;&lt;br/&gt;numerals · diacritics · cleanup" vertex="1">
+          <mxGeometry height="48" width="268" x="222" y="192" as="geometry" />
+        </mxCell>
+        <mxCell id="n_g2p" parent="1" style="rounded=1;whiteSpace=wrap;html=1;arcSize=14;strokeWidth=1.5;fontSize=12;fillColor=#B8D8FF;strokeColor=#2A55A0;fontColor=#0A2A70;verticalAlign=middle;" value="&lt;b&gt;Bahraini G2P&lt;/b&gt;&lt;br/&gt;phoneme rules · word overrides" vertex="1">
+          <mxGeometry height="52" width="160" x="222" y="256" as="geometry" />
+        </mxCell>
+        <mxCell id="n_lex" parent="1" style="shape=cylinder3;whiteSpace=wrap;html=1;boundedLbl=1;backgroundOutline=1;size=12;strokeWidth=1.5;fontSize=11;fillColor=#A8D0F0;strokeColor=#1A5A90;fontColor=#0A2060;" value="&lt;b&gt;Bahraini Lexicon&lt;/b&gt;" vertex="1">
+          <mxGeometry height="52" width="98" x="400" y="298" as="geometry" />
+        </mxCell>
+        <mxCell id="n_pemb" parent="1" style="ellipse;whiteSpace=wrap;html=1;strokeWidth=2;fontSize=12;fillColor=#EBE0F8;strokeColor=#6A50B0;fontColor=#3A2080;" value="&lt;b&gt;Phoneme Embedding&lt;/b&gt;&lt;br/&gt;+ Positional Encoding" vertex="1">
+          <mxGeometry height="64" width="156" x="570" y="234" as="geometry" />
+        </mxCell>
+        <mxCell id="g_opt" parent="1" style="ellipse;whiteSpace=wrap;html=1;strokeWidth=1.5;dashed=1;fontSize=11;fillColor=#F5F5F5;strokeColor=#999999;fontColor=#555555;" value="&lt;b&gt;Speaker Embedding&lt;/b&gt; (opt.)  ·  &lt;b&gt;Style Embedding&lt;/b&gt; (opt.)" vertex="1">
+          <mxGeometry height="58" width="306" x="560" y="80" as="geometry" />
+        </mxCell>
+        <mxCell id="g_am" parent="1" style="rounded=1;whiteSpace=wrap;html=1;arcSize=6;strokeWidth=2;fillColor=#EAF5EA;strokeColor=#2E8A2E;verticalAlign=top;fontSize=12;fontStyle=1;fontColor=#145214;" value="&lt;b&gt;FastSpeech 2  ·  Acoustic Model&lt;/b&gt;" vertex="1">
+          <mxGeometry height="260" width="534" x="762" y="150" as="geometry" />
+        </mxCell>
+        <mxCell id="enc_s2" parent="1" style="rounded=1;whiteSpace=wrap;html=1;arcSize=12;strokeWidth=1;fillColor=#D0ECD0;strokeColor=#3A8A3A;" value="" vertex="1">
+          <mxGeometry height="76" width="128" x="780" y="236" as="geometry" />
+        </mxCell>
+        <mxCell id="enc_s1" parent="1" style="rounded=1;whiteSpace=wrap;html=1;arcSize=12;strokeWidth=1;fillColor=#C0E4C0;strokeColor=#2A7A2A;" value="" vertex="1">
+          <mxGeometry height="76" width="128" x="775" y="231" as="geometry" />
+        </mxCell>
+        <mxCell id="n_enc" parent="1" style="rounded=1;whiteSpace=wrap;html=1;arcSize=12;strokeWidth=2;fontSize=12;fillColor=#B0DEB0;strokeColor=#2A7A2A;fontColor=#144414;verticalAlign=middle;" value="&lt;b&gt;Encoder&lt;/b&gt;&lt;br/&gt;4 × FFT Block" vertex="1">
+          <mxGeometry height="76" width="128" x="770" y="226" as="geometry" />
+        </mxCell>
+        <mxCell id="g_va" parent="1" style="rounded=1;whiteSpace=wrap;html=1;arcSize=8;strokeWidth=1.5;fillColor=#C8E8C8;strokeColor=#2A7A2A;verticalAlign=top;fontSize=11;fontStyle=1;fontColor=#144414;" value="&lt;b&gt;Variance Adaptor&lt;/b&gt;" vertex="1">
+          <mxGeometry height="205" width="180" x="916" y="190" as="geometry" />
+        </mxCell>
+        <mxCell id="n_dur" parent="1" style="shape=trapezoid;perimeter=trapezoidPerimeter;whiteSpace=wrap;html=1;fixedSize=0;strokeWidth=1;fontSize=11;fontStyle=1;fillColor=#9ED49E;strokeColor=#2A7A2A;fontColor=#144414;" value="&lt;b&gt;Duration Predictor&lt;/b&gt;" vertex="1">
+          <mxGeometry height="44" width="164" x="924" y="214" as="geometry" />
+        </mxCell>
+        <mxCell id="n_pitch" parent="1" style="shape=trapezoid;perimeter=trapezoidPerimeter;whiteSpace=wrap;html=1;fixedSize=0;strokeWidth=1;fontSize=11;fontStyle=1;fillColor=#9ED49E;strokeColor=#2A7A2A;fontColor=#144414;" value="&lt;b&gt;Pitch Predictor&lt;/b&gt;" vertex="1">
+          <mxGeometry height="44" width="164" x="924" y="264" as="geometry" />
+        </mxCell>
+        <mxCell id="n_energy" parent="1" style="shape=trapezoid;perimeter=trapezoidPerimeter;whiteSpace=wrap;html=1;fixedSize=0;strokeWidth=1;fontSize=11;fontStyle=1;fillColor=#9ED49E;strokeColor=#2A7A2A;fontColor=#144414;" value="&lt;b&gt;Energy Predictor&lt;/b&gt;" vertex="1">
+          <mxGeometry height="44" width="164" x="924" y="314" as="geometry" />
+        </mxCell>
+        <mxCell id="dec_s2" parent="1" style="rounded=1;whiteSpace=wrap;html=1;arcSize=12;strokeWidth=1;fillColor=#D0ECD0;strokeColor=#3A8A3A;" value="" vertex="1">
+          <mxGeometry height="76" width="128" x="1117" y="236" as="geometry" />
+        </mxCell>
+        <mxCell id="dec_s1" parent="1" style="rounded=1;whiteSpace=wrap;html=1;arcSize=12;strokeWidth=1;fillColor=#C0E4C0;strokeColor=#2A7A2A;" value="" vertex="1">
+          <mxGeometry height="76" width="128" x="1112" y="231" as="geometry" />
+        </mxCell>
+        <mxCell id="n_dec" parent="1" style="rounded=1;whiteSpace=wrap;html=1;arcSize=12;strokeWidth=2;fontSize=12;fillColor=#B0DEB0;strokeColor=#2A7A2A;fontColor=#144414;verticalAlign=middle;" value="&lt;b&gt;Mel Decoder&lt;/b&gt;&lt;br/&gt;4 × FFT Block" vertex="1">
+          <mxGeometry height="76" width="128" x="1107" y="226" as="geometry" />
+        </mxCell>
+        <mxCell id="n_voc" parent="1" style="shape=hexagon;perimeter=hexagonPerimeter2;whiteSpace=wrap;html=1;fixedSize=0;strokeWidth=2;fontSize=12;fillColor=#EDE0F5;strokeColor=#7A50B0;fontColor=#4A2080;" value="&lt;b&gt;HiFi-GAN / BigVGAN Lite&lt;/b&gt;&lt;br/&gt;neural vocoder" vertex="1">
+          <mxGeometry height="84" width="174" x="1334" y="199" as="geometry" />
+        </mxCell>
+        <mxCell id="n_out" parent="1" style="shape=parallelogram;perimeter=parallelogramPerimeter;whiteSpace=wrap;html=1;fixedSize=0;strokeWidth=2;fontSize=12;fillColor=#E0F0FF;strokeColor=#2870C0;fontColor=#0A3080;" value="&lt;b&gt;Bahraini Speech&lt;/b&gt;&lt;br/&gt;waveform audio" vertex="1">
+          <mxGeometry height="60" width="134" x="1354" y="340" as="geometry" />
+        </mxCell>
+        <mxCell id="e1" edge="1" parent="1" source="n_in" style="endArrow=block;endFill=1;strokeWidth=2;rounded=0;html=1;strokeColor=#333333;exitX=1;exitY=0.5;entryX=0;entryY=0.5;" target="n_textnorm" value="">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="e2" edge="1" parent="1" source="n_textnorm" style="endArrow=block;endFill=1;strokeWidth=2;rounded=0;html=1;strokeColor=#333333;" target="n_g2p" value="">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="e_lex" edge="1" parent="1" source="n_lex" style="endArrow=open;endFill=0;endSize=8;strokeWidth=1.5;dashed=1;rounded=0;html=1;strokeColor=#1A5A90;fontSize=10;fontColor=#1A5A90;exitX=0;exitY=0.5;entryX=1;entryY=0.5;" target="n_g2p" value="lookup">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="e3" edge="1" parent="1" source="n_g2p" style="endArrow=block;endFill=1;strokeWidth=2;rounded=0;html=1;strokeColor=#333333;fontSize=10;fontColor=#555555;exitX=1;exitY=0.5;entryX=0;entryY=0.5;" target="n_pemb" value="phoneme seq.">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="e4" edge="1" parent="1" source="n_pemb" style="endArrow=block;endFill=1;strokeWidth=2;rounded=0;html=1;strokeColor=#333333;exitX=1;exitY=0.5;entryX=0;entryY=0.5;" target="n_enc" value="">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="e5" edge="1" parent="1" source="n_enc" style="endArrow=block;endFill=1;strokeWidth=2;rounded=0;html=1;strokeColor=#333333;exitX=1;exitY=0.5;entryX=0;entryY=0.5;" target="g_va" value="">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="e6" edge="1" parent="1" source="g_va" style="endArrow=block;endFill=1;strokeWidth=2;rounded=0;html=1;strokeColor=#333333;fontSize=10;fontColor=#555555;exitX=1;exitY=0.5;entryX=0;entryY=0.5;" target="n_dec" value="length-regulated">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="e7" edge="1" parent="1" source="n_dec" style="endArrow=block;endFill=1;strokeWidth=2;rounded=0;html=1;strokeColor=#333333;fontSize=10;fontColor=#555555;exitX=1;exitY=0.5;entryX=0;entryY=0.5;" target="n_voc" value="mel frames">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="e8" edge="1" parent="1" source="n_voc" style="endArrow=block;endFill=1;strokeWidth=2;rounded=0;html=1;strokeColor=#333333;exitX=0.5;exitY=1;entryX=0.5;entryY=0;exitDx=0;exitDy=0;entryDx=0;entryDy=0;" target="n_out" value="">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="e_opt" edge="1" parent="1" source="g_opt" style="endArrow=open;endSize=10;strokeWidth=1.5;dashed=1;rounded=0;html=1;strokeColor=#888888;fontSize=10;fontColor=#888888;exitX=0.5;exitY=1;entryX=0.5;entryY=0;" target="g_va" value="conditioning">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="leg_bg" parent="1" style="rounded=1;whiteSpace=wrap;html=1;arcSize=8;strokeWidth=1;dashed=1;fillColor=#FAFAFA;strokeColor=#AAAAAA;" value="" vertex="1">
+          <mxGeometry height="108" width="768" x="400" y="434" as="geometry" />
+        </mxCell>
+        <mxCell id="leg_t" parent="1" style="text;html=1;strokeColor=none;fillColor=none;align=left;fontSize=11;fontStyle=1;fontColor=#333333;" value="Shape semantics:" vertex="1">
+          <mxGeometry height="18" width="140" x="412" y="440" as="geometry" />
+        </mxCell>
+        <mxCell id="leg_para" parent="1" style="shape=parallelogram;perimeter=parallelogramPerimeter;whiteSpace=wrap;html=1;strokeWidth=1;fontSize=10;fillColor=#FFF3CD;strokeColor=#D4930A;fontColor=#7A4500;" value="Data / Tensor" vertex="1">
+          <mxGeometry height="32" width="110" x="412" y="462" as="geometry" />
+        </mxCell>
+        <mxCell id="leg_rect" parent="1" style="rounded=1;whiteSpace=wrap;html=1;arcSize=14;strokeWidth=1;fontSize=10;fillColor=#B8D8FF;strokeColor=#2A55A0;fontColor=#0A2A70;" value="Processing Module" vertex="1">
+          <mxGeometry height="32" width="120" x="534" y="462" as="geometry" />
+        </mxCell>
+        <mxCell id="leg_cyl" parent="1" style="shape=cylinder3;whiteSpace=wrap;html=1;boundedLbl=1;backgroundOutline=1;size=8;strokeWidth=1;fontSize=10;fillColor=#A8D0F0;strokeColor=#1A5A90;fontColor=#0A2060;" value="Database / Lexicon" vertex="1">
+          <mxGeometry height="32" width="118" x="666" y="462" as="geometry" />
+        </mxCell>
+        <mxCell id="leg_ell" parent="1" style="ellipse;whiteSpace=wrap;html=1;strokeWidth=1;fontSize=10;fillColor=#EBE0F8;strokeColor=#6A50B0;fontColor=#3A2080;" value="Embedding / Vector" vertex="1">
+          <mxGeometry height="32" width="118" x="796" y="462" as="geometry" />
+        </mxCell>
+        <mxCell id="leg_hex" parent="1" style="shape=hexagon;perimeter=hexagonPerimeter2;whiteSpace=wrap;html=1;strokeWidth=1;fontSize=10;fillColor=#EDE0F5;strokeColor=#7A50B0;fontColor=#4A2080;" value="Specialized Synthesis" vertex="1">
+          <mxGeometry height="32" width="120" x="926" y="462" as="geometry" />
+        </mxCell>
+        <mxCell id="leg_stack_s" parent="1" style="rounded=1;whiteSpace=wrap;html=1;arcSize=12;strokeWidth=1;fillColor=#C0E4C0;strokeColor=#2A7A2A;" value="" vertex="1">
+          <mxGeometry height="22" width="96" x="418" y="512" as="geometry" />
+        </mxCell>
+        <mxCell id="leg_stack" parent="1" style="rounded=1;whiteSpace=wrap;html=1;arcSize=12;strokeWidth=1;fontSize=10;fillColor=#B0DEB0;strokeColor=#2A7A2A;fontColor=#144414;" value="N × Repeated Layers" vertex="1">
+          <mxGeometry height="26" width="110" x="412" y="506" as="geometry" />
+        </mxCell>
+        <mxCell id="leg_trap" parent="1" style="shape=trapezoid;perimeter=trapezoidPerimeter;whiteSpace=wrap;html=1;strokeWidth=1;fontSize=10;fillColor=#9ED49E;strokeColor=#2A7A2A;fontColor=#144414;" value="Predictor (→ scalar)" vertex="1">
+          <mxGeometry height="26" width="120" x="534" y="506" as="geometry" />
+        </mxCell>
+        <mxCell id="leg_dashed" parent="1" style="text;html=1;strokeColor=none;fillColor=none;align=left;fontSize=10;fontColor=#666666;fontStyle=2;" value="Optional / Lookup (dashed)" vertex="1">
+          <mxGeometry height="26" width="240" x="666" y="506" as="geometry" />
+        </mxCell>
+      </root>
+    </mxGraphModel>
+  </diagram>
+</mxfile>

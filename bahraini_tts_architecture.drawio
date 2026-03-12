@@ -1,17 +1,17 @@
 <mxfile host="Electron" agent="Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) draw.io/29.5.2 Chrome/142.0.7444.265 Electron/39.6.1 Safari/537.36" version="29.5.2">
   <diagram id="bahraini-tts-1" name="BahrainiTTS">
-    <mxGraphModel dx="1187" dy="765" grid="1" gridSize="10" guides="1" tooltips="1" connect="1" arrows="1" fold="1" page="1" pageScale="1" pageWidth="2100" pageHeight="850" math="0" shadow="0">
+    <mxGraphModel dx="1815" dy="1169" grid="1" gridSize="10" guides="1" tooltips="1" connect="1" arrows="1" fold="1" page="1" pageScale="1" pageWidth="2100" pageHeight="850" math="0" shadow="0">
       <root>
         <mxCell id="0" />
         <mxCell id="1" parent="0" />
         <mxCell id="100" parent="1" style="text;html=1;strokeColor=none;fillColor=none;align=center;verticalAlign=middle;fontSize=26;fontStyle=1;fontColor=#1A2A6A;" value="Bahraini TTS" vertex="1">
-          <mxGeometry height="36" width="1000" x="550" y="15" as="geometry" />
+          <mxGeometry height="36" width="1000" x="480" y="15" as="geometry" />
         </mxCell>
         <mxCell id="101" parent="1" style="text;html=1;strokeColor=none;fillColor=none;align=center;verticalAlign=middle;fontSize=12;fontColor=#555555;" value="Compact Dialect-Aware Non-Autoregressive Architecture  ·  Deterministic Phoneme Front End + FastSpeech 2 + HiFi-GAN Vocoder" vertex="1">
-          <mxGeometry height="20" width="1340" x="380" y="49" as="geometry" />
+          <mxGeometry height="20" width="1340" x="310" y="49" as="geometry" />
         </mxCell>
         <mxCell id="102" parent="1" style="text;html=1;strokeColor=none;fillColor=none;align=left;verticalAlign=middle;fontSize=13;fontStyle=2;fontColor=#333333;" value="(a)  Inference Pipeline" vertex="1">
-          <mxGeometry height="22" width="220" x="38" y="112" as="geometry" />
+          <mxGeometry height="22" width="220" x="28" y="113" as="geometry" />
         </mxCell>
         <mxCell id="n_in" parent="1" style="rounded=1;whiteSpace=wrap;html=1;arcSize=18;strokeWidth=2;fontSize=12;fillColor=#FFF3CD;strokeColor=#D4930A;fontColor=#7A4500;verticalAlign=middle;" value="&lt;b&gt;Bahraini Arabic Text&lt;/b&gt;&lt;br/&gt;raw input string" vertex="1">
           <mxGeometry height="70" width="150" x="38" y="198" as="geometry" />
@@ -89,7 +89,7 @@
           <mxGeometry height="22" width="600" x="38" y="426" as="geometry" />
         </mxCell>
         <mxCell id="g_tr" parent="1" style="rounded=1;whiteSpace=wrap;html=1;arcSize=5;strokeWidth=1.5;dashed=1;fillColor=#FFF8EE;strokeColor=#C88020;" value="" vertex="1">
-          <mxGeometry height="330" width="1220" x="38" y="452" as="geometry" />
+          <mxGeometry height="330" width="802" x="38" y="452" as="geometry" />
         </mxCell>
         <mxCell id="n_gt" parent="1" style="rounded=1;whiteSpace=wrap;html=1;arcSize=14;strokeWidth=1.5;fontSize=12;fillColor=#FFD9A0;strokeColor=#B86010;fontColor=#6B3A00;verticalAlign=middle;" value="&lt;b&gt;Ground Truth Audio&lt;/b&gt;&lt;br/&gt;Bahraini speech recordings" vertex="1">
           <mxGeometry height="62" width="158" x="58" y="503" as="geometry" />
@@ -164,34 +164,34 @@
           <mxGeometry relative="1" as="geometry" />
         </mxCell>
         <mxCell id="g_dep" parent="1" style="rounded=1;whiteSpace=wrap;html=1;arcSize=8;strokeWidth=1.5;dashed=1;fillColor=#EEF4FF;strokeColor=#4A7AC0;verticalAlign=top;fontSize=13;fontStyle=1;fontColor=#1A3870;" value="&lt;b&gt;Deployment Profile&lt;/b&gt;" vertex="1">
-          <mxGeometry height="282" width="258" x="1282" y="452" as="geometry" />
+          <mxGeometry height="282" width="258" x="1070" y="541" as="geometry" />
         </mxCell>
         <mxCell id="d1" parent="1" style="rounded=1;whiteSpace=wrap;html=1;arcSize=30;strokeWidth=1;fontSize=12;fillColor=#D8EAFF;strokeColor=#4070B0;fontColor=#1A3870;" value="Low Latency API" vertex="1">
-          <mxGeometry height="36" width="228" x="1297" y="490" as="geometry" />
+          <mxGeometry height="36" width="228" x="1085" y="579" as="geometry" />
         </mxCell>
         <mxCell id="d2" parent="1" style="rounded=1;whiteSpace=wrap;html=1;arcSize=30;strokeWidth=1;fontSize=12;fillColor=#D8EAFF;strokeColor=#4070B0;fontColor=#1A3870;" value="Single Dialect  ·  Bahraini Arabic Only" vertex="1">
-          <mxGeometry height="36" width="228" x="1297" y="537" as="geometry" />
+          <mxGeometry height="36" width="228" x="1085" y="626" as="geometry" />
         </mxCell>
         <mxCell id="d3" parent="1" style="rounded=1;whiteSpace=wrap;html=1;arcSize=30;strokeWidth=1;fontSize=12;fillColor=#D8EAFF;strokeColor=#4070B0;fontColor=#1A3870;" value="Multi-GPU  ·  DDP / Data Parallel" vertex="1">
-          <mxGeometry height="36" width="228" x="1297" y="584" as="geometry" />
+          <mxGeometry height="36" width="228" x="1085" y="673" as="geometry" />
         </mxCell>
         <mxCell id="d4" parent="1" style="rounded=1;whiteSpace=wrap;html=1;arcSize=30;strokeWidth=1;fontSize=12;fillColor=#D8EAFF;strokeColor=#4070B0;fontColor=#1A3870;" value="ONNX  ·  TensorRT Export" vertex="1">
-          <mxGeometry height="36" width="228" x="1297" y="631" as="geometry" />
+          <mxGeometry height="36" width="228" x="1085" y="720" as="geometry" />
         </mxCell>
         <mxCell id="d5" parent="1" style="rounded=1;whiteSpace=wrap;html=1;arcSize=30;strokeWidth=1;fontSize=12;fillColor=#D8EAFF;strokeColor=#4070B0;fontColor=#1A3870;" value="Streaming Inference" vertex="1">
-          <mxGeometry height="36" width="228" x="1297" y="678" as="geometry" />
+          <mxGeometry height="36" width="228" x="1085" y="767" as="geometry" />
         </mxCell>
         <mxCell id="leg1" parent="1" style="text;html=1;strokeColor=none;fillColor=none;align=left;verticalAlign=middle;fontSize=12;fontColor=#333333;" value="&lt;b&gt;Legend&lt;/b&gt;" vertex="1">
-          <mxGeometry height="20" width="120" x="1604" y="452" as="geometry" />
+          <mxGeometry height="20" width="120" x="1392" y="541" as="geometry" />
         </mxCell>
         <mxCell id="leg2" parent="1" style="text;html=1;strokeColor=none;fillColor=none;align=left;verticalAlign=middle;fontSize=11;fontColor=#333333;" value="── Inference path (solid)" vertex="1">
-          <mxGeometry height="20" width="220" x="1604" y="476" as="geometry" />
+          <mxGeometry height="20" width="220" x="1392" y="565" as="geometry" />
         </mxCell>
         <mxCell id="leg3" parent="1" style="text;html=1;strokeColor=none;fillColor=none;align=left;verticalAlign=middle;fontSize=11;fontColor=#C06010;" value="- - Training-only signal (dashed)" vertex="1">
-          <mxGeometry height="20" width="250" x="1604" y="500" as="geometry" />
+          <mxGeometry height="20" width="250" x="1392" y="589" as="geometry" />
         </mxCell>
         <mxCell id="leg4" parent="1" style="text;html=1;strokeColor=none;fillColor=none;align=left;verticalAlign=middle;fontSize=11;fontColor=#888888;" value="- - Optional / not used at init (dashed)" vertex="1">
-          <mxGeometry height="20" width="270" x="1604" y="524" as="geometry" />
+          <mxGeometry height="20" width="270" x="1392" y="613" as="geometry" />
         </mxCell>
       </root>
     </mxGraphModel>

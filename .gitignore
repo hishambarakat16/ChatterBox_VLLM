@@ -1,2 +1,36 @@
-env-f5-tts/
+# Local reference repos / sandboxes
+external/
+third_party/
+vendor/
 F5-TTS/
+
+# Python / Conda environments
+env-f5-tts/
+.venv/
+venv/
+env/
+
+# Data, training outputs, and model artifacts
+data/
+datasets/
+preprocessed/
+speaker_export_SPK*/
+artifacts/
+checkpoints/
+outputs/
+runs/
+logs/
+wandb/
+*.ckpt
+*.pt
+*.pth
+*.onnx
+*.engine
+
+# Draw.io temp / backup files
+*.drawio.bkp
+.$*.drawio.dtmp
+*.drawio.dtmp
+
+# macOS
+.DS_Store

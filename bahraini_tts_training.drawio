@@ -1,0 +1,149 @@
+<mxfile host="Electron" agent="Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) draw.io/29.5.2 Chrome/142.0.7444.265 Electron/39.6.1 Safari/537.36" version="29.5.2">
+  <diagram id="bahraini-tts-train" name="Training Supervision">
+    <mxGraphModel dx="1143" dy="736" grid="1" gridSize="10" guides="1" tooltips="1" connect="1" arrows="1" fold="1" page="1" pageScale="1" pageWidth="1100" pageHeight="660" math="0" shadow="0">
+      <root>
+        <mxCell id="0" />
+        <mxCell id="1" parent="0" />
+        <mxCell id="t1" parent="1" style="text;html=1;strokeColor=none;fillColor=none;align=center;verticalAlign=middle;fontSize=22;fontStyle=1;fontColor=#1A2A6A;" value="Bahraini TTS  ·  Training Supervision" vertex="1">
+          <mxGeometry height="30" width="800" x="150" y="10" as="geometry" />
+        </mxCell>
+        <mxCell id="t2" parent="1" style="text;html=1;strokeColor=none;fillColor=none;align=center;verticalAlign=middle;fontSize=12;fontColor=#8B5500;fontStyle=2;" value="All dashed arrows are training-only signals  ·  None of these paths are active at inference" vertex="1">
+          <mxGeometry height="18" width="900" x="100" y="40" as="geometry" />
+        </mxCell>
+        <mxCell id="h1" parent="1" style="text;html=1;strokeColor=none;fillColor=none;align=center;fontSize=11;fontStyle=1;fontColor=#555555;" value="Ground Truth" vertex="1">
+          <mxGeometry height="18" width="140" x="30" y="72" as="geometry" />
+        </mxCell>
+        <mxCell id="h2" parent="1" style="text;html=1;strokeColor=none;fillColor=none;align=center;fontSize=11;fontStyle=1;fontColor=#555555;" value="Feature Extraction" vertex="1">
+          <mxGeometry height="18" width="148" x="218" y="72" as="geometry" />
+        </mxCell>
+        <mxCell id="h3" parent="1" style="text;html=1;strokeColor=none;fillColor=none;align=center;fontSize=11;fontStyle=1;fontColor=#555555;" value="Loss Function" vertex="1">
+          <mxGeometry height="18" width="110" x="418" y="72" as="geometry" />
+        </mxCell>
+        <mxCell id="h4" parent="1" style="text;html=1;strokeColor=none;fillColor=none;align=center;fontSize=11;fontStyle=1;fontColor=#555555;" value="Supervised Model Component" vertex="1">
+          <mxGeometry height="18" width="220" x="584" y="72" as="geometry" />
+        </mxCell>
+        <mxCell id="n_gt" parent="1" style="shape=parallelogram;perimeter=parallelogramPerimeter;whiteSpace=wrap;html=1;fixedSize=0;strokeWidth=2;fontSize=12;fillColor=#FFD9A0;strokeColor=#B86010;fontColor=#6B3A00;" value="&lt;b&gt;Ground Truth Audio&lt;/b&gt;&lt;br/&gt;Bahraini speech recordings" vertex="1">
+          <mxGeometry height="82" width="160" x="10" y="298" as="geometry" />
+        </mxCell>
+        <mxCell id="n_mfa" parent="1" style="rounded=1;whiteSpace=wrap;html=1;arcSize=14;strokeWidth=1.5;fontSize=11;fillColor=#FFD9A0;strokeColor=#B86010;fontColor=#6B3A00;verticalAlign=middle;" value="&lt;b&gt;Forced Aligner&lt;/b&gt;&lt;br/&gt;MFA · phoneme boundaries" vertex="1">
+          <mxGeometry height="48" width="148" x="218" y="106" as="geometry" />
+        </mxCell>
+        <mxCell id="n_pitchext" parent="1" style="rounded=1;whiteSpace=wrap;html=1;arcSize=14;strokeWidth=1.5;fontSize=11;fillColor=#FFD9A0;strokeColor=#B86010;fontColor=#6B3A00;verticalAlign=middle;" value="&lt;b&gt;Pitch Extractor&lt;/b&gt;&lt;br/&gt;RAPT / REAPER / WORLD" vertex="1">
+          <mxGeometry height="48" width="148" x="218" y="226" as="geometry" />
+        </mxCell>
+        <mxCell id="n_energyext" parent="1" style="rounded=1;whiteSpace=wrap;html=1;arcSize=14;strokeWidth=1.5;fontSize=11;fillColor=#FFD9A0;strokeColor=#B86010;fontColor=#6B3A00;verticalAlign=middle;" value="&lt;b&gt;Energy Extractor&lt;/b&gt;&lt;br/&gt;frame-level L2 norm" vertex="1">
+          <mxGeometry height="48" width="148" x="218" y="346" as="geometry" />
+        </mxCell>
+        <mxCell id="n_melext" parent="1" style="rounded=1;whiteSpace=wrap;html=1;arcSize=14;strokeWidth=1.5;fontSize=11;fillColor=#FFD9A0;strokeColor=#B86010;fontColor=#6B3A00;verticalAlign=middle;" value="&lt;b&gt;Mel Extractor&lt;/b&gt;&lt;br/&gt;80-band mel spectrogram" vertex="1">
+          <mxGeometry height="48" width="148" x="218" y="466" as="geometry" />
+        </mxCell>
+        <mxCell id="n_dloss" parent="1" style="rhombus;whiteSpace=wrap;html=1;strokeWidth=1.5;fontSize=11;fontStyle=1;fillColor=#FFBB66;strokeColor=#C06010;fontColor=#6B3A00;verticalAlign=middle;" value="&lt;b&gt;Duration Loss&lt;/b&gt;&lt;br/&gt;MSE" vertex="1">
+          <mxGeometry height="60" width="112" x="418" y="100" as="geometry" />
+        </mxCell>
+        <mxCell id="n_ploss" parent="1" style="rhombus;whiteSpace=wrap;html=1;strokeWidth=1.5;fontSize=11;fontStyle=1;fillColor=#FFBB66;strokeColor=#C06010;fontColor=#6B3A00;verticalAlign=middle;" value="&lt;b&gt;Pitch Loss&lt;/b&gt;&lt;br/&gt;MSE" vertex="1">
+          <mxGeometry height="60" width="112" x="418" y="220" as="geometry" />
+        </mxCell>
+        <mxCell id="n_eloss" parent="1" style="rhombus;whiteSpace=wrap;html=1;strokeWidth=1.5;fontSize=11;fontStyle=1;fillColor=#FFBB66;strokeColor=#C06010;fontColor=#6B3A00;verticalAlign=middle;" value="&lt;b&gt;Energy Loss&lt;/b&gt;&lt;br/&gt;MSE" vertex="1">
+          <mxGeometry height="60" width="112" x="418" y="340" as="geometry" />
+        </mxCell>
+        <mxCell id="n_mloss" parent="1" style="rhombus;whiteSpace=wrap;html=1;strokeWidth=1.5;fontSize=11;fontStyle=1;fillColor=#FFBB66;strokeColor=#C06010;fontColor=#6B3A00;verticalAlign=middle;" value="&lt;b&gt;Mel Loss&lt;/b&gt;&lt;br/&gt;L1 + L2" vertex="1">
+          <mxGeometry height="60" width="112" x="418" y="460" as="geometry" />
+        </mxCell>
+        <mxCell id="n_advloss" parent="1" style="rhombus;whiteSpace=wrap;html=1;strokeWidth=1.5;fontSize=11;fontStyle=1;fillColor=#FFBB66;strokeColor=#C06010;fontColor=#6B3A00;verticalAlign=middle;" value="&lt;b&gt;Adversarial Loss&lt;/b&gt;&lt;br/&gt;GAN disc." vertex="1">
+          <mxGeometry height="60" width="112" x="418" y="560" as="geometry" />
+        </mxCell>
+        <mxCell id="n_dur" parent="1" style="shape=trapezoid;perimeter=trapezoidPerimeter;whiteSpace=wrap;html=1;strokeWidth=1.5;fontSize=11;fillColor=#9ED49E;strokeColor=#2A7A2A;fontColor=#144414;" value="&lt;b&gt;Duration Predictor&lt;/b&gt;&lt;br/&gt;in Variance Adaptor" vertex="1">
+          <mxGeometry height="48" width="186" x="618" y="106" as="geometry" />
+        </mxCell>
+        <mxCell id="n_pitch" parent="1" style="shape=trapezoid;perimeter=trapezoidPerimeter;whiteSpace=wrap;html=1;strokeWidth=1.5;fontSize=11;fillColor=#9ED49E;strokeColor=#2A7A2A;fontColor=#144414;" value="&lt;b&gt;Pitch Predictor&lt;/b&gt;&lt;br/&gt;in Variance Adaptor" vertex="1">
+          <mxGeometry height="48" width="186" x="618" y="226" as="geometry" />
+        </mxCell>
+        <mxCell id="n_energy" parent="1" style="shape=trapezoid;perimeter=trapezoidPerimeter;whiteSpace=wrap;html=1;strokeWidth=1.5;fontSize=11;fillColor=#9ED49E;strokeColor=#2A7A2A;fontColor=#144414;" value="&lt;b&gt;Energy Predictor&lt;/b&gt;&lt;br/&gt;in Variance Adaptor" vertex="1">
+          <mxGeometry height="48" width="186" x="618" y="346" as="geometry" />
+        </mxCell>
+        <mxCell id="dec_s" parent="1" style="rounded=1;whiteSpace=wrap;html=1;arcSize=12;strokeWidth=1;fillColor=#C0E4C0;strokeColor=#2A7A2A;" value="" vertex="1">
+          <mxGeometry height="42" width="174" x="624" y="472" as="geometry" />
+        </mxCell>
+        <mxCell id="n_dec" parent="1" style="rounded=1;whiteSpace=wrap;html=1;arcSize=12;strokeWidth=1.5;fontSize=11;fillColor=#B0DEB0;strokeColor=#2A7A2A;fontColor=#144414;verticalAlign=middle;" value="&lt;b&gt;Mel Decoder&lt;/b&gt;  (4 × FFT Block)" vertex="1">
+          <mxGeometry height="48" width="174" x="618" y="466" as="geometry" />
+        </mxCell>
+        <mxCell id="n_voc" parent="1" style="shape=hexagon;perimeter=hexagonPerimeter2;whiteSpace=wrap;html=1;strokeWidth=1.5;fontSize=11;fillColor=#EDE0F5;strokeColor=#7A50B0;fontColor=#4A2080;" value="&lt;b&gt;HiFi-GAN / BigVGAN Lite&lt;/b&gt;" vertex="1">
+          <mxGeometry height="64" width="186" x="618" y="558" as="geometry" />
+        </mxCell>
+        <mxCell id="gt1" edge="1" parent="1" source="n_gt" style="endArrow=block;endFill=1;strokeWidth=1.5;rounded=0;html=1;strokeColor=#B86010;curved=1;" target="n_mfa" value="">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="gt2" edge="1" parent="1" source="n_gt" style="endArrow=block;endFill=1;strokeWidth=1.5;rounded=0;html=1;strokeColor=#B86010;curved=1;" target="n_pitchext" value="">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="gt3" edge="1" parent="1" source="n_gt" style="endArrow=block;endFill=1;strokeWidth=1.5;rounded=0;html=1;strokeColor=#B86010;curved=1;" target="n_energyext" value="">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="gt4" edge="1" parent="1" source="n_gt" style="endArrow=block;endFill=1;strokeWidth=1.5;rounded=0;html=1;strokeColor=#B86010;curved=1;" target="n_melext" value="">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="el1" edge="1" parent="1" source="n_mfa" style="endArrow=block;endFill=1;strokeWidth=1.5;rounded=0;html=1;strokeColor=#C06010;exitX=1;exitY=0.5;entryX=0;entryY=0.5;" target="n_dloss" value="">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="el2" edge="1" parent="1" source="n_pitchext" style="endArrow=block;endFill=1;strokeWidth=1.5;rounded=0;html=1;strokeColor=#C06010;exitX=1;exitY=0.5;entryX=0;entryY=0.5;" target="n_ploss" value="">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="el3" edge="1" parent="1" source="n_energyext" style="endArrow=block;endFill=1;strokeWidth=1.5;rounded=0;html=1;strokeColor=#C06010;exitX=1;exitY=0.5;entryX=0;entryY=0.5;" target="n_eloss" value="">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="el4" edge="1" parent="1" source="n_melext" style="endArrow=block;endFill=1;strokeWidth=1.5;rounded=0;html=1;strokeColor=#C06010;exitX=1;exitY=0.5;entryX=0;entryY=0.5;" target="n_mloss" value="">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="el5" edge="1" parent="1" source="n_melext" style="endArrow=block;endFill=1;strokeWidth=1.5;rounded=0;html=1;strokeColor=#C06010;fontSize=9;fontColor=#C06010;curved=1;" target="n_advloss" value="real samples">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="ls1" edge="1" parent="1" source="n_dloss" style="endArrow=open;endSize=10;strokeWidth=2;dashed=1;rounded=0;html=1;strokeColor=#C06010;fontSize=10;fontColor=#C06010;fontStyle=1;exitX=1;exitY=0.5;entryX=0;entryY=0.5;exitDx=0;exitDy=0;" target="n_dur" value="∇ supervise">
+          <mxGeometry relative="1" as="geometry">
+            <mxPoint x="564" y="130" as="sourcePoint" />
+          </mxGeometry>
+        </mxCell>
+        <mxCell id="ls2" edge="1" parent="1" source="n_ploss" style="endArrow=open;endSize=10;strokeWidth=2;dashed=1;rounded=0;html=1;strokeColor=#C06010;fontSize=10;fontColor=#C06010;fontStyle=1;exitX=1;exitY=0.5;entryX=0;entryY=0.5;exitDx=0;exitDy=0;" target="n_pitch" value="∇ supervise">
+          <mxGeometry relative="1" as="geometry">
+            <mxPoint x="564" y="250" as="sourcePoint" />
+          </mxGeometry>
+        </mxCell>
+        <mxCell id="ls3" edge="1" parent="1" source="n_eloss" style="endArrow=open;endSize=10;strokeWidth=2;dashed=1;rounded=0;html=1;strokeColor=#C06010;fontSize=10;fontColor=#C06010;fontStyle=1;exitX=1;exitY=0.5;entryX=0;entryY=0.5;exitDx=0;exitDy=0;" target="n_energy" value="∇ supervise">
+          <mxGeometry relative="1" as="geometry">
+            <mxPoint x="564" y="370" as="sourcePoint" />
+          </mxGeometry>
+        </mxCell>
+        <mxCell id="ls4" edge="1" parent="1" source="n_mloss" style="endArrow=open;endSize=10;strokeWidth=2;dashed=1;rounded=0;html=1;strokeColor=#C06010;fontSize=10;fontColor=#C06010;fontStyle=1;entryX=0;entryY=0.5;" target="n_dec" value="∇ supervise">
+          <mxGeometry relative="1" as="geometry">
+            <mxPoint x="564" y="490" as="sourcePoint" />
+          </mxGeometry>
+        </mxCell>
+        <mxCell id="ls5" edge="1" parent="1" source="n_advloss" style="endArrow=open;endSize=10;strokeWidth=2;dashed=1;rounded=0;html=1;strokeColor=#C06010;fontSize=10;fontColor=#C06010;fontStyle=1;exitX=1;exitY=0.5;entryX=0;entryY=0.5;exitDx=0;exitDy=0;" target="n_voc" value="∇ GAN">
+          <mxGeometry relative="1" as="geometry">
+            <mxPoint x="564" y="590" as="sourcePoint" />
+          </mxGeometry>
+        </mxCell>
+        <mxCell id="leg_bg" parent="1" style="rounded=1;whiteSpace=wrap;html=1;arcSize=8;strokeWidth=1;dashed=1;fillColor=#FAFAFA;strokeColor=#AAAAAA;" value="" vertex="1">
+          <mxGeometry height="190" width="242" x="830" y="394" as="geometry" />
+        </mxCell>
+        <mxCell id="leg_t" parent="1" style="text;html=1;strokeColor=none;fillColor=none;align=left;fontSize=11;fontStyle=1;fontColor=#333333;" value="Shape semantics:" vertex="1">
+          <mxGeometry height="18" width="160" x="842" y="402" as="geometry" />
+        </mxCell>
+        <mxCell id="leg_para" parent="1" style="shape=parallelogram;perimeter=parallelogramPerimeter;whiteSpace=wrap;html=1;strokeWidth=1;fontSize=10;fillColor=#FFD9A0;strokeColor=#B86010;fontColor=#6B3A00;" value="Data (parallelogram)" vertex="1">
+          <mxGeometry height="28" width="118" x="842" y="424" as="geometry" />
+        </mxCell>
+        <mxCell id="leg_rnd" parent="1" style="rounded=1;whiteSpace=wrap;html=1;arcSize=14;strokeWidth=1;fontSize=10;fillColor=#FFD9A0;strokeColor=#B86010;fontColor=#6B3A00;" value="Processing module" vertex="1">
+          <mxGeometry height="28" width="118" x="842" y="462" as="geometry" />
+        </mxCell>
+        <mxCell id="leg_dmd" parent="1" style="rhombus;whiteSpace=wrap;html=1;strokeWidth=1;fontSize=10;fillColor=#FFBB66;strokeColor=#C06010;fontColor=#6B3A00;" value="Loss function ◆" vertex="1">
+          <mxGeometry height="34" width="118" x="842" y="499" as="geometry" />
+        </mxCell>
+        <mxCell id="leg_trap" parent="1" style="shape=trapezoid;perimeter=trapezoidPerimeter;whiteSpace=wrap;html=1;strokeWidth=1;fontSize=10;fillColor=#9ED49E;strokeColor=#2A7A2A;fontColor=#144414;" value="Predictor block" vertex="1">
+          <mxGeometry height="28" width="118" x="842" y="542" as="geometry" />
+        </mxCell>
+        <mxCell id="leg_note" parent="1" style="text;html=1;strokeColor=none;fillColor=none;align=left;fontSize=10;fontColor=#C06010;fontStyle=2;" value="Dashed ── = gradient / supervision signal" vertex="1">
+          <mxGeometry height="18" width="242" x="830" y="590" as="geometry" />
+        </mxCell>
+      </root>
+    </mxGraphModel>
+  </diagram>
+</mxfile>
