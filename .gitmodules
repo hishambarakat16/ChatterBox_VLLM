@@ -1,0 +1,21 @@
+[submodule "external/CosyVoice"]
+	path = external/CosyVoice
+	url = https://github.com/FunAudioLLM/CosyVoice.git
+[submodule "external/F5-TTS"]
+	path = external/F5-TTS
+	url = https://github.com/SWivid/F5-TTS.git
+[submodule "external/FastSpeech2"]
+	path = external/FastSpeech2
+	url = https://github.com/ming024/FastSpeech2.git
+[submodule "external/Montreal-Forced-Aligner"]
+	path = external/Montreal-Forced-Aligner
+	url = https://github.com/MontrealCorpusTools/Montreal-Forced-Aligner.git
+[submodule "external/camel_tools"]
+	path = external/camel_tools
+	url = https://github.com/CAMeL-Lab/camel_tools.git
+[submodule "external/chatterbox"]
+	path = external/chatterbox
+	url = https://github.com/resemble-ai/chatterbox.git
+[submodule "external/hifi-gan"]
+	path = external/hifi-gan
+	url = https://github.com/jik876/hifi-gan.git

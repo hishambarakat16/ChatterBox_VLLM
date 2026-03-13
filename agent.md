@@ -42,6 +42,18 @@ Read this first in new sessions.
 - Prefer concrete defaults over vague options.
 - Call out risks early.
 
+## Multi-Agent Coordination
+
+- HM may run multiple agents in parallel in the same repo.
+- Shared `.md` files may change during your session because another agent added context, findings, or decisions.
+- Do not assume the first version of a doc you read is still the latest version.
+- Before editing shared docs, reread them and preserve useful additions from other agents.
+- Treat unexpected doc changes as likely valid teammate context unless they clearly conflict with the task or known facts.
+- Prefer additive edits and short handoff notes over large rewrites.
+- If HM assigns you an identity like `Agent 1`, keep that identity stable for the session and include it in relevant handoff notes.
+- Pick up from where another agent left off when possible instead of restarting from stale assumptions.
+- If another agent's note conflicts with your current conclusion, record the conflict clearly instead of silently overwriting it.
+
 ## Session Startup
 
 In new sessions, read these files first:
@@ -51,6 +63,7 @@ In new sessions, read these files first:
 - [understand.md](/Users/hisham/Code/Bahraini_TTS/understand.md)
 - [CONTEXT.md](/Users/hisham/Code/Bahraini_TTS/CONTEXT.md)
 - [PROGRESS.md](/Users/hisham/Code/Bahraini_TTS/PROGRESS.md)
+- [CHATTERBOX_SCALING_PLAN.md](/Users/hisham/Code/Bahraini_TTS/CHATTERBOX_SCALING_PLAN.md)
 - [IMPLEMENTATION_CHECKLIST.md](/Users/hisham/Code/Bahraini_TTS/IMPLEMENTATION_CHECKLIST.md)
 - [REFERENCE_REPOS.md](/Users/hisham/Code/Bahraini_TTS/REFERENCE_REPOS.md)
 
@@ -59,22 +72,34 @@ Then:
 1. Rebuild the current project state in a few lines.
 2. Match the response style to HM's current level of understanding.
 3. Continue from the latest open decision, not from generic background.
+4. Recheck shared docs if the repo may have changed while you were working.
 
 ## Current Project Summary
 
-- Goal: build a compact Bahraini Arabic TTS system.
-- Planned stack: deterministic front end + FastSpeech 2 style acoustic model + HiFi-GAN vocoder.
-- Current phase: architecture, references, and planning.
-- Main risks: data, phoneme inventory, text normalization policy, alignment quality.
+- Goal: evaluate a Chatterbox-based path for Arabic/Bahraini TTS.
+- Current focus: benchmark Chatterbox, isolate the `S3 token -> mel` bottleneck, and improve scalability first.
+- Next architectural step: Arabic-only student design if the Chatterbox path is worth keeping.
+- Main risks: solving the wrong bottleneck, changing the speech-token interface too early, mixing scalability and dialect-quality work.
 
 ## File Map
 
 - [CONTEXT.md](/Users/hisham/Code/Bahraini_TTS/CONTEXT.md): project architecture and scope
 - [PROGRESS.md](/Users/hisham/Code/Bahraini_TTS/PROGRESS.md): status and open questions
+- [CHATTERBOX_SCALING_PLAN.md](/Users/hisham/Code/Bahraini_TTS/CHATTERBOX_SCALING_PLAN.md): current execution direction for scaling work
+- [cosyvoice_v1_linear_parallel_breakdown.md](/Users/hisham/Code/Bahraini_TTS/architecture/cosyvoice_v1_linear_parallel_breakdown.md): focused CozyVoice step-by-step and parallelism analysis
 - [REFERENCE_REPOS.md](/Users/hisham/Code/Bahraini_TTS/REFERENCE_REPOS.md): upstream references and clone strategy
 - [IMPLEMENTATION_CHECKLIST.md](/Users/hisham/Code/Bahraini_TTS/IMPLEMENTATION_CHECKLIST.md): execution checklist and design gaps
 - [workflow.md](/Users/hisham/Code/Bahraini_TTS/workflow.md): how discussions and work should flow
 - [understand.md](/Users/hisham/Code/Bahraini_TTS/understand.md): tracked HM understanding
+
+## Current Agent Notes
+
+### Agent 1
+
+- I am `Agent 1`.
+- HM asked me to hyper-focus on the CozyVoice path and explain exactly how it works step by step, especially what is linear and what can or cannot be parallelized.
+- I created [cosyvoice_v1_linear_parallel_breakdown.md](/Users/hisham/Code/Bahraini_TTS/architecture/cosyvoice_v1_linear_parallel_breakdown.md).
+- Main result: prompt preprocessing branches can be parallelized and pipeline-overlapped, but the single-utterance path still stays serial at the speech-token LM loop and the mel-level flow solver.
 
 ## Update Rules
 

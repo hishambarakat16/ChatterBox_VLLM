@@ -1,14 +1,15 @@
 # Local reference repos / sandboxes
-external/
 third_party/
 vendor/
-F5-TTS/
+/F5-TTS/
 
 # Python / Conda environments
 env-f5-tts/
 .venv/
 venv/
 env/
+__pycache__/
+*.pyc
 
 # Data, training outputs, and model artifacts
 data/

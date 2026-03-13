@@ -1,0 +1,224 @@
+<mxfile host="Electron" agent="Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) draw.io/29.5.2 Chrome/142.0.7444.265 Electron/39.6.1 Safari/537.36" version="29.5.2">
+  <diagram id="fastspeech2-1" name="FastSpeech2">
+    <mxGraphModel dx="1815" dy="1169" grid="1" gridSize="10" guides="1" tooltips="1" connect="1" arrows="1" fold="1" page="1" pageScale="1" pageWidth="2300" pageHeight="1180" math="0" shadow="0">
+      <root>
+        <mxCell id="0" />
+        <mxCell id="1" parent="0" />
+        <mxCell id="100" parent="1" style="text;html=1;strokeColor=none;fillColor=none;align=center;verticalAlign=middle;fontSize=26;fontStyle=1;fontColor=#1A2A6A;" value="FastSpeech 2" vertex="1">
+          <mxGeometry x="650" y="16" width="1000" height="36" as="geometry" />
+        </mxCell>
+        <mxCell id="101" parent="1" style="text;html=1;strokeColor=none;fillColor=none;align=center;verticalAlign=middle;fontSize=12;fontColor=#555555;" value="Non-autoregressive TTS with FFT encoder and decoder blocks, a variance adaptor, mel linear projection, and a PostNet refinement stage" vertex="1">
+          <mxGeometry x="330" y="50" width="1640" height="22" as="geometry" />
+        </mxCell>
+
+        <mxCell id="102" parent="1" style="text;html=1;strokeColor=none;fillColor=none;align=left;verticalAlign=middle;fontSize=13;fontStyle=2;fontColor=#333333;" value="(a) Runtime Path" vertex="1">
+          <mxGeometry x="36" y="112" width="220" height="22" as="geometry" />
+        </mxCell>
+        <mxCell id="fs_inf_bg" parent="1" style="rounded=1;whiteSpace=wrap;html=1;arcSize=10;strokeWidth=1.5;fillColor=#F8FBFF;strokeColor=#7AA7D8;" value="" vertex="1">
+          <mxGeometry x="20" y="140" width="2250" height="390" as="geometry" />
+        </mxCell>
+
+        <mxCell id="fs_text" parent="1" style="rounded=1;whiteSpace=wrap;html=1;arcSize=18;strokeWidth=2;fontSize=12;fillColor=#FFF3CD;strokeColor=#D4930A;fontColor=#7A4500;" value="&lt;b&gt;Input Text&lt;/b&gt;&lt;br/&gt;sentence to synthesize" vertex="1">
+          <mxGeometry x="50" y="250" width="170" height="74" as="geometry" />
+        </mxCell>
+        <mxCell id="fs_frontend_bg" parent="1" style="rounded=1;whiteSpace=wrap;html=1;arcSize=8;strokeWidth=2;fillColor=#DDEEFF;strokeColor=#3565C0;verticalAlign=top;fontSize=12;fontStyle=1;fontColor=#1A3A90;" value="&lt;b&gt;Text Front End&lt;/b&gt;" vertex="1">
+          <mxGeometry x="270" y="176" width="300" height="220" as="geometry" />
+        </mxCell>
+        <mxCell id="fs_cleaners" parent="1" style="rounded=1;whiteSpace=wrap;html=1;arcSize=14;strokeWidth=1.5;fontSize=11;fillColor=#B8D8FF;strokeColor=#2A55A0;fontColor=#0A2A70;" value="&lt;b&gt;text_to_sequence&lt;/b&gt;&lt;br/&gt;lexicon lookup + text cleaners&lt;br/&gt;language-specific symbol mapping" vertex="1">
+          <mxGeometry x="292" y="214" width="256" height="76" as="geometry" />
+        </mxCell>
+        <mxCell id="fs_symbols" parent="1" style="rounded=1;whiteSpace=wrap;html=1;arcSize=14;strokeWidth=1.5;fontSize=11;fillColor=#B8D8FF;strokeColor=#2A55A0;fontColor=#0A2A70;" value="&lt;b&gt;Symbol Sequence&lt;/b&gt;&lt;br/&gt;phoneme or text symbols&lt;br/&gt;plus PAD token" vertex="1">
+          <mxGeometry x="292" y="308" width="256" height="66" as="geometry" />
+        </mxCell>
+        <mxCell id="fs_speaker_note" parent="1" style="rounded=1;whiteSpace=wrap;html=1;arcSize=12;strokeWidth=1.5;dashed=1;fontSize=11;fillColor=#F5F5F5;strokeColor=#999999;fontColor=#555555;" value="&lt;b&gt;Optional&lt;/b&gt; speaker embedding for multi-speaker configs" vertex="1">
+          <mxGeometry x="314" y="118" width="220" height="48" as="geometry" />
+        </mxCell>
+        <mxCell id="fs_embed" parent="1" style="rounded=1;whiteSpace=wrap;html=1;arcSize=18;strokeWidth=2;fontSize=12;fillColor=#EBE0F8;strokeColor=#6A50B0;fontColor=#3A2080;" value="&lt;b&gt;Embedding Layer&lt;/b&gt;&lt;br/&gt;token embedding + sinusoidal positions" vertex="1">
+          <mxGeometry x="630" y="248" width="200" height="80" as="geometry" />
+        </mxCell>
+        <mxCell id="fs_acoustic_bg" parent="1" style="rounded=1;whiteSpace=wrap;html=1;arcSize=8;strokeWidth=2;fillColor=#EAF5EA;strokeColor=#2E8A2E;verticalAlign=top;fontSize=12;fontStyle=1;fontColor=#145214;" value="&lt;b&gt;Acoustic Model&lt;/b&gt;" vertex="1">
+          <mxGeometry x="890" y="166" width="1020" height="252" as="geometry" />
+        </mxCell>
+        <mxCell id="fs_encoder" parent="1" style="rounded=1;whiteSpace=wrap;html=1;arcSize=14;strokeWidth=1.5;fontSize=11;fillColor=#B0DEB0;strokeColor=#2A7A2A;fontColor=#144414;" value="&lt;b&gt;Encoder&lt;/b&gt;&lt;br/&gt;N FFT blocks&lt;br/&gt;self-attention + conv FFN" vertex="1">
+          <mxGeometry x="920" y="236" width="170" height="88" as="geometry" />
+        </mxCell>
+        <mxCell id="fs_var_bg" parent="1" style="rounded=1;whiteSpace=wrap;html=1;arcSize=8;strokeWidth=1.5;fillColor=#C8E8C8;strokeColor=#2A7A2A;verticalAlign=top;fontSize=11;fontStyle=1;fontColor=#144414;" value="&lt;b&gt;Variance Adaptor&lt;/b&gt;" vertex="1">
+          <mxGeometry x="1120" y="190" width="320" height="188" as="geometry" />
+        </mxCell>
+        <mxCell id="fs_dur" parent="1" style="rounded=1;whiteSpace=wrap;html=1;arcSize=14;strokeWidth=1;fontSize=11;fontStyle=1;fillColor=#9ED49E;strokeColor=#2A7A2A;fontColor=#144414;" value="&lt;b&gt;Duration Predictor&lt;/b&gt;" vertex="1">
+          <mxGeometry x="1140" y="218" width="170" height="42" as="geometry" />
+        </mxCell>
+        <mxCell id="fs_pitch" parent="1" style="rounded=1;whiteSpace=wrap;html=1;arcSize=14;strokeWidth=1;fontSize=11;fontStyle=1;fillColor=#9ED49E;strokeColor=#2A7A2A;fontColor=#144414;" value="&lt;b&gt;Pitch Predictor + Embedding&lt;/b&gt;" vertex="1">
+          <mxGeometry x="1140" y="272" width="170" height="42" as="geometry" />
+        </mxCell>
+        <mxCell id="fs_energy" parent="1" style="rounded=1;whiteSpace=wrap;html=1;arcSize=14;strokeWidth=1;fontSize=11;fontStyle=1;fillColor=#9ED49E;strokeColor=#2A7A2A;fontColor=#144414;" value="&lt;b&gt;Energy Predictor + Embedding&lt;/b&gt;" vertex="1">
+          <mxGeometry x="1140" y="326" width="170" height="42" as="geometry" />
+        </mxCell>
+        <mxCell id="fs_lr" parent="1" style="rounded=1;whiteSpace=wrap;html=1;arcSize=14;strokeWidth=1;fontSize=11;fontStyle=1;fillColor=#9ED49E;strokeColor=#2A7A2A;fontColor=#144414;" value="&lt;b&gt;Length Regulator&lt;/b&gt;&lt;br/&gt;expand to mel-length sequence" vertex="1">
+          <mxGeometry x="1326" y="260" width="96" height="68" as="geometry" />
+        </mxCell>
+        <mxCell id="fs_decoder" parent="1" style="rounded=1;whiteSpace=wrap;html=1;arcSize=14;strokeWidth=1.5;fontSize=11;fillColor=#B0DEB0;strokeColor=#2A7A2A;fontColor=#144414;" value="&lt;b&gt;Decoder&lt;/b&gt;&lt;br/&gt;N FFT blocks" vertex="1">
+          <mxGeometry x="1480" y="236" width="170" height="88" as="geometry" />
+        </mxCell>
+        <mxCell id="fs_linear" parent="1" style="rounded=1;whiteSpace=wrap;html=1;arcSize=14;strokeWidth=1.5;fontSize=11;fillColor=#B0DEB0;strokeColor=#2A7A2A;fontColor=#144414;" value="&lt;b&gt;Mel Linear&lt;/b&gt;&lt;br/&gt;project to 80 mel bins" vertex="1">
+          <mxGeometry x="1680" y="210" width="160" height="58" as="geometry" />
+        </mxCell>
+        <mxCell id="fs_postnet" parent="1" style="rounded=1;whiteSpace=wrap;html=1;arcSize=14;strokeWidth=1.5;fontSize=11;fillColor=#B0DEB0;strokeColor=#2A7A2A;fontColor=#144414;" value="&lt;b&gt;PostNet&lt;/b&gt;&lt;br/&gt;5 conv layers&lt;br/&gt;mel residual refinement" vertex="1">
+          <mxGeometry x="1680" y="288" width="160" height="76" as="geometry" />
+        </mxCell>
+        <mxCell id="fs_frame_note" parent="1" style="rounded=1;whiteSpace=wrap;html=1;arcSize=12;strokeWidth=1.5;dashed=1;fontSize=11;fillColor=#F5F5F5;strokeColor=#999999;fontColor=#555555;" value="Pitch and energy can be phoneme-level or frame-level, depending on config." vertex="1">
+          <mxGeometry x="1250" y="116" width="340" height="44" as="geometry" />
+        </mxCell>
+        <mxCell id="fs_mel_out" parent="1" style="rounded=1;whiteSpace=wrap;html=1;arcSize=18;strokeWidth=2;fontSize=12;fillColor=#EBE0F8;strokeColor=#6A50B0;fontColor=#3A2080;" value="&lt;b&gt;Refined Mel Spectrogram&lt;/b&gt;" vertex="1">
+          <mxGeometry x="1950" y="246" width="180" height="78" as="geometry" />
+        </mxCell>
+        <mxCell id="fs_vocoder" parent="1" style="rounded=1;whiteSpace=wrap;html=1;arcSize=14;strokeWidth=2;fontSize=12;fillColor=#EDE0F5;strokeColor=#7A50B0;fontColor=#4A2080;" value="&lt;b&gt;HiFi-GAN / MelGAN&lt;/b&gt;&lt;br/&gt;external vocoder" vertex="1">
+          <mxGeometry x="2160" y="246" width="90" height="78" as="geometry" />
+        </mxCell>
+        <mxCell id="fs_wave" parent="1" style="rounded=1;whiteSpace=wrap;html=1;arcSize=18;strokeWidth=2;fontSize=12;fillColor=#E0F0FF;strokeColor=#2870C0;fontColor=#0A3080;" value="&lt;b&gt;Waveform&lt;/b&gt;" vertex="1">
+          <mxGeometry x="2142" y="354" width="126" height="66" as="geometry" />
+        </mxCell>
+
+        <mxCell id="fs_e1" edge="1" parent="1" source="fs_text" target="fs_cleaners" style="endArrow=block;endFill=1;strokeWidth=2;rounded=0;html=1;strokeColor=#333333;" value="">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="fs_e2" edge="1" parent="1" source="fs_cleaners" target="fs_symbols" style="endArrow=block;endFill=1;strokeWidth=2;rounded=0;html=1;strokeColor=#333333;" value="">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="fs_e3" edge="1" parent="1" source="fs_symbols" target="fs_embed" style="endArrow=block;endFill=1;strokeWidth=2;rounded=0;html=1;strokeColor=#333333;" value="">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="fs_e4" edge="1" parent="1" source="fs_embed" target="fs_encoder" style="endArrow=block;endFill=1;strokeWidth=2;rounded=0;html=1;strokeColor=#333333;" value="">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="fs_e5" edge="1" parent="1" source="fs_encoder" target="fs_var_bg" style="endArrow=block;endFill=1;strokeWidth=2;rounded=0;html=1;strokeColor=#333333;" value="">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="fs_e6" edge="1" parent="1" source="fs_var_bg" target="fs_decoder" style="endArrow=block;endFill=1;strokeWidth=2;rounded=0;html=1;strokeColor=#333333;fontSize=10;fontColor=#555555;" value="regulated hidden states">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="fs_e7" edge="1" parent="1" source="fs_decoder" target="fs_linear" style="endArrow=block;endFill=1;strokeWidth=2;rounded=0;html=1;strokeColor=#333333;" value="">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="fs_e8" edge="1" parent="1" source="fs_linear" target="fs_postnet" style="endArrow=block;endFill=1;strokeWidth=2;rounded=0;html=1;strokeColor=#333333;fontSize=10;fontColor=#555555;" value="coarse mel">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="fs_e9" edge="1" parent="1" source="fs_postnet" target="fs_mel_out" style="endArrow=block;endFill=1;strokeWidth=2;rounded=0;html=1;strokeColor=#333333;" value="">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="fs_e10" edge="1" parent="1" source="fs_mel_out" target="fs_vocoder" style="endArrow=block;endFill=1;strokeWidth=2;rounded=0;html=1;strokeColor=#333333;" value="">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="fs_e11" edge="1" parent="1" source="fs_vocoder" target="fs_wave" style="endArrow=block;endFill=1;strokeWidth=2;rounded=0;html=1;strokeColor=#333333;" value="">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="fs_e12" edge="1" parent="1" source="fs_speaker_note" target="fs_var_bg" style="endArrow=open;endSize=10;strokeWidth=1.5;dashed=1;rounded=0;html=1;strokeColor=#888888;fontSize=10;fontColor=#888888;" value="speaker conditioning">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+
+        <mxCell id="103" parent="1" style="text;html=1;strokeColor=none;fillColor=none;align=left;verticalAlign=middle;fontSize=13;fontStyle=2;fontColor=#8B5500;" value="(b) Preprocessing and Training Supervision" vertex="1">
+          <mxGeometry x="36" y="566" width="360" height="22" as="geometry" />
+        </mxCell>
+        <mxCell id="fs_train_bg" parent="1" style="rounded=1;whiteSpace=wrap;html=1;arcSize=10;strokeWidth=1.5;fillColor=#FFF8EE;strokeColor=#C88020;" value="" vertex="1">
+          <mxGeometry x="20" y="594" width="2250" height="500" as="geometry" />
+        </mxCell>
+
+        <mxCell id="fs_gt_audio" parent="1" style="rounded=1;whiteSpace=wrap;html=1;arcSize=18;strokeWidth=1.5;fontSize=12;fillColor=#FFD9A0;strokeColor=#B86010;fontColor=#6B3A00;" value="&lt;b&gt;Ground Truth Audio&lt;/b&gt;" vertex="1">
+          <mxGeometry x="60" y="742" width="170" height="70" as="geometry" />
+        </mxCell>
+        <mxCell id="fs_gt_text" parent="1" style="rounded=1;whiteSpace=wrap;html=1;arcSize=18;strokeWidth=1.5;fontSize=12;fillColor=#FFD9A0;strokeColor=#B86010;fontColor=#6B3A00;" value="&lt;b&gt;Transcript&lt;/b&gt;&lt;br/&gt;matching utterance text" vertex="1">
+          <mxGeometry x="60" y="650" width="170" height="70" as="geometry" />
+        </mxCell>
+        <mxCell id="fs_mfa" parent="1" style="rounded=1;whiteSpace=wrap;html=1;arcSize=14;strokeWidth=1.5;fontSize=11;fillColor=#FFD9A0;strokeColor=#B86010;fontColor=#6B3A00;" value="&lt;b&gt;MFA Alignment&lt;/b&gt;&lt;br/&gt;TextGrid phone durations" vertex="1">
+          <mxGeometry x="300" y="664" width="180" height="60" as="geometry" />
+        </mxCell>
+        <mxCell id="fs_pitch_ext" parent="1" style="rounded=1;whiteSpace=wrap;html=1;arcSize=14;strokeWidth=1.5;fontSize=11;fillColor=#FFD9A0;strokeColor=#B86010;fontColor=#6B3A00;" value="&lt;b&gt;Pitch Extractor&lt;/b&gt;&lt;br/&gt;F0 targets" vertex="1">
+          <mxGeometry x="300" y="748" width="180" height="56" as="geometry" />
+        </mxCell>
+        <mxCell id="fs_energy_ext" parent="1" style="rounded=1;whiteSpace=wrap;html=1;arcSize=14;strokeWidth=1.5;fontSize=11;fillColor=#FFD9A0;strokeColor=#B86010;fontColor=#6B3A00;" value="&lt;b&gt;Energy Extractor&lt;/b&gt;&lt;br/&gt;energy targets" vertex="1">
+          <mxGeometry x="300" y="828" width="180" height="56" as="geometry" />
+        </mxCell>
+        <mxCell id="fs_mel_ext" parent="1" style="rounded=1;whiteSpace=wrap;html=1;arcSize=14;strokeWidth=1.5;fontSize=11;fillColor=#FFD9A0;strokeColor=#B86010;fontColor=#6B3A00;" value="&lt;b&gt;Mel Extractor&lt;/b&gt;&lt;br/&gt;target mel spectrogram" vertex="1">
+          <mxGeometry x="300" y="908" width="180" height="56" as="geometry" />
+        </mxCell>
+
+        <mxCell id="fs_dloss" parent="1" style="rounded=1;whiteSpace=wrap;html=1;arcSize=18;strokeWidth=1.5;fontSize=11;fontStyle=1;fillColor=#FFBB66;strokeColor=#C06010;fontColor=#6B3A00;" value="&lt;b&gt;Duration Loss&lt;/b&gt;&lt;br/&gt;MSE" vertex="1">
+          <mxGeometry x="560" y="670" width="164" height="44" as="geometry" />
+        </mxCell>
+        <mxCell id="fs_ploss" parent="1" style="rounded=1;whiteSpace=wrap;html=1;arcSize=18;strokeWidth=1.5;fontSize=11;fontStyle=1;fillColor=#FFBB66;strokeColor=#C06010;fontColor=#6B3A00;" value="&lt;b&gt;Pitch Loss&lt;/b&gt;&lt;br/&gt;MSE" vertex="1">
+          <mxGeometry x="560" y="754" width="164" height="44" as="geometry" />
+        </mxCell>
+        <mxCell id="fs_eloss" parent="1" style="rounded=1;whiteSpace=wrap;html=1;arcSize=18;strokeWidth=1.5;fontSize=11;fontStyle=1;fillColor=#FFBB66;strokeColor=#C06010;fontColor=#6B3A00;" value="&lt;b&gt;Energy Loss&lt;/b&gt;&lt;br/&gt;MSE" vertex="1">
+          <mxGeometry x="560" y="834" width="164" height="44" as="geometry" />
+        </mxCell>
+        <mxCell id="fs_mloss" parent="1" style="rounded=1;whiteSpace=wrap;html=1;arcSize=18;strokeWidth=1.5;fontSize=11;fontStyle=1;fillColor=#FFBB66;strokeColor=#C06010;fontColor=#6B3A00;" value="&lt;b&gt;Mel Loss&lt;/b&gt;&lt;br/&gt;decoder + PostNet outputs" vertex="1">
+          <mxGeometry x="560" y="916" width="164" height="52" as="geometry" />
+        </mxCell>
+
+        <mxCell id="fs_train_note1" parent="1" style="rounded=1;whiteSpace=wrap;html=1;arcSize=12;strokeWidth=1.5;dashed=1;fontSize=11;fillColor=#F5F5F5;strokeColor=#999999;fontColor=#555555;" value="The repo expects TextGrid alignments before feature preprocessing. Poor dictionaries or OOV words break duration supervision." vertex="1">
+          <mxGeometry x="820" y="664" width="420" height="70" as="geometry" />
+        </mxCell>
+        <mxCell id="fs_train_note2" parent="1" style="rounded=1;whiteSpace=wrap;html=1;arcSize=12;strokeWidth=1.5;dashed=1;fontSize=11;fillColor=#F5F5F5;strokeColor=#999999;fontColor=#555555;" value="The repo can call a vocoder at synthesis time, but vocoder training is a separate stage rather than part of this acoustic model graph." vertex="1">
+          <mxGeometry x="820" y="770" width="420" height="70" as="geometry" />
+        </mxCell>
+        <mxCell id="fs_train_note3" parent="1" style="rounded=1;whiteSpace=wrap;html=1;arcSize=12;strokeWidth=1.5;dashed=1;fontSize=11;fillColor=#F5F5F5;strokeColor=#999999;fontColor=#555555;" value="This implementation adds a Tacotron2-style PostNet on top of the paper's main decoder output." vertex="1">
+          <mxGeometry x="820" y="876" width="420" height="60" as="geometry" />
+        </mxCell>
+
+        <mxCell id="fs_t1" edge="1" parent="1" source="fs_gt_text" target="fs_mfa" style="endArrow=block;endFill=1;strokeWidth=1.5;rounded=0;html=1;strokeColor=#B86010;" value="">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="fs_t2" edge="1" parent="1" source="fs_gt_audio" target="fs_mfa" style="endArrow=block;endFill=1;strokeWidth=1.5;rounded=0;html=1;strokeColor=#B86010;" value="">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="fs_t3" edge="1" parent="1" source="fs_gt_audio" target="fs_pitch_ext" style="endArrow=block;endFill=1;strokeWidth=1.5;rounded=0;html=1;strokeColor=#B86010;" value="">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="fs_t4" edge="1" parent="1" source="fs_gt_audio" target="fs_energy_ext" style="endArrow=block;endFill=1;strokeWidth=1.5;rounded=0;html=1;strokeColor=#B86010;" value="">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="fs_t5" edge="1" parent="1" source="fs_gt_audio" target="fs_mel_ext" style="endArrow=block;endFill=1;strokeWidth=1.5;rounded=0;html=1;strokeColor=#B86010;" value="">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="fs_t6" edge="1" parent="1" source="fs_mfa" target="fs_dloss" style="endArrow=block;endFill=1;strokeWidth=1.5;rounded=0;html=1;strokeColor=#B86010;" value="">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="fs_t7" edge="1" parent="1" source="fs_pitch_ext" target="fs_ploss" style="endArrow=block;endFill=1;strokeWidth=1.5;rounded=0;html=1;strokeColor=#B86010;" value="">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="fs_t8" edge="1" parent="1" source="fs_energy_ext" target="fs_eloss" style="endArrow=block;endFill=1;strokeWidth=1.5;rounded=0;html=1;strokeColor=#B86010;" value="">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="fs_t9" edge="1" parent="1" source="fs_mel_ext" target="fs_mloss" style="endArrow=block;endFill=1;strokeWidth=1.5;rounded=0;html=1;strokeColor=#B86010;" value="">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+
+        <mxCell id="fs_dsup" edge="1" parent="1" source="fs_dloss" target="fs_dur" style="endArrow=open;endSize=8;strokeWidth=1.5;dashed=1;rounded=0;html=1;strokeColor=#C06010;fontSize=9;fontColor=#C06010;" value="supervise">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="fs_psup" edge="1" parent="1" source="fs_ploss" target="fs_pitch" style="endArrow=open;endSize=8;strokeWidth=1.5;dashed=1;rounded=0;html=1;strokeColor=#C06010;fontSize=9;fontColor=#C06010;" value="supervise">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="fs_esup" edge="1" parent="1" source="fs_eloss" target="fs_energy" style="endArrow=open;endSize=8;strokeWidth=1.5;dashed=1;rounded=0;html=1;strokeColor=#C06010;fontSize=9;fontColor=#C06010;" value="supervise">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="fs_msup" edge="1" parent="1" source="fs_mloss" target="fs_postnet" style="endArrow=open;endSize=8;strokeWidth=1.5;dashed=1;rounded=0;html=1;strokeColor=#C06010;fontSize=9;fontColor=#C06010;" value="supervise">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+
+        <mxCell id="fs_leg1" parent="1" style="text;html=1;strokeColor=none;fillColor=none;align=left;verticalAlign=middle;fontSize=12;fontColor=#333333;" value="&lt;b&gt;Legend&lt;/b&gt;" vertex="1">
+          <mxGeometry x="1990" y="120" width="120" height="20" as="geometry" />
+        </mxCell>
+        <mxCell id="fs_leg2" parent="1" style="text;html=1;strokeColor=none;fillColor=none;align=left;verticalAlign=middle;fontSize=11;fontColor=#333333;" value="solid = runtime or preprocessing path" vertex="1">
+          <mxGeometry x="1990" y="144" width="250" height="18" as="geometry" />
+        </mxCell>
+        <mxCell id="fs_leg3" parent="1" style="text;html=1;strokeColor=none;fillColor=none;align=left;verticalAlign=middle;fontSize=11;fontColor=#888888;" value="gray dashed = optional or explanatory note" vertex="1">
+          <mxGeometry x="1990" y="164" width="270" height="18" as="geometry" />
+        </mxCell>
+        <mxCell id="fs_leg4" parent="1" style="text;html=1;strokeColor=none;fillColor=none;align=left;verticalAlign=middle;fontSize=11;fontColor=#C06010;" value="orange dashed = training supervision" vertex="1">
+          <mxGeometry x="1990" y="184" width="240" height="18" as="geometry" />
+        </mxCell>
+      </root>
+    </mxGraphModel>
+  </diagram>
+</mxfile>

@@ -1,173 +1,112 @@
-# Reference Repos For Bahraini TTS
+# Reference Repos For The Current Plan
 
-This project should not try to "clone everything." The goal is to collect a small set of strong reference repos, each tied to one subsystem in the architecture, so we can study structure and selectively borrow ideas without letting external code define the product.
+The current plan is no longer "build the Bahraini front end first."
 
-## What We Build Ourselves
+The current plan is:
 
-These are the parts that should remain Bahraini-specific and custom:
+- use `Chatterbox` as the main architecture under study
+- understand where the runtime and scaling bottlenecks are
+- treat `S3 token -> mel` as the first likely optimization target
+- keep `Arabic-only student` work as the next architectural step
 
-- Text normalization rules for Bahraini Arabic
-- Bahraini phoneme inventory
-- Bahraini lexicon and pronunciation overrides
-- Code-switch handling policy
-- Dataset manifests and preprocessing glue
-- The final training entrypoints and project structure
+So the reference repo priority has changed.
 
-These are the parts where external repos are useful as references or starting points:
+## Primary References Now
 
-- Acoustic model implementation patterns
-- Vocoder implementation and training setup
-- Forced alignment and feature extraction
-- Arabic text processing utilities
-- Full-stack training/inference examples
+### 1. Chatterbox
 
-## Recommended Clone Set
-
-Clone these into `external/` and keep them out of version control.
-
-### 1. Acoustic Model
-
-#### Primary reference: FastSpeech 2
-
-- Repo: `https://github.com/ming024/FastSpeech2`
-- Why: Clean, focused FastSpeech 2 implementation that maps directly to the architecture in `CONTEXT.md`
+- Repo: `https://github.com/resemble-ai/chatterbox`
+- Local path: `external/chatterbox/`
+- Why:
+  - this is now the main architecture being studied
+  - it contains the multilingual path, `T3`, `S3Gen`, and Turbo comparison point
 - Use it for:
-  - encoder / decoder structure
-  - variance adaptor wiring
-  - duration / pitch / energy training flow
-  - dataset and preprocessing patterns
+  - multilingual tokenizer behavior
+  - `T3` text-to-speech-token path
+  - `S3 token -> mel` decoder path
+  - conditioning and voice prompt structure
 
-#### Secondary reference: NVIDIA FastPitch
+### 2. CosyVoice
 
-- Repo: `https://github.com/NVIDIA/DeepLearningExamples/tree/master/PyTorch/SpeechSynthesis/FastPitch`
-- Why: Production-minded non-autoregressive TTS implementation with strong engineering patterns
+- Repo: `https://github.com/FunAudioLLM/CosyVoice`
+- Why:
+  - Chatterbox `S3Gen` is explicitly modified from CosyVoice-style components
+  - useful when tracing the origin of the `speech-token -> mel` path
 - Use it for:
-  - training structure
-  - feature extraction pipeline
-  - optimization and inference ideas
-- Note: This is not exactly the same architecture as FastSpeech 2, but it is close enough to be very useful.
+  - understanding the flow decoder lineage
+  - comparing token-to-mel design choices
+  - identifying what Chatterbox inherited versus changed
 
-### 2. Vocoder
+### 3. F5-TTS
 
-#### Primary reference: HiFi-GAN
+- Local path: `F5-TTS/`
+- Why:
+  - still a useful comparison point for naturalness-oriented modern TTS
+  - useful as a contrastive reference against the Chatterbox path
+- Use it for:
+  - repo organization
+  - deployment ideas
+  - comparison against a different architecture family
+
+## Secondary References
+
+### 4. HiFi-GAN
 
 - Repo: `https://github.com/jik876/hifi-gan`
-- Why: Standard fast neural vocoder and the most natural fit for v1
+- Why:
+  - useful when thinking about vocoder-side efficiency and alternatives
 - Use it for:
-  - generator / discriminator setup
-  - mel-to-waveform training
-  - config patterns for lightweight deployment
+  - mel-to-waveform boundary understanding
+  - lightweight vocoder patterns
 
-#### Secondary reference: BigVGAN
+### 5. FastSpeech 2
 
-- Repo: `https://github.com/NVIDIA/BigVGAN`
-- Why: Useful upgrade path if quality is more important than simplicity
+- Repo: `https://github.com/ming024/FastSpeech2`
+- Why:
+  - still useful as a contrastive controlled architecture
+  - relevant only if the project pivots back to a front-end-heavy explicit-control path
 - Use it for:
-  - higher-quality vocoder ideas
-  - comparison against HiFi-GAN
-- Note: Treat this as optional until v1 works end to end.
+  - comparison against phoneme-first pipelines
+  - future fallback if Chatterbox path is abandoned
 
-### 3. Alignment And Data Prep
-
-#### Primary reference: Montreal Forced Aligner
-
-- Repo: `https://github.com/MontrealCorpusTools/Montreal-Forced-Aligner`
-- Why: Best reference for duration target generation if we stay with a FastSpeech 2 style training setup
-- Use it for:
-  - alignment workflow
-  - pronunciation dictionary formats
-  - corpus preparation
-- Important: Generic Arabic resources may help as bootstrap material, but Bahraini-specific pronunciation will still need custom work.
-
-### 4. Arabic Front End
-
-#### Primary utility reference: CAMeL Tools
+### 6. CAMeL Tools
 
 - Repo: `https://github.com/CAMeL-Lab/camel_tools`
-- Why: Useful Arabic NLP utilities for tokenization, normalization, and general text handling
+- Why:
+  - still useful later for Arabic normalization utilities
 - Use it for:
-  - Arabic normalization helpers
-  - tokenization ideas
-  - general preprocessing support
-- Important: This is not a Bahraini G2P solution. It is only a utility layer.
+  - utility preprocessing only
 
-#### Optional utility reference: phonemizer + espeak-ng
+## What We Build Ourselves Later
 
-- Repo: `https://github.com/bootphon/phonemizer`
-- Repo: `https://github.com/espeak-ng/espeak-ng`
-- Why: Useful for quick experiments or pronunciation baselines
-- Use it for:
-  - rough phoneme baselines
-  - experimentation only
-- Important: Do not let these define the final Bahraini front end. Also watch license implications before integrating them into production code.
+These are still custom work items, but they are `not` the first priority now:
 
-### 5. Full-Stack Survey Reference
-
-#### Optional: Coqui TTS
-
-- Repo: `https://github.com/coqui-ai/TTS`
-- Why: Large end-to-end TTS toolkit with many models and training recipes
-- Use it for:
-  - project structure ideas
-  - dataset config patterns
-  - trainer abstractions
-- Important: This is a study repo, not a good basis for the Bahraini-specific front end.
-
-## Existing Local Reference
-
-- `F5-TTS/` is already present locally.
-- Keep it as a contrastive reference only.
-- It is useful for:
-  - modern TTS repo organization
-  - deployment ideas
-  - general engineering patterns
-- It is not a good architectural source for the current plan, because the target design is deterministic front end + FastSpeech 2 style acoustic model + separate vocoder.
+- Arabic-only text tokenizer or text vocabulary
+- Arabic-only student design
+- Bahraini specialization and adaptation policy
+- later front-end / lexicon work if still needed
 
 ## What We Should Not Do
 
-- Do not merge large upstream repos directly into the main codebase.
-- Do not start implementation by copying random files from many repos.
-- Do not let a full-stack toolkit override the Bahraini-specific front end design.
-- Do not lock ourselves into TensorRT, DDP, or streaming details before the first model trains.
+- Do not change the speech tokenizer just because it looks like a clean compression lever.
+- Do not assume lower speech-token rate is a local optimization.
+- Do not redesign text-side Arabic specialization before profiling the current stack.
+- Do not mix runtime optimization and dialect-quality debugging into one workstream.
 
-## Recommended Clone Order
+## Current Local Priority Order
 
-1. `ming024/FastSpeech2`
-2. `jik876/hifi-gan`
-3. `Montreal-Forced-Aligner`
-4. `CAMeL-Lab/camel_tools`
-5. `NVIDIA FastPitch`
-6. `NVIDIA/BigVGAN`
-7. `coqui-ai/TTS`
+1. `external/chatterbox/`
+2. `F5-TTS/`
+3. `external/hifi-gan/`
+4. `external/FastSpeech2/`
+5. `external/camel_tools/`
 
-This gives us the minimum set needed to answer the main design question first:
+## Current Decision
 
-"Can we build a Bahraini-specific deterministic front end and connect it to a practical non-autoregressive acoustic model plus a fast vocoder?"
+The main product decision for now is not:
 
-## Suggested Local Layout
+- "How do we build the full Bahraini stack?"
 
-```text
-Bahraini_TTS/
-├── external/
-│   ├── FastSpeech2/
-│   ├── hifi-gan/
-│   ├── Montreal-Forced-Aligner/
-│   ├── camel_tools/
-│   ├── FastPitch/
-│   ├── BigVGAN/
-│   └── TTS/
-├── docs/
-├── frontend/
-├── data/
-├── training/
-├── inference/
-└── vocoder/
-```
+It is:
 
-## The Real Decision
-
-We are not deciding whether code exists. It does.
-
-We are deciding which parts are commodity and which parts are the product.
-
-For this project, the product is the Bahraini front end, the data choices, and the integration decisions. The model internals and vocoder internals are mostly reference material unless we discover a strong reason to customize them deeply.
+- "Can we keep the Chatterbox-style architecture, improve its scalability, and then specialize it cleanly toward Arabic?"

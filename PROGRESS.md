@@ -1,6 +1,6 @@
 # Bahraini TTS — Progress & Current Thinking
 
-_Last updated: 2026-03-12_
+_Last updated: 2026-03-14_
 
 ---
 
@@ -11,13 +11,28 @@ _Last updated: 2026-03-12_
 - [x] Python environment set up (`env-f5-tts/` — contains F5-TTS reference)
 - [x] F5-TTS reference code cloned (`F5-TTS/`) for reference/comparison
 - [x] `.gitignore` configured to exclude `env-f5-tts/` and `F5-TTS/`
+- [x] Reference repos cloned under `external/` for acoustic model, vocoder, alignment, and Arabic utilities
+
+### Architecture Study
+- [x] Local Chatterbox multilingual code inspected
+- [x] Local CosyVoice repo added for upstream architectural reference
+- [x] Local CosyVoice v1 inference path traced from frontend -> speech-token LM -> flow token-to-mel -> HiFT vocoder
+- [x] Matcha-TTS repo and lineage papers downloaded under `References/`
+- [x] CozyVoice linear vs parallel breakdown note created
+- [x] Chatterbox Arabic specialization diagram created
+- [x] Focused `S3 token -> mel` diagram created
+- [x] Current bottleneck hypothesis narrowed to the `S3 token -> mel` decoder path
+- [x] Current architectural risk clarified: Turbo-style step reduction is an optimization, not a full scalability solution
+- [x] Current architectural understanding clarified: the decoder first expands tokens to mel-rate conditioning and then runs a heavy iterative flow model over the whole mel timeline
+- [x] Existing practical parallelism clarified: prompt preprocessing branches are parallelizable and CosyVoice 1/2 already use chunk-level pipeline overlap, but single-utterance generation remains serial at the LLM token loop and flow solver loop
+- [x] Historical lineage clarified: `Glow-TTS -> Grad-TTS -> Matcha-TTS -> CosyVoice -> Chatterbox S3`
 
 ### Architecture Design
 - [x] Defined the full system architecture (see `CONTEXT.md`)
 - [x] Created paper-quality architecture diagrams:
-  - `bahraini_tts_inference.drawio` — inference pipeline with semantic shapes
-  - `bahraini_tts_training.drawio` — training supervision flow
-  - `bahraini_tts_architecture.drawio` — original combined overview
+  - `architecture/bahraini_tts_architecture.drawio` — Bahraini TTS combined overview
+  - `architecture/chatterbox_arabic_specialization.drawio` — Chatterbox multilingual teacher and Arabic-only student path
+  - `architecture/chatterbox_s3_token_to_mel.drawio` — focused S3 speech-token-to-mel subgraph
 - [x] Diagram shape conventions established:
   - Parallelogram → data/tensor nodes
   - Rounded rectangle → processing modules
@@ -32,12 +47,14 @@ _Last updated: 2026-03-12_
 
 ## Current State
 
-**Phase: Pre-implementation — architecture and planning complete**
+**Phase: Architecture pivot — Chatterbox-based specialization and scalability analysis**
 
-No code has been written yet. The repo contains:
-- Reference code (F5-TTS) for study
-- Architecture diagrams
-- This context/progress documentation
+The repo now contains:
+- Reference repos for study under `external/`
+- Architecture diagrams and planning docs
+- Chatterbox architecture notes and Arabic specialization diagram
+- Focused CozyVoice linear/parallel architecture note
+- Training/debug notes for future reruns
 
 ---
 
@@ -45,85 +62,117 @@ No code has been written yet. The repo contains:
 
 | Decision | Choice | Reasoning |
 |----------|--------|-----------|
-| Acoustic model type | FastSpeech 2 style (non-autoregressive) | Low latency, parallel decoding |
-| Vocoder | HiFi-GAN (primary), BigVGAN Lite (upgrade path) | Speed vs quality tradeoff |
-| Front end | Rule-based G2P + custom Bahraini lexicon | Deterministic, debuggable dialect control |
-| Speaker setup | Single speaker for v1 | Reduce complexity, prove quality first |
-| Training target | Bahraini dialect only | Quality focus, data efficiency |
-| GPU strategy | PyTorch DDP from day 1 | Scalability built in from start |
-| Deployment export | ONNX → TensorRT | Low latency production serving |
+| Main architecture under study | Chatterbox multilingual | Strongest current base to study for scalability and Arabic specialization |
+| Immediate focus | `S3 token -> mel` scalability | Current code and README both point to this as the likely bottleneck |
+| Scalability interpretation | Turbo is a patch, not the final answer | Fewer S3 steps do not remove the sequential structure of the stack |
+| Upstream mental model | `CosyVoice` token-to-mel flow decoder | Chatterbox S3 follows the same basic pattern: token expansion -> `mu` -> conditional flow matching over mel |
+| Historical origin | `CosyVoice` is the direct origin, `Matcha-TTS` is the direct flow-decoder ancestor | Chatterbox inherits the CosyVoice token-to-mel stack, and CosyVoice explicitly builds on Matcha-TTS |
+| Arabic path | Arabic-only student, not checkpoint surgery | Cleaner than trying to cut Arabic out of shared multilingual weights |
+| Speech-token interface | Keep it fixed for now | Changing it forces coordinated retraining of T3 and S3 |
+| First methodology | Benchmark before redesign | Avoid solving the wrong bottleneck |
+| Bahraini work | Postponed until architecture path is clearer | Do not mix dialect-quality work with runtime scaling too early |
 
 ---
 
 ## Open Questions / Things To Decide Next
 
 ### Data
-- [ ] Do we have Bahraini Arabic speech recordings? If yes, how many hours? What quality?
-- [ ] Do we need to collect/purchase data, or is there an existing dataset?
-- [ ] What is the speaker profile for v1? (male/female, age, register)
-- [ ] What transcription format will we use? (raw Arabic, diacritized, romanized?)
+- [ ] Is the clean single-speaker subset enough to support adaptation experiments reliably?
+- [ ] How much clean Arabic-only data can we reserve for eval prompts and checkpoint comparison?
 
-### Front End
-- [ ] Which phoneme set will we use? (Buckwalter-based IPA? Custom Bahraini IPA subset?)
-- [ ] How large is the initial Bahraini lexicon? Does one already exist?
-- [ ] How do we handle code-switching (English words in Bahraini speech)?
-- [ ] Which text normalization rules are most critical for Bahraini (numbers, dates, abbreviations)?
+### Chatterbox Path
+- [ ] Is the current bottleneck actually in `S3 token -> mel`, or is `T3` already too expensive for the target deployment?
+- [ ] Do we want Arabic-only fine-tuning first, or Arabic-only student distillation directly?
+- [ ] Do we keep the current `25 Hz` speech-token interface, or redesign the whole speech-token stack later?
+- [ ] Which weights should be frozen, transferred, or rebuilt for an Arabic-only student?
 
-### Model Architecture
-- [ ] How many FFT layers in encoder/decoder? (FastSpeech 2 default: 4)
-- [ ] Hidden dimension size? (FastSpeech 2 default: 256)
-- [ ] Attention heads? (FastSpeech 2 default: 2)
-- [ ] Mel spectrogram config: n_mels (80?), sample rate (22050 or 24000?), hop length?
-- [ ] Which pitch extraction tool? (RAPT / REAPER / WORLD)
-
-### Training
-- [ ] Which MFA (Montreal Forced Aligner) acoustic model for Bahraini Arabic alignment?
-- [ ] Training hardware? (How many GPUs, what type?)
-- [ ] Batch size, learning rate schedule?
-- [ ] How do we validate/evaluate? (MOS, WER, naturalness benchmarks?)
-
-### Deployment
-- [ ] What is the serving infrastructure? (cloud, on-prem, edge?)
-- [ ] Latency target? (< 100ms? < 50ms first-chunk?)
-- [ ] Expected concurrent request load?
+### Scalability
+- [ ] What is the actual latency split between tokenizer, T3, S3 token-to-mel, and vocoder?
+- [ ] Is reducing CFM steps enough, or do we need a new distilled/meanflow-style S3 decoder?
+- [ ] How much of the cost comes from sequence expansion from `25 Hz` speech tokens to mel-rate decoding?
+- [ ] How much of the cost comes from the per-step `ConditionalDecoder` itself?
+- [ ] Even after S3 optimization, is the autoregressive T3 path still too sequential for the target?
+- [ ] Is memory usage or wall-clock latency the real deployment problem?
+- [ ] How badly does the current S3 path scale with utterance length and concurrent batch size?
+- [ ] Do we need streaming, or only faster synchronous generation?
 
 ---
 
 ## Immediate Next Steps (Priority Order)
 
-1. **Assess data situation** — determine what Bahraini speech data is available
-2. **Define phoneme set** — create the Bahraini Arabic phoneme inventory
-3. **Start building the front end** — text normalization rules and initial G2P
-4. **Set up training pipeline skeleton** — data loading, mel extraction, MFA alignment
-5. **Implement acoustic model** — FastSpeech 2 with DDP support
-6. **Train vocoder** — HiFi-GAN on Bahraini speech data
-7. **End-to-end integration** — connect all three stages
-8. **Evaluation** — MOS testing, latency benchmarking
+1. **Benchmark Chatterbox locally** — measure where latency actually goes: tokenizer vs T3 vs S3 vs vocoder
+2. **Measure S3 more granularly** — separate prompt preprocessing, token upsampling encoder, per-step flow estimator cost, and total step count cost
+3. **Isolate S3 scalability path** — test how much of the problem is really in S3 versus the overall sequential structure
+4. **Decide whether the student must remove T3 autoregression too** — not just reduce S3 steps
+5. **Choose specialization strategy** — Arabic-only fine-tune, Arabic-only student, or both in sequence
+6. **Define Arabic-only student boundaries** — what to rebuild on text side, what to transfer on shared/speech side
+7. **Only after that: Bahraini adaptation** — use the cleaned architecture choice as the base for dialect work
 
 ---
 
 ## Reference Materials
 
 - `F5-TTS/` — F5-TTS codebase (for architecture reference, not for use directly)
+- `external/chatterbox/` — Chatterbox multilingual / Turbo reference code
+- `external/CosyVoice/` — upstream token-to-mel flow architecture reference
+- `architecture/cosyvoice_v1_linear_parallel_breakdown.md` — source-grounded linear path and parallelism breakdown for CozyVoice v1, with v2/v3 overlap notes
 - `References/images/` — Paper figures used for diagram style reference:
   - `fastspeech2.png` — FastSpeech 2 architecture figure
   - `compact-neural-tts-voices-Vocoder.png` — Compact TTS vocoder
   - `qwem-tts-overview.png` — Qwen3-TTS overview
   - `qwen-tts-tokenizer.png` — Qwen-TTS tokenizer details
+- `architecture/conditional flow matching.png` — extracted CosyVoice flow-matching figure for the inner decoder view
 - `CONTEXT.md` — Full architecture and design context
+- `TRAINING_DEBUG_CHECKLIST.md` — Remote rerun artifact checklist
 
 ---
 
 ## Current Thinking / Notes
 
-**On the front end:** The Bahraini dialect has specific phonological features that MSA-based G2P systems miss entirely. Key ones:
-- /q/ → /g/ or /j/ in many words (dialectal)
-- Specific vowel lengthening patterns
-- Many Persian/English loanwords with non-Arabic phonology
-- Code-switching mid-sentence is very common
+**On Chatterbox multilingual:** Arabic is selected by a language tag and shared multilingual vocab. It is not stored as a clean detachable Arabic-only subnetwork.
 
-**On data:** This is likely the biggest bottleneck. Getting clean, transcribed, single-speaker Bahraini speech data is the critical path item. Without this, everything else is academic.
+**On T3 vs S3:** T3 predicts speech tokens from text plus conditioning. S3Gen then converts speech tokens into mel/audio. The code and README both suggest the S3 token-to-mel path is the main latency bottleneck.
 
-**On architecture size:** For a single-speaker, single-dialect system, we can go smaller than FastSpeech 2 defaults. A 256-dim model with 4 FFT layers is already fast. We could try 128-dim for edge deployment.
+**On how S3 actually works:** The expensive path is not a direct token decoder. Speech tokens are first expanded by an upsampling Conformer encoder into a mel-rate conditioning sequence `mu`, then a conditional flow-matching model repeatedly runs a large causal `ResNet1D + Transformer` estimator over the full mel timeline.
 
-**On the vocoder:** HiFi-GAN V1 is the safe choice. BigVGAN Lite might be worth trying if quality is the priority. Both train well on 10-50 hours of data.
+**On the CozyVoice upstream path:** The clean linear path is:
+1. text normalization and tokenization
+2. prompt preprocessing branches
+3. autoregressive speech-token LLM
+4. token-to-mel expansion
+5. iterative flow decoding over the mel timeline
+6. HiFT vocoder
+
+This matches the local source and is now written up in `architecture/cosyvoice_v1_linear_parallel_breakdown.md`.
+
+**On where it came from:** The direct Chatterbox `S3` path comes from `CosyVoice`. The flow-decoder core inside CosyVoice comes from the `Matcha-TTS` conditional-flow-matching acoustic-model line, which itself sits downstream of the earlier `Grad-TTS` and `Glow-TTS` acoustic-model lineage.
+
+**On the real scaling limit:** The issue is not just step count. The issue is:
+1. `T3` is still autoregressive
+2. `S3` still works on the longer mel timeline, not the shorter token timeline
+3. each S3 step is a heavy whole-sequence model pass
+
+So the bottleneck is fundamentally a serial GPU resource problem, not just a missing low-level optimization.
+
+**On what can really be parallelized today:** The safest parallelism is:
+1. prompt preprocessing branches
+2. batching across requests
+3. chunk-level pipeline overlap between upstream token generation and downstream synthesis
+
+That can improve throughput and online latency, but it does not remove the core serial dependencies of the architecture.
+
+**On tokenizer changes:** Replacing the speech tokenizer is not a small swap. A new speech-token rate or new speech-token vocabulary would force coordinated retraining of the T3 speech-token interface and the S3 decoder path.
+
+**On what CosyVoice really added:** The novel CosyVoice part is not "flow matching" by itself. It is the combination of:
+1. supervised semantic speech tokens as the intermediate unit
+2. prompt speech-token conditioning
+3. prompt mel-prefix conditioning
+4. speaker conditioning
+5. a Matcha-style mel-space flow decoder behind an upsampling encoder
+
+**On current direction:** The most defensible pivot is:
+1. profile Chatterbox
+2. use the CosyVoice-style flow architecture as the explanatory model for S3
+3. treat Turbo-style S3 reduction as an optimization, not the final answer
+4. decide whether a real scalable student must also remove or reduce T3 autoregression
+5. only then decide how much Arabic-only specialization is worth building

@@ -28,6 +28,16 @@ Use this when turning decisions into repo changes.
 5. Summarize the result.
 6. Update the relevant project docs if needed.
 
+## Multi-Agent Coordination
+
+- Assume shared docs may be changing while you work because HM may have multiple agents running in parallel.
+- Before editing a shared `.md` file, reread it.
+- Preserve useful notes from other agents unless they are clearly wrong or directly superseded.
+- Leave short factual handoff notes instead of rewriting large sections when a small update is enough.
+- If HM gave you an agent identity, include it in your handoff note so other agents can follow the trail.
+- If you inherit a task from another agent, continue from their latest valid note instead of redoing the whole investigation.
+- If two agent notes disagree, surface the disagreement explicitly and tie it to files or code.
+
 ## Discussion Rules
 
 - Keep answers short.
@@ -42,8 +52,10 @@ Use this when turning decisions into repo changes.
 When discussing architecture:
 
 1. [CONTEXT.md](/Users/hisham/Code/Bahraini_TTS/CONTEXT.md)
-2. [IMPLEMENTATION_CHECKLIST.md](/Users/hisham/Code/Bahraini_TTS/IMPLEMENTATION_CHECKLIST.md)
-3. Relevant reference files in `external/`
+2. [CHATTERBOX_SCALING_PLAN.md](/Users/hisham/Code/Bahraini_TTS/CHATTERBOX_SCALING_PLAN.md)
+3. [cosyvoice_v1_linear_parallel_breakdown.md](/Users/hisham/Code/Bahraini_TTS/architecture/cosyvoice_v1_linear_parallel_breakdown.md) when the discussion is about token-to-mel flow or linear vs parallel decoding
+4. Relevant Chatterbox or CozyVoice files in `external/`
+5. [IMPLEMENTATION_CHECKLIST.md](/Users/hisham/Code/Bahraini_TTS/IMPLEMENTATION_CHECKLIST.md)
 
 When discussing project state:
 
@@ -58,19 +70,17 @@ When discussing upstream sources:
 
 For this thesis, use this order unless HM redirects:
 
-1. Lock scope.
-2. Audit data.
-3. Define text and phoneme representation.
-4. Prove alignment.
-5. Build preprocessing.
-6. Build acoustic training.
-7. Build vocoder training.
-8. Integrate and evaluate.
+1. Benchmark Chatterbox.
+2. Isolate runtime bottlenecks.
+3. Focus on `S3 token -> mel` scalability work.
+4. Decide whether an Arabic-only student is justified.
+5. Only then discuss Bahraini specialization.
 
 ## What Not To Do
 
 - Do not confuse repo cloning with implementation progress.
-- Do not start large code work before the representation layer is clear.
+- Do not redesign the speech-token interface before profiling the current stack.
+- Do not assume your local context is complete if another agent may have updated the docs.
 - Do not overload HM with long explanations.
 - Do not repeat full context when only one point matters.
 - Do not force a rigid plan if HM wants to jump between phases.

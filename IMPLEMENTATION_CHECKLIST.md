@@ -1,329 +1,149 @@
 # Bahraini TTS Implementation Checklist
 
-This is the working checklist for turning the current architecture into a trainable system.
+This checklist tracks the `current` plan.
 
-## The Core Thesis
+The current plan is:
 
-The design still makes sense:
+1. benchmark `Chatterbox`
+2. isolate the real scalability bottleneck
+3. optimize `S3 token -> mel` first if it is the bottleneck
+4. only after that, design an `Arabic-only student`
+5. only after that, attempt `Bahraini` adaptation
 
-- deterministic Bahraini front end
-- FastSpeech 2 style acoustic model
-- separate HiFi-GAN vocoder
+## Main Risk
 
-This is a good v1 design if the goal is:
+The main risk is solving the wrong problem.
 
-- low latency
-- small footprint
-- strong dialect control
-- easier debugging than end-to-end black-box TTS
+If we change tokenization, Arabic specialization, and runtime optimizations at the same time, we will not know which change actually mattered.
 
-## The Biggest Holes Right Now
+## What We Need To Prove First
 
-These are the gaps that can break the whole project if we ignore them.
+### 1. Where does latency actually go?
 
-### 1. We do not yet know the data situation
+- [ ] Measure multilingual tokenizer time
+- [ ] Measure `T3` generation time
+- [ ] Measure `S3 token -> mel` time
+- [ ] Measure vocoder time
+- [ ] Measure total wall-clock latency
+- [ ] Measure VRAM / memory usage
 
-Without clean Bahraini speech plus transcripts, the rest is theory.
+### 2. Is `S3 token -> mel` really the bottleneck?
 
-We need to know:
+- [ ] Confirm whether `S3 token -> mel` dominates runtime
+- [ ] Confirm whether the problem is step count, model width, memory movement, or vocoder follow-up cost
+- [ ] Confirm whether the issue affects sync inference only or also streaming
 
-- whether we already have recordings
-- how many hours we have
-- sample rate and recording quality
-- whether transcripts already exist
-- whether transcripts match spoken Bahraini or drift toward MSA
+### 3. Can we improve S3 without changing the token interface?
 
-### 2. We do not yet have a text representation policy
+- [ ] Test fewer CFM steps
+- [ ] Test meanflow / distilled S3 behavior
+- [ ] Check precision and kernel choices
+- [ ] Check batching and cache behavior
+- [ ] Check whether vocoder cost becomes dominant after S3 is reduced
 
-This is the largest front-end design hole.
+## What We Should Not Change Yet
 
-We need to decide:
+- [ ] Do not replace the speech tokenizer yet
+- [ ] Do not change the speech-token frame rate yet
+- [ ] Do not redesign Arabic front-end logic yet
+- [ ] Do not mix Arabic quality debugging with runtime scalability work
 
-- what the input transcript format is
-- whether we keep Arabic script as the source of truth
-- whether we add internal normalized forms
-- whether we keep diacritics if present
-- how we represent English code-switch words
-- whether phonemes are IPA, X-SAMPA, Buckwalter-like symbols, or a custom inventory
+Reason:
 
-### 3. We do not yet have a phoneme inventory
+Changing the speech tokenizer changes:
 
-The whole acoustic model depends on a stable symbol set.
+- the speech-token IDs that `T3` predicts
+- the speech embeddings / head in `T3`
+- the token embeddings in `S3Gen`
+- the token-to-mel decoder interface
 
-We need:
+That is a coordinated retraining problem, not a local optimization.
 
-- a Bahraini phoneme list
-- silence / pause symbols
-- word boundary policy
-- gemination policy
-- long vowel policy
-- loanword handling rules
+## Read This Code First
 
-### 4. Alignment is a real risk
+### 1. Multilingual text path
 
-FastSpeech 2 training depends on usable duration targets.
-
-The reference preprocessor assumes:
-
-- aligned `TextGrid` phone boundaries already exist
-- each utterance has a `.lab` transcript
-- pitch, energy, and mel are extracted after alignment
-
-See:
-
-- [preprocessor.py](/Users/hisham/Code/Bahraini_TTS/external/FastSpeech2/preprocessor/preprocessor.py#L16)
-- [alignment_example.md](/Users/hisham/Code/Bahraini_TTS/external/Montreal-Forced-Aligner/docs/source/first_steps/alignment_example.md#L55)
-
-If Bahraini pronunciation differs too much from available Arabic resources, MFA alignments may be noisy until we build a better dictionary.
-
-### 5. The current repo has architecture but not the training glue
-
-The reference repos are not plug-and-play for our design.
-
-We still need to define:
-
-- corpus directory structure
-- metadata manifest format
-- preprocessing entrypoints
-- training configs
-- checkpoint layout
-- inference wrapper
-
-### 6. “Streaming inference” is premature
-
-Low-latency synthesis is realistic. True streaming should not be treated as a v1 requirement.
-
-## What The Reference Code Tells Us
-
-### FastSpeech 2 is the right mental model
-
-The core model wiring is exactly the architecture we drew:
-
-- encoder
-- variance adaptor
-- decoder
-- mel linear
-- postnet
-
-See:
-
-- [fastspeech2.py](/Users/hisham/Code/Bahraini_TTS/external/FastSpeech2/model/fastspeech2.py#L13)
-- [modules.py](/Users/hisham/Code/Bahraini_TTS/external/FastSpeech2/model/modules.py#L17)
-
-### But the reference training stack is not our final stack
-
-The upstream FastSpeech 2 training loop uses `DataParallel`, not DDP.
-
-See:
-
-- [train.py](/Users/hisham/Code/Bahraini_TTS/external/FastSpeech2/train.py#L40)
-
-So if we want DDP from day one, we should treat this repo as an architectural reference, not our final trainer.
-
-### HiFi-GAN is a strong v1 vocoder choice
-
-The generator/discriminator setup is clean and standard:
-
-- generator converts 80-bin mel to waveform
-- multi-period discriminator
-- multi-scale discriminator
-
-See:
-
-- [models.py](/Users/hisham/Code/Bahraini_TTS/external/hifi-gan/models.py#L75)
-- [train.py](/Users/hisham/Code/Bahraini_TTS/external/hifi-gan/train.py#L24)
-
-It also already uses DDP-style training patterns, which is useful for our future trainer design.
-
-### CAMeL Tools is useful, but only as a utility layer
-
-It gives us normalization and dediacritization helpers, but it is not a Bahraini G2P.
-
-See:
-
-- [normalize.py](/Users/hisham/Code/Bahraini_TTS/external/camel_tools/camel_tools/utils/normalize.py#L48)
-- [dediac.py](/Users/hisham/Code/Bahraini_TTS/external/camel_tools/camel_tools/utils/dediac.py#L56)
-
-Important caution:
-
-- some normalizations collapse distinctions we may want to preserve for pronunciation
-- we should not blindly normalize away all orthographic variation
-
-## Decisions We Must Make Before Writing The First Real Training File
-
-- Choose target sample rate for v1: likely `22050` or `24000`
-- Choose mel config for both acoustic model and vocoder
-- Choose phoneme inventory
-- Choose transcript normalization policy
-- Choose single-speaker or multi-speaker metadata format
-- Choose alignment bootstrap plan
-- Choose whether pitch and energy are phoneme-level or frame-level
-- Choose whether we start with a minimal trainer or adapt an existing one
-
-## Recommended V1 Defaults
-
-These are my recommended defaults unless the data pushes us elsewhere.
-
-- Single speaker only
-- `22050 Hz` sample rate
-- `80` mel bins
-- `1024` FFT / `256` hop as the first baseline
-- phoneme-level duration, pitch, and energy supervision
-- separate training for acoustic model and vocoder
-- lexicon-first front end with rules as fallback
-
-These line up with:
-
-- [preprocess.yaml](/Users/hisham/Code/Bahraini_TTS/external/FastSpeech2/config/LJSpeech/preprocess.yaml#L9)
-- [model.yaml](/Users/hisham/Code/Bahraini_TTS/external/FastSpeech2/config/LJSpeech/model.yaml#L1)
-- [config_v1.json](/Users/hisham/Code/Bahraini_TTS/external/hifi-gan/config_v1.json#L11)
-
-## What You Should Read First
-
-This is the shortest useful reading path.
-
-### 1. Understand the acoustic model
-
-Read:
-
-- [fastspeech2.py](/Users/hisham/Code/Bahraini_TTS/external/FastSpeech2/model/fastspeech2.py)
-- [modules.py](/Users/hisham/Code/Bahraini_TTS/external/FastSpeech2/model/modules.py)
+- [tokenizer.py](/Users/hisham/Code/Bahraini_TTS/external/chatterbox/src/chatterbox/models/tokenizers/tokenizer.py#L256)
 
 Goal:
 
-- understand exactly how text-side states become mel frames
+- understand what `language_id="ar"` actually does
+- understand that Arabic is mostly `shared tokenizer + [ar] tag`
 
-### 2. Understand preprocessing assumptions
+### 2. T3 path
 
-Read:
-
-- [preprocessor.py](/Users/hisham/Code/Bahraini_TTS/external/FastSpeech2/preprocessor/preprocessor.py)
-
-Goal:
-
-- understand what files must exist before training starts
-- understand how duration, pitch, energy, and mel are generated
-
-### 3. Understand the vocoder boundary
-
-Read:
-
-- [models.py](/Users/hisham/Code/Bahraini_TTS/external/hifi-gan/models.py)
-- [train.py](/Users/hisham/Code/Bahraini_TTS/external/hifi-gan/train.py)
+- [t3.py](/Users/hisham/Code/Bahraini_TTS/external/chatterbox/src/chatterbox/models/t3/t3.py#L40)
 
 Goal:
 
-- understand what the acoustic model must output for the vocoder
+- understand that `T3` predicts speech tokens, not waveform
+- understand where text embeddings, speech embeddings, and shared transformer weights sit
 
-### 4. Understand alignment expectations
+### 3. S3 path
 
-Read:
-
-- [alignment_example.md](/Users/hisham/Code/Bahraini_TTS/external/Montreal-Forced-Aligner/docs/source/first_steps/alignment_example.md)
-
-Goal:
-
-- understand why OOV words and bad dictionaries break alignments
-
-### 5. Understand safe Arabic normalization utilities
-
-Read:
-
-- [normalize.py](/Users/hisham/Code/Bahraini_TTS/external/camel_tools/camel_tools/utils/normalize.py)
-- [dediac.py](/Users/hisham/Code/Bahraini_TTS/external/camel_tools/camel_tools/utils/dediac.py)
+- [s3gen.py](/Users/hisham/Code/Bahraini_TTS/external/chatterbox/src/chatterbox/models/s3gen/s3gen.py#L47)
+- [s3gen.py](/Users/hisham/Code/Bahraini_TTS/external/chatterbox/src/chatterbox/models/s3gen/s3gen.py#L234)
 
 Goal:
 
-- understand what can be reused versus what must stay Bahraini-specific
+- understand the `speech-token -> mel -> waveform` stack
+- understand where the iterative decoder sits
+
+### 4. Turbo clue
+
+- [README.md](/Users/hisham/Code/Bahraini_TTS/external/chatterbox/README.md#L15)
+
+Goal:
+
+- confirm that the repo authors themselves identify `speech-token -> mel` as the bottleneck
 
 ## Execution Checklist
 
-### Phase 0: Scope Lock
+### Phase 0: Local Baseline
 
-- [ ] Confirm v1 is single speaker
-- [ ] Confirm v1 is Bahraini-only, not general Arabic
-- [ ] Confirm v1 target is low-latency batch synthesis, not true streaming
+- [ ] Run the current multilingual Chatterbox stack locally
+- [ ] Use Arabic input only
+- [ ] Record end-to-end latency on fixed prompts
+- [ ] Save one baseline table of timings
 
-### Phase 1: Data Audit
+### Phase 1: Profiling
 
-- [ ] Inventory all available Bahraini speech data
-- [ ] Measure total hours
-- [ ] Check recording consistency and background noise
-- [ ] Check transcript availability and quality
-- [ ] Identify code-switch frequency
-- [ ] Decide train / val / test split policy
+- [ ] Separate timings for tokenizer, `T3`, `S3 flow`, and vocoder
+- [ ] Record number of speech tokens produced
+- [ ] Record `n_cfm_timesteps`
+- [ ] Record hardware and precision mode
 
-### Phase 2: Front-End Definition
+### Phase 2: S3 Scaling Work
 
-- [ ] Define normalization policy
-- [ ] Define phoneme inventory
-- [ ] Define pronunciation lexicon format
-- [ ] Define fallback G2P rules
-- [ ] Define code-switch handling rules
-- [ ] Define punctuation and number expansion rules
+- [ ] Compare default S3 steps vs reduced steps
+- [ ] Compare default path vs meanflow / distilled path if available
+- [ ] Document quality drop vs latency gain
+- [ ] Decide whether S3 alone is enough to optimize
 
-### Phase 3: Corpus And Alignment
+### Phase 3: Architecture Decision
 
-- [ ] Define raw corpus folder structure
-- [ ] Define utterance metadata manifest format
-- [ ] Create `.lab` or equivalent text files for each utterance
-- [ ] Build starter pronunciation dictionary
-- [ ] Run alignment experiments
-- [ ] Inspect alignment failures and OOVs
-- [ ] Iterate on the lexicon until durations are usable
+- [ ] Decide whether to keep multilingual Chatterbox as-is
+- [ ] Decide whether to build an Arabic-only student
+- [ ] Decide whether speech-token interface changes are justified
 
-### Phase 4: Preprocessing Pipeline
+### Phase 4: Arabic-Only Student
 
-- [ ] Implement Bahraini-specific text normalization module
-- [ ] Implement phoneme conversion module
-- [ ] Extract mel, pitch, energy, and duration targets
-- [ ] Save normalized stats and manifests
-- [ ] Verify one utterance end to end by hand
+- [ ] Define Arabic-only text vocab / tokenizer
+- [ ] Decide which text-side weights are rebuilt
+- [ ] Decide which shared weights are transferred
+- [ ] Decide which speech-side weights are transferred
 
-### Phase 5: Acoustic Model
+### Phase 5: Bahraini Adaptation
 
-- [ ] Create our own model config
-- [ ] Port or reimplement FastSpeech 2 structure cleanly
-- [ ] Write dataset loader for our manifests
-- [ ] Write training loop
-- [ ] Decide whether to use DDP immediately or add it after baseline training
-- [ ] Train a first overfit-small-batch sanity check
+- [ ] Define the adaptation dataset split
+- [ ] Decide whether adaptation is Arabic-only first or directly Bahraini
+- [ ] Define evaluation prompts for dialect quality
 
-### Phase 6: Vocoder
+## Current Default Recommendation
 
-- [ ] Train HiFi-GAN on Bahraini mel/audio pairs
-- [ ] Confirm mel config matches acoustic model exactly
-- [ ] Evaluate reconstruction quality on held-out audio
-- [ ] Keep BigVGAN as optional comparison, not day-one scope
+For now, the default plan is:
 
-### Phase 7: Integration
-
-- [ ] Connect front end to acoustic model
-- [ ] Connect acoustic model to vocoder
-- [ ] Run end-to-end inference on curated sample texts
-- [ ] Check pronunciation, prosody, and latency
-
-### Phase 8: Evaluation
-
-- [ ] Build a representative Bahraini test sentence set
-- [ ] Evaluate pronunciation accuracy
-- [ ] Evaluate naturalness
-- [ ] Evaluate latency
-- [ ] Track common failure cases
-
-## What I Need You To Decide Soon
-
-- Do we already have Bahraini recordings?
-- If yes, where are they and what format are they in?
-- Do we want to commit to a phoneme-based front end, or are you still considering grapheme input?
-- Do you want the first implementation to prioritize simplicity over DDP?
-
-## The Main Strategic Point
-
-We should not begin by writing a giant training script.
-
-We should begin by fixing the representation problem:
-
-text -> normalized text -> phonemes -> aligned durations
-
-If that layer is weak, the rest of the stack will look broken even when the neural code is fine.
+- keep the existing speech-token interface
+- keep the multilingual checkpoint as teacher / initializer
+- improve `S3 token -> mel` first
+- postpone Arabic-only student work until the runtime story is clearer

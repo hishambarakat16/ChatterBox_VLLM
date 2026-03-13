@@ -1,0 +1,238 @@
+<mxfile host="Electron" agent="Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) draw.io/29.5.2 Chrome/142.0.7444.265 Electron/39.6.1 Safari/537.36" version="29.5.2">
+  <diagram id="chatterbox-arabic-spec-1" name="ChatterboxArabicSpecialization">
+    <mxGraphModel dx="1543" dy="994" grid="1" gridSize="10" guides="1" tooltips="1" connect="1" arrows="1" fold="1" page="1" pageScale="1" pageWidth="2200" pageHeight="1200" math="0" shadow="0">
+      <root>
+        <mxCell id="0" />
+        <mxCell id="1" parent="0" />
+        <mxCell id="100" parent="1" style="text;html=1;strokeColor=none;fillColor=none;align=center;verticalAlign=middle;fontSize=26;fontStyle=1;fontColor=#1A2A6A;" value="Chatterbox Arabic Specialization" vertex="1">
+          <mxGeometry height="36" width="1320" x="440" y="16" as="geometry" />
+        </mxCell>
+        <mxCell id="101" parent="1" style="text;html=1;strokeColor=none;fillColor=none;align=center;verticalAlign=middle;fontSize=12;fontColor=#555555;" value="Use the multilingual checkpoint as a teacher / initializer, then build an Arabic-only student with the same general architecture instead of trying to delete languages out of the original checkpoint." vertex="1">
+          <mxGeometry height="22" width="1640" x="280" y="50" as="geometry" />
+        </mxCell>
+        <mxCell id="102" parent="1" style="text;html=1;strokeColor=none;fillColor=none;align=left;verticalAlign=middle;fontSize=13;fontStyle=2;fontColor=#333333;" value="(a) Current Chatterbox-Multilingual Runtime Path" vertex="1">
+          <mxGeometry height="22" width="420" x="290" y="104" as="geometry" />
+        </mxCell>
+        <mxCell id="a_bg" parent="1" style="rounded=1;whiteSpace=wrap;html=1;arcSize=10;strokeWidth=1.5;fillColor=#F8FBFF;strokeColor=#7AA7D8;" value="" vertex="1">
+          <mxGeometry height="518" width="1510" x="250" y="132" as="geometry" />
+        </mxCell>
+        <mxCell id="a_text" parent="1" style="rounded=1;whiteSpace=wrap;html=1;arcSize=18;strokeWidth=2;fontSize=12;fillColor=#FFF3CD;strokeColor=#D4930A;fontColor=#7A4500;" value="&lt;b&gt;Arabic / Bahraini Text&lt;/b&gt;&lt;br/&gt;input sentence" vertex="1">
+          <mxGeometry height="70" width="150" x="320" y="223" as="geometry" />
+        </mxCell>
+        <mxCell id="a_lang" parent="1" style="rounded=1;whiteSpace=wrap;html=1;arcSize=18;strokeWidth=1.5;fontSize=12;fillColor=#FFE3B5;strokeColor=#C88020;fontColor=#6B3A00;" value="&lt;b&gt;language_id = ar&lt;/b&gt;&lt;br/&gt;control tag only" vertex="1">
+          <mxGeometry height="70" width="150" x="520" y="223" as="geometry" />
+        </mxCell>
+        <mxCell id="a_tok" parent="1" style="rounded=1;whiteSpace=wrap;html=1;arcSize=14;strokeWidth=2;fontSize=12;fillColor=#DDEEFF;strokeColor=#3565C0;fontColor=#1A3A90;" value="&lt;b&gt;MTLTokenizer&lt;/b&gt;&lt;br/&gt;prepends [ar]&lt;br/&gt;merged multilingual vocab" vertex="1">
+          <mxGeometry height="100" width="180" x="710" y="212" as="geometry" />
+        </mxCell>
+        <mxCell id="a_vocab" parent="1" style="rounded=1;whiteSpace=wrap;html=1;arcSize=14;strokeWidth=1.5;dashed=1;fontSize=11;fillColor=#F5F5F5;strokeColor=#999999;fontColor=#555555;" value="&lt;b&gt;Text vocab&lt;/b&gt;&lt;br/&gt;multilingual size = 2454&lt;br/&gt;shared across 23+ langs" vertex="1">
+          <mxGeometry height="58" width="176" x="432" y="158" as="geometry" />
+        </mxCell>
+        <mxCell id="a_condg" parent="1" style="rounded=1;whiteSpace=wrap;html=1;arcSize=8;strokeWidth=2;fillColor=#FFF8EE;strokeColor=#C88020;verticalAlign=top;fontSize=12;fontStyle=1;fontColor=#8B5500;" value="&lt;b&gt;Conditioning Path&lt;/b&gt;" vertex="1">
+          <mxGeometry height="210" width="370" x="390" y="330" as="geometry" />
+        </mxCell>
+        <mxCell id="a_ref" parent="1" style="rounded=1;whiteSpace=wrap;html=1;arcSize=14;strokeWidth=1.5;fontSize=11;fillColor=#FFD9A0;strokeColor=#B86010;fontColor=#6B3A00;" value="&lt;b&gt;Reference Audio&lt;/b&gt;&lt;br/&gt;voice / style prompt" vertex="1">
+          <mxGeometry height="54" width="138" x="411" y="354" as="geometry" />
+        </mxCell>
+        <mxCell id="a_ve" parent="1" style="rounded=1;whiteSpace=wrap;html=1;arcSize=14;strokeWidth=1.5;fontSize=11;fillColor=#FFD9A0;strokeColor=#B86010;fontColor=#6B3A00;" value="&lt;b&gt;VoiceEncoder&lt;/b&gt;&lt;br/&gt;speaker_emb" vertex="1">
+          <mxGeometry height="50" width="160" x="590" y="356" as="geometry" />
+        </mxCell>
+        <mxCell id="a_s3tok" parent="1" style="rounded=1;whiteSpace=wrap;html=1;arcSize=14;strokeWidth=1.5;fontSize=11;fillColor=#FFD9A0;strokeColor=#B86010;fontColor=#6B3A00;" value="&lt;b&gt;S3Tokenizer&lt;/b&gt;&lt;br/&gt;prompt speech tokens" vertex="1">
+          <mxGeometry height="50" width="160" x="400" y="464" as="geometry" />
+        </mxCell>
+        <mxCell id="a_cond" parent="1" style="rounded=1;whiteSpace=wrap;html=1;arcSize=14;strokeWidth=1.5;fontSize=11;fillColor=#FFD9A0;strokeColor=#B86010;fontColor=#6B3A00;" value="&lt;b&gt;T3Cond / Conditionals&lt;/b&gt;&lt;br/&gt;speaker + prompt conditioning" vertex="1">
+          <mxGeometry height="50" width="160" x="590" y="464" as="geometry" />
+        </mxCell>
+        <mxCell id="a_t3g" parent="1" style="rounded=1;whiteSpace=wrap;html=1;arcSize=8;strokeWidth=2;fillColor=#EAF5EA;strokeColor=#2E8A2E;verticalAlign=top;fontSize=12;fontStyle=1;fontColor=#145214;" value="&lt;b&gt;T3 Token-to-Token Model&lt;/b&gt;" vertex="1">
+          <mxGeometry height="230" width="540" x="930" y="292" as="geometry" />
+        </mxCell>
+        <mxCell id="a_textemb" parent="1" style="rounded=1;whiteSpace=wrap;html=1;arcSize=14;strokeWidth=1.5;fontSize=11;fillColor=#B0DEB0;strokeColor=#2A7A2A;fontColor=#144414;" value="&lt;b&gt;text_emb&lt;/b&gt;&lt;br/&gt;multilingual text embeddings" vertex="1">
+          <mxGeometry height="60" width="150" x="940" y="350" as="geometry" />
+        </mxCell>
+        <mxCell id="a_tfmr" parent="1" style="rounded=1;whiteSpace=wrap;html=1;arcSize=14;strokeWidth=1.5;fontSize=11;fillColor=#B0DEB0;strokeColor=#2A7A2A;fontColor=#144414;" value="&lt;b&gt;Shared Transformer Backbone&lt;/b&gt;&lt;br/&gt;Llama / GPT-style shared weights" vertex="1">
+          <mxGeometry height="92" width="180" x="1120" y="346" as="geometry" />
+        </mxCell>
+        <mxCell id="a_speechemb" parent="1" style="rounded=1;whiteSpace=wrap;html=1;arcSize=14;strokeWidth=1.5;fontSize=11;fillColor=#B0DEB0;strokeColor=#2A7A2A;fontColor=#144414;" value="&lt;b&gt;speech_emb + speech_head&lt;/b&gt;&lt;br/&gt;speech token prediction" vertex="1">
+          <mxGeometry height="60" width="130" x="1320" y="362" as="geometry" />
+        </mxCell>
+        <mxCell id="a_heads" parent="1" style="rounded=1;whiteSpace=wrap;html=1;arcSize=14;strokeWidth=1.5;dashed=1;fontSize=11;fillColor=#C8E8C8;strokeColor=#2A7A2A;fontColor=#144414;" value="&lt;b&gt;text_head also exists&lt;/b&gt;&lt;br/&gt;text loss used in training" vertex="1">
+          <mxGeometry height="48" width="170" x="1125" y="452" as="geometry" />
+        </mxCell>
+        <mxCell id="a_stok" parent="1" style="rounded=1;whiteSpace=wrap;html=1;arcSize=18;strokeWidth=2;fontSize=12;fillColor=#EBE0F8;strokeColor=#6A50B0;fontColor=#3A2080;" value="&lt;b&gt;Predicted Speech Tokens&lt;/b&gt;" vertex="1">
+          <mxGeometry height="70" width="165" x="1520" y="430" as="geometry" />
+        </mxCell>
+        <mxCell id="a_s3gen" parent="1" style="rounded=1;whiteSpace=wrap;html=1;arcSize=14;strokeWidth=2;fontSize=12;fillColor=#EDE0F5;strokeColor=#7A50B0;fontColor=#4A2080;" value="&lt;b&gt;S3Gen&lt;/b&gt;&lt;br/&gt;speech-token to waveform decoder" vertex="1">
+          <mxGeometry height="74" width="175" x="1515" y="330" as="geometry" />
+        </mxCell>
+        <mxCell id="a_out" parent="1" style="rounded=1;whiteSpace=wrap;html=1;arcSize=18;strokeWidth=2;fontSize=12;fillColor=#E0F0FF;strokeColor=#2870C0;fontColor=#0A3080;" value="&lt;b&gt;Waveform Audio&lt;/b&gt;" vertex="1">
+          <mxGeometry height="66" width="70" x="1550" y="230" as="geometry" />
+        </mxCell>
+        <mxCell id="a_note1" parent="1" style="rounded=1;whiteSpace=wrap;html=1;arcSize=12;strokeWidth=1.5;dashed=1;fillColor=#FFF4F4;strokeColor=#C05050;fontSize=12;fontColor=#7A2020;" value="&lt;b&gt;Important&lt;/b&gt;&lt;br/&gt;Arabic is selected by a control tag and shared vocab, not by a detachable Arabic-only subnetwork." vertex="1">
+          <mxGeometry height="72" width="520" x="960" y="528" as="geometry" />
+        </mxCell>
+        <mxCell id="a_note2" parent="1" style="rounded=1;whiteSpace=wrap;html=1;arcSize=12;strokeWidth=1.5;dashed=1;fillColor=#F5F5F5;strokeColor=#999999;fontSize=11;fontColor=#555555;" value="The checkpoint can run Arabic-only in practice, but the shared transformer and multilingual text embeddings still carry all languages." vertex="1">
+          <mxGeometry height="58" width="420" x="360" y="556" as="geometry" />
+        </mxCell>
+        <mxCell id="ae1" edge="1" parent="1" source="a_text" style="endArrow=block;endFill=1;strokeWidth=2;rounded=0;html=1;strokeColor=#333333;" target="a_lang" value="">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="ae2" edge="1" parent="1" source="a_lang" style="endArrow=block;endFill=1;strokeWidth=2;rounded=0;html=1;strokeColor=#333333;" target="a_tok" value="">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="ae3" edge="1" parent="1" source="a_tok" style="endArrow=block;endFill=1;strokeWidth=2;rounded=0;html=1;strokeColor=#333333;fontSize=10;fontColor=#555555;" target="a_textemb" value="text tokens">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="ae4" edge="1" parent="1" source="a_ref" style="endArrow=block;endFill=1;strokeWidth=1.5;rounded=0;html=1;strokeColor=#B86010;" target="a_ve" value="">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="ae5" edge="1" parent="1" source="a_ref" style="endArrow=block;endFill=1;strokeWidth=1.5;rounded=0;html=1;strokeColor=#B86010;" target="a_s3tok" value="">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="ae6" edge="1" parent="1" source="a_ve" style="endArrow=block;endFill=1;strokeWidth=1.5;rounded=0;html=1;strokeColor=#B86010;" target="a_cond" value="">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="ae7" edge="1" parent="1" source="a_s3tok" style="endArrow=block;endFill=1;strokeWidth=1.5;rounded=0;html=1;strokeColor=#B86010;" target="a_cond" value="">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="ae8" edge="1" parent="1" source="a_cond" style="endArrow=open;endSize=10;strokeWidth=1.5;dashed=1;rounded=0;html=1;strokeColor=#888888;fontSize=10;fontColor=#888888;" target="a_tfmr" value="conditioning">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="ae9" edge="1" parent="1" source="a_textemb" style="endArrow=block;endFill=1;strokeWidth=2;rounded=0;html=1;strokeColor=#333333;" target="a_tfmr" value="">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="ae10" edge="1" parent="1" source="a_tfmr" style="endArrow=block;endFill=1;strokeWidth=2;rounded=0;html=1;strokeColor=#333333;" target="a_speechemb" value="">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="ae11" edge="1" parent="1" source="a_speechemb" style="endArrow=block;endFill=1;strokeWidth=2;rounded=0;html=1;strokeColor=#333333;" target="a_stok" value="">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="ae12" edge="1" parent="1" source="a_stok" style="endArrow=block;endFill=1;strokeWidth=2;rounded=0;html=1;strokeColor=#333333;" target="a_s3gen" value="">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="ae13" edge="1" parent="1" source="a_s3gen" style="endArrow=block;endFill=1;strokeWidth=2;rounded=0;html=1;strokeColor=#333333;" target="a_out" value="">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="202" parent="1" style="text;html=1;strokeColor=none;fillColor=none;align=left;verticalAlign=middle;fontSize=13;fontStyle=2;fontColor=#333333;" value="(b) Arabic-Only Specialization Path Using the Same General Architecture" vertex="1">
+          <mxGeometry height="22" width="560" x="22" y="720" as="geometry" />
+        </mxCell>
+        <mxCell id="b_bg" parent="1" style="rounded=1;whiteSpace=wrap;html=1;arcSize=10;strokeWidth=1.5;fillColor=#FBFFFB;strokeColor=#85B785;" value="" vertex="1">
+          <mxGeometry height="792" width="2130" x="20" y="748" as="geometry" />
+        </mxCell>
+        <mxCell id="b_data" parent="1" style="rounded=1;whiteSpace=wrap;html=1;arcSize=8;strokeWidth=2;fillColor=#FFF8EE;strokeColor=#C88020;verticalAlign=top;fontSize=12;fontStyle=1;fontColor=#8B5500;" value="&lt;b&gt;Arabic-Only Training Data&lt;/b&gt;" vertex="1">
+          <mxGeometry height="130" width="250" x="487" y="1180" as="geometry" />
+        </mxCell>
+        <mxCell id="b_textdata" parent="1" style="rounded=1;whiteSpace=wrap;html=1;arcSize=14;strokeWidth=1.5;fontSize=11;fillColor=#FFD9A0;strokeColor=#B86010;fontColor=#6B3A00;" value="&lt;b&gt;Arabic / Bahraini Text&lt;/b&gt;&lt;br/&gt;clean transcripts&lt;br/&gt;optional normalization" vertex="1">
+          <mxGeometry height="62" width="200" x="512" y="1214" as="geometry" />
+        </mxCell>
+        <mxCell id="b_audiodata" parent="1" style="rounded=1;whiteSpace=wrap;html=1;arcSize=14;strokeWidth=1.5;fontSize=11;fillColor=#FFD9A0;strokeColor=#B86010;fontColor=#6B3A00;" value="&lt;b&gt;Arabic Audio&lt;/b&gt;&lt;br/&gt;single-speaker or narrow dialect" vertex="1">
+          <mxGeometry height="62" width="200" x="560" y="1095" as="geometry" />
+        </mxCell>
+        <mxCell id="b_teacher" parent="1" style="rounded=1;whiteSpace=wrap;html=1;arcSize=8;strokeWidth=2;fillColor=#DDEEFF;strokeColor=#3565C0;verticalAlign=top;fontSize=12;fontStyle=1;fontColor=#1A3A90;" value="&lt;b&gt;Teacher: Chatterbox-Multilingual&lt;/b&gt;&lt;br/&gt;run only with language_id = ar" vertex="1">
+          <mxGeometry height="280" width="350" x="352" y="815" as="geometry" />
+        </mxCell>
+        <mxCell id="b_teacher_tok" parent="1" style="rounded=1;whiteSpace=wrap;html=1;arcSize=14;strokeWidth=1.5;fontSize=11;fillColor=#B8D8FF;strokeColor=#2A55A0;fontColor=#0A2A70;" value="MTLTokenizer + [ar]" vertex="1">
+          <mxGeometry height="44" width="150" x="378" y="874" as="geometry" />
+        </mxCell>
+        <mxCell id="b_teacher_t3" parent="1" style="rounded=1;whiteSpace=wrap;html=1;arcSize=14;strokeWidth=1.5;fontSize=11;fillColor=#B8D8FF;strokeColor=#2A55A0;fontColor=#0A2A70;" value="Shared T3 backbone" vertex="1">
+          <mxGeometry height="44" width="128" x="548" y="874" as="geometry" />
+        </mxCell>
+        <mxCell id="b_teacher_gen" parent="1" style="rounded=1;whiteSpace=wrap;html=1;arcSize=14;strokeWidth=1.5;fontSize=11;fillColor=#B8D8FF;strokeColor=#2A55A0;fontColor=#0A2A70;" value="S3Gen + VoiceEncoder" vertex="1">
+          <mxGeometry height="44" width="178" x="440" y="940" as="geometry" />
+        </mxCell>
+        <mxCell id="b_teacher_use" parent="1" style="rounded=1;whiteSpace=wrap;html=1;arcSize=12;strokeWidth=1.5;dashed=1;fontSize=11;fillColor=#F5F5F5;strokeColor=#999999;fontColor=#555555;" value="Use teacher to generate targets or to continue Arabic-only fine-tuning first." vertex="1">
+          <mxGeometry height="58" width="290" x="380" y="1005" as="geometry" />
+        </mxCell>
+        <mxCell id="b_student" parent="1" style="rounded=1;whiteSpace=wrap;html=1;arcSize=8;strokeWidth=2;fillColor=#EAF5EA;strokeColor=#2E8A2E;verticalAlign=top;fontSize=12;fontStyle=1;fontColor=#145214;" value="&lt;b&gt;Arabic-Only Student&lt;/b&gt;&lt;br/&gt;same general architecture, Arabic-only text side" vertex="1">
+          <mxGeometry height="380" width="750" x="812" y="790" as="geometry" />
+        </mxCell>
+        <mxCell id="b_student_tok" parent="1" style="rounded=1;whiteSpace=wrap;html=1;arcSize=14;strokeWidth=1.5;fontSize=11;fillColor=#B0DEB0;strokeColor=#2A7A2A;fontColor=#144414;" value="&lt;b&gt;Arabic Tokenizer / Grapheme Set&lt;/b&gt;&lt;br/&gt;Arabic-only vocab&lt;br/&gt;no [en], [zh], ..." vertex="1">
+          <mxGeometry height="74" width="188" x="842" y="810" as="geometry" />
+        </mxCell>
+        <mxCell id="b_student_text" parent="1" style="rounded=1;whiteSpace=wrap;html=1;arcSize=14;strokeWidth=1.5;fontSize=11;fillColor=#CDEBCD;strokeColor=#2A7A2A;fontColor=#144414;" value="&lt;b&gt;Rebuild / retrain&lt;/b&gt;&lt;br/&gt;text_emb&lt;br/&gt;text_head" vertex="1">
+          <mxGeometry height="74" width="140" x="1062" y="830" as="geometry" />
+        </mxCell>
+        <mxCell id="b_student_tfmr" parent="1" style="rounded=1;whiteSpace=wrap;html=1;arcSize=14;strokeWidth=1.5;fontSize=11;fillColor=#9ED49E;strokeColor=#2A7A2A;fontColor=#144414;" value="&lt;b&gt;Transfer from teacher&lt;/b&gt;&lt;br/&gt;shared transformer backbone" vertex="1">
+          <mxGeometry height="74" width="170" x="1232" y="866" as="geometry" />
+        </mxCell>
+        <mxCell id="b_student_speech" parent="1" style="rounded=1;whiteSpace=wrap;html=1;arcSize=14;strokeWidth=1.5;fontSize=11;fillColor=#9ED49E;strokeColor=#2A7A2A;fontColor=#144414;" value="&lt;b&gt;Transfer from teacher&lt;/b&gt;&lt;br/&gt;speech_emb&lt;br/&gt;speech_head" vertex="1">
+          <mxGeometry height="74" width="110" x="1420" y="890" as="geometry" />
+        </mxCell>
+        <mxCell id="b_student_aux" parent="1" style="rounded=1;whiteSpace=wrap;html=1;arcSize=14;strokeWidth=1.5;fontSize=11;fillColor=#9ED49E;strokeColor=#2A7A2A;fontColor=#144414;" value="&lt;b&gt;Transfer from teacher&lt;/b&gt;&lt;br/&gt;VoiceEncoder&lt;br/&gt;S3Gen" vertex="1">
+          <mxGeometry height="66" width="170" x="1190" y="947" as="geometry" />
+        </mxCell>
+        <mxCell id="b_student_train" parent="1" style="rounded=1;whiteSpace=wrap;html=1;arcSize=14;strokeWidth=1.5;fontSize=11;fillColor=#CDEBCD;strokeColor=#2A7A2A;fontColor=#144414;" value="&lt;b&gt;Arabic-only training&lt;/b&gt;&lt;br/&gt;real audio losses + optional teacher distillation losses" vertex="1">
+          <mxGeometry height="66" width="350" x="830" y="1060" as="geometry" />
+        </mxCell>
+        <mxCell id="b_deploy" parent="1" style="rounded=1;whiteSpace=wrap;html=1;arcSize=18;strokeWidth=2;fontSize=12;fillColor=#E0F0FF;strokeColor=#2870C0;fontColor=#0A3080;" value="&lt;b&gt;Arabic-Only Deployment Model&lt;/b&gt;&lt;br/&gt;smaller text vocab&lt;br/&gt;Arabic-only inference path" vertex="1">
+          <mxGeometry height="90" width="220" x="1600" y="984" as="geometry" />
+        </mxCell>
+        <mxCell id="b_warn" parent="1" style="rounded=1;whiteSpace=wrap;html=1;arcSize=12;strokeWidth=1.5;dashed=1;fillColor=#FFF4F4;strokeColor=#C05050;fontSize=12;fontColor=#7A2020;" value="&lt;b&gt;Avoid checkpoint surgery first&lt;/b&gt;&lt;br/&gt;Deleting non-Arabic tokens / rows directly from the multilingual checkpoint changes text-side shapes and breaks clean weight loading." vertex="1">
+          <mxGeometry height="70" width="620" x="812" y="1190" as="geometry" />
+        </mxCell>
+        <mxCell id="b_note" parent="1" style="rounded=1;whiteSpace=wrap;html=1;arcSize=12;strokeWidth=1.5;dashed=1;fillColor=#F5F5F5;strokeColor=#999999;fontSize=11;fontColor=#555555;" value="This path keeps the architecture idea, but moves the Arabic specialization into a new student model instead of pretending the teacher already contains a separable Arabic block." vertex="1">
+          <mxGeometry height="66" width="390" x="1457" y="1192" as="geometry" />
+        </mxCell>
+        <mxCell id="be1" edge="1" parent="1" source="b_textdata" style="endArrow=block;endFill=1;strokeWidth=2;rounded=0;html=1;strokeColor=#333333;" target="b_teacher_tok" value="">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="be2" edge="1" parent="1" source="b_teacher_tok" style="endArrow=block;endFill=1;strokeWidth=2;rounded=0;html=1;strokeColor=#333333;" target="b_teacher_t3" value="">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="be3" edge="1" parent="1" source="b_audiodata" style="endArrow=block;endFill=1;strokeWidth=1.5;rounded=0;html=1;strokeColor=#B86010;" target="b_teacher_gen" value="">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="be4" edge="1" parent="1" source="b_textdata" style="endArrow=block;endFill=1;strokeWidth=2;rounded=0;html=1;strokeColor=#333333;" target="b_student_tok" value="">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="be5" edge="1" parent="1" source="b_audiodata" style="endArrow=block;endFill=1;strokeWidth=1.5;rounded=0;html=1;strokeColor=#B86010;" target="b_student_train" value="">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="be6" edge="1" parent="1" source="b_teacher_t3" style="endArrow=block;endFill=1;strokeWidth=2;dashed=1;rounded=0;html=1;strokeColor=#2A7A2A;fontSize=10;fontColor=#2A7A2A;" target="b_student_tfmr" value="transfer">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="be7" edge="1" parent="1" source="b_teacher_gen" style="endArrow=block;endFill=1;strokeWidth=2;dashed=1;rounded=0;html=1;strokeColor=#2A7A2A;fontSize=10;fontColor=#2A7A2A;" target="b_student_aux" value="transfer">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="be8" edge="1" parent="1" source="b_teacher_t3" style="endArrow=block;endFill=1;strokeWidth=2;dashed=1;rounded=0;html=1;strokeColor=#2A7A2A;fontSize=10;fontColor=#2A7A2A;" target="b_student_speech" value="transfer">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="be9" edge="1" parent="1" source="b_teacher_use" style="endArrow=open;endSize=10;strokeWidth=1.5;dashed=1;rounded=0;html=1;strokeColor=#888888;fontSize=10;fontColor=#888888;" target="b_student_train" value="distill / warm-start">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="be10" edge="1" parent="1" source="b_student_tok" style="endArrow=block;endFill=1;strokeWidth=2;rounded=0;html=1;strokeColor=#333333;" target="b_student_text" value="">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="be11" edge="1" parent="1" source="b_student_text" style="endArrow=block;endFill=1;strokeWidth=2;rounded=0;html=1;strokeColor=#333333;" target="b_student_tfmr" value="">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="be12" edge="1" parent="1" source="b_student_tfmr" style="endArrow=block;endFill=1;strokeWidth=2;rounded=0;html=1;strokeColor=#333333;" target="b_student_speech" value="">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="be13" edge="1" parent="1" source="b_student_speech" style="endArrow=block;endFill=1;strokeWidth=2;rounded=0;html=1;strokeColor=#333333;" target="b_deploy" value="">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="be14" edge="1" parent="1" source="b_student_aux" style="endArrow=open;endSize=10;strokeWidth=1.5;dashed=1;rounded=0;html=1;strokeColor=#888888;fontSize=10;fontColor=#888888;" target="b_deploy" value="decoder / speaker stack reused">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="be15" edge="1" parent="1" source="b_student_train" style="endArrow=block;endFill=1;strokeWidth=2;dashed=1;rounded=0;html=1;strokeColor=#C06010;fontSize=10;fontColor=#C06010;" target="b_deploy" value="train / distill">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="leg1" parent="1" style="text;html=1;strokeColor=none;fillColor=none;align=left;verticalAlign=middle;fontSize=12;fontColor=#333333;" value="&lt;b&gt;Legend&lt;/b&gt;" vertex="1">
+          <mxGeometry height="20" width="120" x="1935" y="84" as="geometry" />
+        </mxCell>
+        <mxCell id="leg2" parent="1" style="text;html=1;strokeColor=none;fillColor=none;align=left;verticalAlign=middle;fontSize=11;fontColor=#333333;" value="solid = normal runtime / structural path" vertex="1">
+          <mxGeometry height="18" width="240" x="1935" y="108" as="geometry" />
+        </mxCell>
+        <mxCell id="leg3" parent="1" style="text;html=1;strokeColor=none;fillColor=none;align=left;verticalAlign=middle;fontSize=11;fontColor=#2A7A2A;" value="green dashed = weight transfer" vertex="1">
+          <mxGeometry height="18" width="220" x="1935" y="128" as="geometry" />
+        </mxCell>
+        <mxCell id="leg4" parent="1" style="text;html=1;strokeColor=none;fillColor=none;align=left;verticalAlign=middle;fontSize=11;fontColor=#C06010;" value="orange dashed = training / distillation" vertex="1">
+          <mxGeometry height="18" width="240" x="1935" y="148" as="geometry" />
+        </mxCell>
+        <mxCell id="leg5" parent="1" style="text;html=1;strokeColor=none;fillColor=none;align=left;verticalAlign=middle;fontSize=11;fontColor=#888888;" value="gray dashed = optional or explanatory path" vertex="1">
+          <mxGeometry height="18" width="250" x="1935" y="168" as="geometry" />
+        </mxCell>
+      </root>
+    </mxGraphModel>
+  </diagram>
+</mxfile>

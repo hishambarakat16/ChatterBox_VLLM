@@ -1,0 +1,613 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>S3 Token-to-Mel Origin Story</title>
+    <style>
+      :root {
+        --paper: #f4efe4;
+        --ink: #1f2430;
+        --muted: #5d6778;
+        --line: #d7ccb5;
+        --accent: #b55d3d;
+        --accent-2: #3a6f7a;
+        --accent-3: #c49a2f;
+        --panel: rgba(255, 251, 244, 0.88);
+        --shadow: 0 18px 48px rgba(46, 35, 24, 0.12);
+      }
+
+      * {
+        box-sizing: border-box;
+      }
+
+      body {
+        margin: 0;
+        font-family: "Avenir Next", "Trebuchet MS", sans-serif;
+        color: var(--ink);
+        background:
+          radial-gradient(circle at top left, rgba(196, 154, 47, 0.18), transparent 28%),
+          radial-gradient(circle at top right, rgba(58, 111, 122, 0.18), transparent 25%),
+          linear-gradient(180deg, #f9f4ea 0%, #efe5d4 100%);
+      }
+
+      .page {
+        max-width: 1360px;
+        margin: 0 auto;
+        padding: 42px 28px 56px;
+      }
+
+      .hero {
+        background: var(--panel);
+        border: 1px solid rgba(181, 93, 61, 0.18);
+        border-radius: 28px;
+        padding: 28px 30px 24px;
+        box-shadow: var(--shadow);
+        backdrop-filter: blur(12px);
+      }
+
+      .eyebrow {
+        display: inline-block;
+        padding: 7px 12px;
+        border-radius: 999px;
+        background: rgba(181, 93, 61, 0.12);
+        color: var(--accent);
+        font-size: 13px;
+        letter-spacing: 0.08em;
+        text-transform: uppercase;
+        font-weight: 700;
+      }
+
+      h1,
+      h2 {
+        font-family: "Iowan Old Style", "Palatino Linotype", "Book Antiqua", serif;
+        margin: 0;
+      }
+
+      h1 {
+        margin-top: 16px;
+        font-size: clamp(34px, 5vw, 60px);
+        line-height: 0.98;
+        letter-spacing: -0.04em;
+      }
+
+      .hero p {
+        margin: 16px 0 0;
+        max-width: 920px;
+        color: var(--muted);
+        font-size: 17px;
+        line-height: 1.6;
+      }
+
+      .hero-grid {
+        display: grid;
+        grid-template-columns: 2.2fr 1fr;
+        gap: 18px;
+        margin-top: 24px;
+      }
+
+      .summary-card,
+      .link-card,
+      .section,
+      .note-card,
+      .contrib-card,
+      .flow-card {
+        background: var(--panel);
+        border: 1px solid rgba(31, 36, 48, 0.08);
+        border-radius: 24px;
+        box-shadow: var(--shadow);
+      }
+
+      .summary-card,
+      .link-card,
+      .section,
+      .note-card {
+        padding: 22px;
+      }
+
+      .summary-card strong,
+      .note-card strong {
+        color: var(--accent);
+      }
+
+      .link-card h2,
+      .section h2 {
+        font-size: 24px;
+        margin-bottom: 14px;
+      }
+
+      .link-list {
+        display: grid;
+        gap: 10px;
+      }
+
+      .link-list a {
+        text-decoration: none;
+        color: var(--ink);
+        padding: 12px 14px;
+        border-radius: 16px;
+        background: rgba(58, 111, 122, 0.08);
+        border: 1px solid rgba(58, 111, 122, 0.14);
+        transition: transform 0.2s ease, background 0.2s ease;
+      }
+
+      .link-list a:hover {
+        transform: translateY(-2px);
+        background: rgba(58, 111, 122, 0.13);
+      }
+
+      .layout {
+        display: grid;
+        grid-template-columns: 1.4fr 0.95fr;
+        gap: 22px;
+        margin-top: 24px;
+      }
+
+      .section {
+        overflow: hidden;
+      }
+
+      .chart-shell {
+        min-height: 700px;
+        border-radius: 20px;
+        background:
+          linear-gradient(180deg, rgba(255, 255, 255, 0.52), rgba(255, 255, 255, 0.18)),
+          repeating-linear-gradient(
+            90deg,
+            rgba(215, 204, 181, 0.26) 0px,
+            rgba(215, 204, 181, 0.26) 1px,
+            transparent 1px,
+            transparent 42px
+          );
+        border: 1px solid rgba(215, 204, 181, 0.5);
+      }
+
+      .caption {
+        margin-top: 12px;
+        color: var(--muted);
+        font-size: 14px;
+        line-height: 1.5;
+      }
+
+      .contrib-grid {
+        display: grid;
+        gap: 14px;
+      }
+
+      .contrib-card {
+        padding: 16px 16px 15px;
+      }
+
+      .contrib-card h3 {
+        margin: 0 0 6px;
+        font-size: 18px;
+      }
+
+      .contrib-card p {
+        margin: 0;
+        color: var(--muted);
+        font-size: 14px;
+        line-height: 1.55;
+      }
+
+      .tag {
+        display: inline-block;
+        margin-bottom: 8px;
+        padding: 5px 10px;
+        border-radius: 999px;
+        font-size: 12px;
+        font-weight: 700;
+        letter-spacing: 0.05em;
+        text-transform: uppercase;
+      }
+
+      .tag.method {
+        background: rgba(196, 154, 47, 0.18);
+        color: #8b6a0d;
+      }
+
+      .tag.arch {
+        background: rgba(58, 111, 122, 0.15);
+        color: var(--accent-2);
+      }
+
+      .tag.system {
+        background: rgba(181, 93, 61, 0.14);
+        color: var(--accent);
+      }
+
+      .flow-wrap {
+        display: grid;
+        gap: 18px;
+        margin-top: 24px;
+      }
+
+      .flow-strip {
+        display: flex;
+        gap: 12px;
+        align-items: stretch;
+        overflow-x: auto;
+        padding-bottom: 6px;
+      }
+
+      .flow-card {
+        flex: 1 0 180px;
+        min-width: 180px;
+        padding: 16px;
+        position: relative;
+      }
+
+      .flow-card:not(:last-child)::after {
+        content: "→";
+        position: absolute;
+        right: -12px;
+        top: 50%;
+        transform: translateY(-50%);
+        width: 24px;
+        height: 24px;
+        border-radius: 50%;
+        display: grid;
+        place-items: center;
+        background: var(--accent);
+        color: white;
+        font-weight: 700;
+        box-shadow: 0 8px 18px rgba(181, 93, 61, 0.25);
+      }
+
+      .flow-card h3 {
+        margin: 6px 0 8px;
+        font-size: 19px;
+      }
+
+      .flow-card p {
+        margin: 0;
+        color: var(--muted);
+        font-size: 14px;
+        line-height: 1.55;
+      }
+
+      .flow-card .mini {
+        font-size: 12px;
+        text-transform: uppercase;
+        letter-spacing: 0.08em;
+        font-weight: 700;
+        color: var(--accent-2);
+      }
+
+      .bottom-grid {
+        display: grid;
+        grid-template-columns: 1.1fr 1fr;
+        gap: 22px;
+        margin-top: 24px;
+      }
+
+      .ref-links {
+        display: grid;
+        gap: 12px;
+      }
+
+      .ref-links a {
+        display: block;
+        text-decoration: none;
+        color: var(--ink);
+        border-radius: 18px;
+        padding: 14px 15px;
+        background: rgba(196, 154, 47, 0.11);
+        border: 1px solid rgba(196, 154, 47, 0.2);
+      }
+
+      .ref-links strong {
+        display: block;
+        margin-bottom: 3px;
+      }
+
+      .ref-links span {
+        color: var(--muted);
+        font-size: 14px;
+        line-height: 1.45;
+      }
+
+      .footer-note {
+        margin-top: 24px;
+        text-align: center;
+        color: var(--muted);
+        font-size: 13px;
+      }
+
+      @media (max-width: 1080px) {
+        .hero-grid,
+        .layout,
+        .bottom-grid {
+          grid-template-columns: 1fr;
+        }
+      }
+
+      @media (max-width: 720px) {
+        .page {
+          padding: 20px 14px 36px;
+        }
+
+        .hero,
+        .summary-card,
+        .link-card,
+        .section,
+        .note-card {
+          padding: 18px;
+        }
+
+        .flow-card:not(:last-child)::after {
+          display: none;
+        }
+      }
+    </style>
+  </head>
+  <body>
+    <div class="page">
+      <section class="hero">
+        <div class="eyebrow">Educational Map</div>
+        <h1>S3 Token-to-Mel Origin Story</h1>
+        <p>
+          A simplified visual for how the current Chatterbox-style `S3` path
+          emerged, what each stage contributed, and why the scaling problem is
+          structural rather than just "too many steps."
+        </p>
+        <div class="hero-grid">
+          <div class="summary-card">
+            <strong>One-line takeaway:</strong>
+            Chatterbox `S3` is best understood as a CosyVoice-derived
+            token-to-mel stack, and CosyVoice itself inherits the mel-space
+            conditional-flow decoder from Matcha-TTS, which sits in the earlier
+            Glow-TTS / Grad-TTS acoustic-model line.
+          </div>
+          <div class="link-card">
+            <h2>Open First</h2>
+            <div class="link-list">
+              <a href="../CONTEXT.md">Project context and lineage notes</a>
+              <a href="../CHATTERBOX_SCALING_PLAN.md">Scaling plan</a>
+              <a href="../References/README.md">Reference bundle manifest</a>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      <div class="layout">
+        <section class="section">
+          <h2>Paper and System Lineage</h2>
+          <div id="lineage-chart" class="chart-shell"></div>
+          <div class="caption">
+            Read this left to right. The key break happens at CosyVoice: it
+            keeps the Matcha-style flow decoder, but replaces the front side
+            with supervised semantic speech tokens plus prompt conditioning.
+          </div>
+        </section>
+
+        <section class="section">
+          <h2>What Each Stage Added</h2>
+          <div class="contrib-grid">
+            <article class="contrib-card">
+              <div class="tag method">Glow-TTS</div>
+              <h3>Alignment prior</h3>
+              <p>
+                Establishes the non-autoregressive alignment-driven `text ->
+                mel` path that later acoustic models keep building on.
+              </p>
+            </article>
+            <article class="contrib-card">
+              <div class="tag method">Grad-TTS</div>
+              <h3>Iterative mel generation</h3>
+              <p>
+                Moves the acoustic model into an iterative decoder over mel
+                spectrograms instead of a one-shot predictor.
+              </p>
+            </article>
+            <article class="contrib-card">
+              <div class="tag arch">Matcha-TTS</div>
+              <h3>Conditional flow matching</h3>
+              <p>
+                Replaces slower diffusion-style decoding with a conditional flow
+                ODE, but still runs generation directly in mel space.
+              </p>
+            </article>
+            <article class="contrib-card">
+              <div class="tag system">CosyVoice v1</div>
+              <h3>Speech-token front end</h3>
+              <p>
+                Adds supervised semantic speech tokens, prompt speech tokens,
+                prompt mel prefix, speaker embedding, and token-to-mel
+                upsampling into `mu`.
+              </p>
+            </article>
+            <article class="contrib-card">
+              <div class="tag system">CosyVoice 2</div>
+              <h3>Causal and chunk-aware</h3>
+              <p>
+                Pushes the same idea toward streaming with finite-scalar
+                quantized speech tokens and chunk-aware causal flow matching.
+              </p>
+            </article>
+            <article class="contrib-card">
+              <div class="tag system">Chatterbox S3</div>
+              <h3>Direct descendant</h3>
+              <p>
+                Keeps the same overall token-to-mel logic, which is why its
+                scaling pain is mostly inherited rather than accidental.
+              </p>
+            </article>
+          </div>
+        </section>
+      </div>
+
+      <section class="section flow-wrap">
+        <h2>The Architecture It Became</h2>
+        <div class="flow-strip">
+          <article class="flow-card">
+            <div class="mini">CosyVoice-specific</div>
+            <h3>Speech Tokens</h3>
+            <p>
+              The front side produces supervised semantic speech tokens plus
+              prompt tokens from the reference audio.
+            </p>
+          </article>
+          <article class="flow-card">
+            <div class="mini">CosyVoice-specific</div>
+            <h3>Upsampling Encoder</h3>
+            <p>
+              Token-rate states are expanded to the longer mel timeline before
+              the expensive generator even starts.
+            </p>
+          </article>
+          <article class="flow-card">
+            <div class="mini">Bridge Tensor</div>
+            <h3>`mu` Conditioning</h3>
+            <p>
+              The upsampled hidden sequence becomes the mel-rate conditioning
+              signal that drives the flow decoder.
+            </p>
+          </article>
+          <article class="flow-card">
+            <div class="mini">Matcha-derived</div>
+            <h3>Conditional Flow Decoder</h3>
+            <p>
+              A heavy U-Net-like `ResNet1D + Transformer` estimator predicts
+              updates over the full mel sequence for multiple solver steps.
+            </p>
+          </article>
+          <article class="flow-card">
+            <div class="mini">Acoustic Output</div>
+            <h3>Mel and Vocoder</h3>
+            <p>
+              After flow decoding, the prompt mel prefix is cropped away and the
+              new mel frames go into the vocoder.
+            </p>
+          </article>
+        </div>
+      </section>
+
+      <div class="bottom-grid">
+        <section class="note-card">
+          <h2>Why It Scales Poorly</h2>
+          <p>
+            The expensive part is not just the step count. The structure expands
+            a shorter token sequence into a longer mel sequence and then runs a
+            heavy whole-sequence generator there. Even if you distill from 10
+            steps to 1, you still keep the mel-resolution compute and you still
+            sit behind upstream `T3` autoregression.
+          </p>
+        </section>
+
+        <section class="note-card">
+          <h2>Reference Visuals and Sources</h2>
+          <div class="ref-links">
+            <a href="chatterbox_s3_token_to_mel.drawio">
+              <strong>Focused S3 token-to-mel diagram</strong>
+              <span>Editable local draw.io view of the outer Chatterbox / CosyVoice-style path.</span>
+            </a>
+            <a href="conditional%20flow%20matching.png">
+              <strong>Conditional flow-matching figure</strong>
+              <span>Inner decoder view extracted from the CosyVoice paper.</span>
+            </a>
+            <a href="../References/CosyVoice_v1.pdf">
+              <strong>CosyVoice v1 paper</strong>
+              <span>Best primary source for the full speech-token to mel stack.</span>
+            </a>
+            <a href="../References/Matcha-TTS_2309.03199.pdf">
+              <strong>Matcha-TTS paper</strong>
+              <span>Direct flow-decoder ancestor of the CosyVoice acoustic model.</span>
+            </a>
+            <a href="../References/Flow_Matching_2210.02747.pdf">
+              <strong>Flow Matching paper</strong>
+              <span>Generic method paper behind the Matcha conditional-flow step.</span>
+            </a>
+            <a href="../References/Matcha-TTS_repo">
+              <strong>Local Matcha-TTS repo</strong>
+              <span>Code reference for the decoder and flow-matching stack.</span>
+            </a>
+          </div>
+        </section>
+      </div>
+
+      <div class="footer-note">
+        Open this file in a browser, then screenshot or iterate on the wording
+        once the visual balance feels right.
+      </div>
+    </div>
+
+    <script src="https://unpkg.com/@antv/infographic@latest/dist/infographic.min.js"></script>
+    <script>
+      const syntax = String.raw`infographic relation-dagre-flow-tb-badge-card
+data
+  title S3 Token-to-Mel Lineage
+  desc From flow-TTS foundations to the current Chatterbox S3 path
+  nodes
+    - id glow
+      label Glow-TTS
+      desc Alignment-driven non-autoregressive text-to-mel base
+    - id grad
+      label Grad-TTS
+      desc Iterative mel generation with diffusion
+    - id flow
+      label Flow Matching
+      desc Generic method that later powers Matcha conditional flow
+    - id matcha
+      label Matcha-TTS
+      desc CFM acoustic model, still generating directly in mel space
+    - id s3
+      label Supervised Semantic Tokens
+      desc Speech-token front end that CosyVoice adds on top
+    - id cosy1
+      label CosyVoice v1
+      desc Speech tokens plus prompt conditioning plus token-to-mel flow
+    - id cosy2
+      label CosyVoice 2
+      desc Causal chunk-aware continuation of the same idea
+    - id chat
+      label Chatterbox S3
+      desc Direct descendant used in the current analysis
+  relations
+    glow - alignment prior -> grad
+    grad - iterative acoustic line -> matcha
+    flow - CFM method -> matcha
+    s3 - speech-token interface -> cosy1
+    matcha - flow decoder ancestor -> cosy1
+    cosy1 - causal and streaming evolution -> cosy2
+    cosy1 - direct code ancestor -> chat
+theme
+  palette
+    - #b55d3d
+    - #3a6f7a
+    - #c49a2f
+    - #7b5b3a
+  base
+    text
+      font-family Avenir Next`;
+
+      const infographic = new AntVInfographic.Infographic({
+        container: "#lineage-chart",
+        width: "100%",
+        height: "100%",
+      });
+
+      function renderFallback(message) {
+        const node = document.getElementById("lineage-chart");
+        node.innerHTML = `
+          <div style="padding: 22px; color: #5d6778; line-height: 1.6;">
+            <strong style="color:#b55d3d;">Infographic load note:</strong>
+            ${message}
+            <br><br>
+            The static content on this page still contains the full story, and
+            the local references on the right remain usable.
+          </div>
+        `;
+      }
+
+      if (!window.AntVInfographic) {
+        renderFallback("The AntV library did not load, so the lineage graph could not be rendered.");
+      } else {
+        document.fonts?.ready
+          .then(() => infographic.render(syntax))
+          .catch(() => infographic.render(syntax))
+          .catch(() => renderFallback("The lineage graph failed to render."));
+      }
+    </script>
+  </body>
+</html>

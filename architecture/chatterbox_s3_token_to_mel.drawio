@@ -1,0 +1,269 @@
+<mxfile host="Electron" agent="Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) draw.io/29.5.2 Chrome/142.0.7444.265 Electron/39.6.1 Safari/537.36" version="29.5.2">
+  <diagram id="chatterbox-s3-token-mel-1" name="ChatterboxS3TokenToMel">
+    <mxGraphModel dx="1815" dy="1169" grid="1" gridSize="10" guides="1" tooltips="1" connect="1" arrows="1" fold="1" page="1" pageScale="1" pageWidth="2200" pageHeight="1250" math="0" shadow="0">
+      <root>
+        <mxCell id="0" />
+        <mxCell id="1" parent="0" />
+
+        <mxCell id="100" parent="1" style="text;html=1;strokeColor=none;fillColor=none;align=center;verticalAlign=middle;fontSize=26;fontStyle=1;fontColor=#1A2A6A;" value="Chatterbox S3 Token to Mel Path" vertex="1">
+          <mxGeometry x="520" y="16" width="1160" height="36" as="geometry" />
+        </mxCell>
+        <mxCell id="101" parent="1" style="text;html=1;strokeColor=none;fillColor=none;align=center;verticalAlign=middle;fontSize=12;fontColor=#555555;" value="Speech tokens are first encoded and upsampled to mel rate, then a prompt-conditioned causal flow model iteratively generates 80-bin mel frames." vertex="1">
+          <mxGeometry x="310" y="50" width="1580" height="22" as="geometry" />
+        </mxCell>
+
+        <mxCell id="102" parent="1" style="text;html=1;strokeColor=none;fillColor=none;align=left;verticalAlign=middle;fontSize=13;fontStyle=2;fontColor=#333333;" value="(a) Outer Runtime Path" vertex="1">
+          <mxGeometry x="28" y="106" width="260" height="22" as="geometry" />
+        </mxCell>
+        <mxCell id="a_bg" parent="1" style="rounded=1;whiteSpace=wrap;html=1;arcSize=10;strokeWidth=1.5;fillColor=#F8FBFF;strokeColor=#7AA7D8;" value="" vertex="1">
+          <mxGeometry x="20" y="134" width="2140" height="480" as="geometry" />
+        </mxCell>
+
+        <mxCell id="a_tok_in" parent="1" style="rounded=1;whiteSpace=wrap;html=1;arcSize=18;strokeWidth=2;fontSize=12;fillColor=#FFF3CD;strokeColor=#D4930A;fontColor=#7A4500;" value="&lt;b&gt;Generated Speech Tokens&lt;/b&gt;&lt;br/&gt;from T3&lt;br/&gt;25 tokens/sec" vertex="1">
+          <mxGeometry x="52" y="252" width="176" height="86" as="geometry" />
+        </mxCell>
+        <mxCell id="a_ref_wav" parent="1" style="rounded=1;whiteSpace=wrap;html=1;arcSize=18;strokeWidth=2;fontSize=12;fillColor=#FFF3CD;strokeColor=#D4930A;fontColor=#7A4500;" value="&lt;b&gt;Reference Audio&lt;/b&gt;&lt;br/&gt;voice prompt&lt;br/&gt;up to ~10s" vertex="1">
+          <mxGeometry x="52" y="404" width="176" height="86" as="geometry" />
+        </mxCell>
+
+        <mxCell id="a_ref_group" parent="1" style="rounded=1;whiteSpace=wrap;html=1;arcSize=8;strokeWidth=2;fillColor=#FFF8EE;strokeColor=#C88020;verticalAlign=top;fontSize=12;fontStyle=1;fontColor=#8B5500;" value="&lt;b&gt;Reference Conditioning Branch&lt;/b&gt;" vertex="1">
+          <mxGeometry x="294" y="172" width="420" height="390" as="geometry" />
+        </mxCell>
+        <mxCell id="a_res16" parent="1" style="rounded=1;whiteSpace=wrap;html=1;arcSize=14;strokeWidth=1.5;fontSize=11;fillColor=#FFD9A0;strokeColor=#B86010;fontColor=#6B3A00;" value="&lt;b&gt;Resample to 16 kHz&lt;/b&gt;" vertex="1">
+          <mxGeometry x="322" y="222" width="160" height="52" as="geometry" />
+        </mxCell>
+        <mxCell id="a_s3tok" parent="1" style="rounded=1;whiteSpace=wrap;html=1;arcSize=14;strokeWidth=1.5;fontSize=11;fillColor=#FFD9A0;strokeColor=#B86010;fontColor=#6B3A00;" value="&lt;b&gt;S3Tokenizer V2&lt;/b&gt;&lt;br/&gt;6561-code vocab&lt;br/&gt;25 Hz speech tokens" vertex="1">
+          <mxGeometry x="510" y="210" width="176" height="76" as="geometry" />
+        </mxCell>
+        <mxCell id="a_prompt_tok" parent="1" style="rounded=1;whiteSpace=wrap;html=1;arcSize=18;strokeWidth=2;fontSize=11;fillColor=#EBE0F8;strokeColor=#6A50B0;fontColor=#3A2080;" value="&lt;b&gt;Prompt Speech Tokens&lt;/b&gt;" vertex="1">
+          <mxGeometry x="522" y="308" width="152" height="56" as="geometry" />
+        </mxCell>
+        <mxCell id="a_res24" parent="1" style="rounded=1;whiteSpace=wrap;html=1;arcSize=14;strokeWidth=1.5;fontSize=11;fillColor=#FFD9A0;strokeColor=#B86010;fontColor=#6B3A00;" value="&lt;b&gt;Resample to 24 kHz&lt;/b&gt;" vertex="1">
+          <mxGeometry x="322" y="392" width="160" height="52" as="geometry" />
+        </mxCell>
+        <mxCell id="a_mel_ext" parent="1" style="rounded=1;whiteSpace=wrap;html=1;arcSize=14;strokeWidth=1.5;fontSize=11;fillColor=#FFD9A0;strokeColor=#B86010;fontColor=#6B3A00;" value="&lt;b&gt;Mel Extractor&lt;/b&gt;&lt;br/&gt;80 bins&lt;br/&gt;24 kHz / 480 hop" vertex="1">
+          <mxGeometry x="510" y="380" width="176" height="76" as="geometry" />
+        </mxCell>
+        <mxCell id="a_prompt_mel" parent="1" style="rounded=1;whiteSpace=wrap;html=1;arcSize=18;strokeWidth=2;fontSize=11;fillColor=#EBE0F8;strokeColor=#6A50B0;fontColor=#3A2080;" value="&lt;b&gt;Prompt Mel Frames&lt;/b&gt;&lt;br/&gt;50 frames/sec" vertex="1">
+          <mxGeometry x="522" y="478" width="152" height="56" as="geometry" />
+        </mxCell>
+        <mxCell id="a_spk_enc" parent="1" style="rounded=1;whiteSpace=wrap;html=1;arcSize=14;strokeWidth=1.5;fontSize=11;fillColor=#FFD9A0;strokeColor=#B86010;fontColor=#6B3A00;" value="&lt;b&gt;CAMPPlus Speaker Encoder&lt;/b&gt;&lt;br/&gt;x-vector from 16 kHz audio" vertex="1">
+          <mxGeometry x="322" y="290" width="182" height="72" as="geometry" />
+        </mxCell>
+        <mxCell id="a_spk_aff" parent="1" style="rounded=1;whiteSpace=wrap;html=1;arcSize=14;strokeWidth=1.5;fontSize=11;fillColor=#FFD9A0;strokeColor=#B86010;fontColor=#6B3A00;" value="&lt;b&gt;Speaker Affine&lt;/b&gt;&lt;br/&gt;normalize + project to 80-d" vertex="1">
+          <mxGeometry x="522" y="290" width="152" height="72" as="geometry" />
+        </mxCell>
+
+        <mxCell id="a_encoder_group" parent="1" style="rounded=1;whiteSpace=wrap;html=1;arcSize=8;strokeWidth=2;fillColor=#EAF5EA;strokeColor=#2E8A2E;verticalAlign=top;fontSize=12;fontStyle=1;fontColor=#145214;" value="&lt;b&gt;Token Conditioning Path&lt;/b&gt;" vertex="1">
+          <mxGeometry x="760" y="174" width="560" height="372" as="geometry" />
+        </mxCell>
+        <mxCell id="a_concat_tok" parent="1" style="rounded=1;whiteSpace=wrap;html=1;arcSize=14;strokeWidth=1.5;fontSize=11;fillColor=#B0DEB0;strokeColor=#2A7A2A;fontColor=#144414;" value="&lt;b&gt;Concat Tokens&lt;/b&gt;&lt;br/&gt;prompt tokens + generated tokens" vertex="1">
+          <mxGeometry x="786" y="250" width="176" height="68" as="geometry" />
+        </mxCell>
+        <mxCell id="a_tok_emb" parent="1" style="rounded=1;whiteSpace=wrap;html=1;arcSize=14;strokeWidth=1.5;fontSize=11;fillColor=#B0DEB0;strokeColor=#2A7A2A;fontColor=#144414;" value="&lt;b&gt;Token Embedding&lt;/b&gt;&lt;br/&gt;6561 -> 512" vertex="1">
+          <mxGeometry x="990" y="256" width="146" height="56" as="geometry" />
+        </mxCell>
+        <mxCell id="a_upconf" parent="1" style="rounded=1;whiteSpace=wrap;html=1;arcSize=14;strokeWidth=1.5;fontSize=11;fillColor=#9ED49E;strokeColor=#2A7A2A;fontColor=#144414;" value="&lt;b&gt;UpsampleConformerEncoder&lt;/b&gt;&lt;br/&gt;pre-lookahead conv&lt;br/&gt;6 conformer blocks&lt;br/&gt;upsample x2&lt;br/&gt;4 more conformer blocks" vertex="1">
+          <mxGeometry x="826" y="350" width="274" height="122" as="geometry" />
+        </mxCell>
+        <mxCell id="a_ratio_note" parent="1" style="rounded=1;whiteSpace=wrap;html=1;arcSize=12;strokeWidth=1.5;dashed=1;fontSize=11;fillColor=#F5F5F5;strokeColor=#999999;fontColor=#555555;" value="&lt;b&gt;Key ratio&lt;/b&gt; token_mel_ratio = 2, so the encoder expands the 25 Hz token timeline to the 50 fps mel timeline." vertex="1">
+          <mxGeometry x="1124" y="354" width="172" height="110" as="geometry" />
+        </mxCell>
+        <mxCell id="a_mu" parent="1" style="rounded=1;whiteSpace=wrap;html=1;arcSize=18;strokeWidth=2;fontSize=11;fillColor=#EBE0F8;strokeColor=#6A50B0;fontColor=#3A2080;" value="&lt;b&gt;mu&lt;/b&gt;&lt;br/&gt;80-channel mel-rate conditioning sequence" vertex="1">
+          <mxGeometry x="822" y="488" width="278" height="58" as="geometry" />
+        </mxCell>
+        <mxCell id="a_cond" parent="1" style="rounded=1;whiteSpace=wrap;html=1;arcSize=18;strokeWidth=2;fontSize=11;fillColor=#EBE0F8;strokeColor=#6A50B0;fontColor=#3A2080;" value="&lt;b&gt;cond&lt;/b&gt;&lt;br/&gt;prompt mel prefix + zeros for future frames" vertex="1">
+          <mxGeometry x="1124" y="488" width="172" height="58" as="geometry" />
+        </mxCell>
+
+        <mxCell id="a_flow_group" parent="1" style="rounded=1;whiteSpace=wrap;html=1;arcSize=8;strokeWidth=2;fillColor=#EEF4FF;strokeColor=#4A7AC0;verticalAlign=top;fontSize=12;fontStyle=1;fontColor=#1A3870;" value="&lt;b&gt;Causal Flow Decoder&lt;/b&gt;" vertex="1">
+          <mxGeometry x="1366" y="184" width="520" height="350" as="geometry" />
+        </mxCell>
+        <mxCell id="a_noise" parent="1" style="rounded=1;whiteSpace=wrap;html=1;arcSize=18;strokeWidth=2;fontSize=11;fillColor=#D8EAFF;strokeColor=#4070B0;fontColor=#1A3870;" value="&lt;b&gt;Initial Noise z&lt;/b&gt;&lt;br/&gt;80 x T mel tensor" vertex="1">
+          <mxGeometry x="1392" y="260" width="150" height="60" as="geometry" />
+        </mxCell>
+        <mxCell id="a_cfm" parent="1" style="rounded=1;whiteSpace=wrap;html=1;arcSize=14;strokeWidth=1.5;fontSize=11;fillColor=#B8D8FF;strokeColor=#2A55A0;fontColor=#0A2A70;" value="&lt;b&gt;CausalConditionalCFM&lt;/b&gt;&lt;br/&gt;Euler ODE solver&lt;br/&gt;CFG at inference&lt;br/&gt;iteratively updates z" vertex="1">
+          <mxGeometry x="1572" y="248" width="166" height="84" as="geometry" />
+        </mxCell>
+        <mxCell id="a_estimator" parent="1" style="rounded=1;whiteSpace=wrap;html=1;arcSize=14;strokeWidth=1.5;fontSize=11;fillColor=#B8D8FF;strokeColor=#2A55A0;fontColor=#0A2A70;" value="&lt;b&gt;ConditionalDecoder Estimator&lt;/b&gt;&lt;br/&gt;causal U-Net + transformer blocks&lt;br/&gt;predicts dx / dt" vertex="1">
+          <mxGeometry x="1562" y="378" width="186" height="86" as="geometry" />
+        </mxCell>
+        <mxCell id="a_steps" parent="1" style="rounded=1;whiteSpace=wrap;html=1;arcSize=12;strokeWidth=1.5;dashed=1;fontSize=11;fillColor=#F5F5F5;strokeColor=#999999;fontColor=#555555;" value="Default multilingual / base path: about 10 flow steps.&lt;br/&gt;Turbo / meanflow path: distilled to 1-2 steps." vertex="1">
+          <mxGeometry x="1762" y="244" width="102" height="86" as="geometry" />
+        </mxCell>
+        <mxCell id="a_out_mel" parent="1" style="rounded=1;whiteSpace=wrap;html=1;arcSize=18;strokeWidth=2;fontSize=12;fillColor=#EBE0F8;strokeColor=#6A50B0;fontColor=#3A2080;" value="&lt;b&gt;Generated Mel Frames&lt;/b&gt;&lt;br/&gt;crop off prompt prefix&lt;br/&gt;keep only new speech" vertex="1">
+          <mxGeometry x="1940" y="316" width="176" height="84" as="geometry" />
+        </mxCell>
+
+        <mxCell id="ae1" edge="1" parent="1" source="a_ref_wav" target="a_res16" style="endArrow=block;endFill=1;strokeWidth=1.5;rounded=0;html=1;strokeColor=#B86010;" value="">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="ae2" edge="1" parent="1" source="a_res16" target="a_s3tok" style="endArrow=block;endFill=1;strokeWidth=1.5;rounded=0;html=1;strokeColor=#B86010;" value="">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="ae3" edge="1" parent="1" source="a_s3tok" target="a_prompt_tok" style="endArrow=block;endFill=1;strokeWidth=1.5;rounded=0;html=1;strokeColor=#B86010;" value="">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="ae4" edge="1" parent="1" source="a_ref_wav" target="a_res24" style="endArrow=block;endFill=1;strokeWidth=1.5;rounded=0;html=1;strokeColor=#B86010;" value="">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="ae5" edge="1" parent="1" source="a_res24" target="a_mel_ext" style="endArrow=block;endFill=1;strokeWidth=1.5;rounded=0;html=1;strokeColor=#B86010;" value="">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="ae6" edge="1" parent="1" source="a_mel_ext" target="a_prompt_mel" style="endArrow=block;endFill=1;strokeWidth=1.5;rounded=0;html=1;strokeColor=#B86010;" value="">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="ae7" edge="1" parent="1" source="a_ref_wav" target="a_spk_enc" style="endArrow=block;endFill=1;strokeWidth=1.5;rounded=0;html=1;strokeColor=#B86010;" value="">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="ae8" edge="1" parent="1" source="a_spk_enc" target="a_spk_aff" style="endArrow=block;endFill=1;strokeWidth=1.5;rounded=0;html=1;strokeColor=#B86010;" value="">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+
+        <mxCell id="ae9" edge="1" parent="1" source="a_tok_in" target="a_concat_tok" style="endArrow=block;endFill=1;strokeWidth=2;rounded=0;html=1;strokeColor=#333333;" value="">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="ae10" edge="1" parent="1" source="a_prompt_tok" target="a_concat_tok" style="endArrow=block;endFill=1;strokeWidth=1.5;rounded=0;html=1;strokeColor=#B86010;fontSize=10;fontColor=#6B3A00;" value="prepend prompt">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="ae11" edge="1" parent="1" source="a_concat_tok" target="a_tok_emb" style="endArrow=block;endFill=1;strokeWidth=2;rounded=0;html=1;strokeColor=#333333;" value="">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="ae12" edge="1" parent="1" source="a_tok_emb" target="a_upconf" style="endArrow=block;endFill=1;strokeWidth=2;rounded=0;html=1;strokeColor=#333333;" value="">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="ae13" edge="1" parent="1" source="a_upconf" target="a_mu" style="endArrow=block;endFill=1;strokeWidth=2;rounded=0;html=1;strokeColor=#333333;" value="">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="ae14" edge="1" parent="1" source="a_prompt_mel" target="a_cond" style="endArrow=block;endFill=1;strokeWidth=1.5;rounded=0;html=1;strokeColor=#B86010;" value="">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="ae15" edge="1" parent="1" source="a_mu" target="a_cfm" style="endArrow=block;endFill=1;strokeWidth=2;rounded=0;html=1;strokeColor=#333333;" value="">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="ae16" edge="1" parent="1" source="a_cond" target="a_cfm" style="endArrow=block;endFill=1;strokeWidth=2;rounded=0;html=1;strokeColor=#333333;" value="">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="ae17" edge="1" parent="1" source="a_spk_aff" target="a_cfm" style="endArrow=block;endFill=1;strokeWidth=1.5;rounded=0;html=1;strokeColor=#B86010;" value="">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="ae18" edge="1" parent="1" source="a_noise" target="a_cfm" style="endArrow=block;endFill=1;strokeWidth=2;rounded=0;html=1;strokeColor=#4070B0;" value="">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="ae19" edge="1" parent="1" source="a_cfm" target="a_estimator" style="endArrow=open;endSize=10;strokeWidth=1.5;dashed=1;rounded=0;html=1;strokeColor=#4A7AC0;fontSize=10;fontColor=#1A3870;" value="repeated calls">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="ae20" edge="1" parent="1" source="a_cfm" target="a_out_mel" style="endArrow=block;endFill=1;strokeWidth=2;rounded=0;html=1;strokeColor=#333333;" value="">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+
+        <mxCell id="a_note1" parent="1" style="rounded=1;whiteSpace=wrap;html=1;arcSize=12;strokeWidth=1.5;dashed=1;fillColor=#FFF4F4;strokeColor=#C05050;fontSize=12;fontColor=#7A2020;" value="&lt;b&gt;Important&lt;/b&gt;&lt;br/&gt;The speech tokens are not converted directly to waveform. They first become an encoder-derived mel-rate conditioning sequence `mu`, and then a flow model denoises mel frames over multiple steps." vertex="1">
+          <mxGeometry x="1392" y="476" width="470" height="72" as="geometry" />
+        </mxCell>
+
+        <mxCell id="202" parent="1" style="text;html=1;strokeColor=none;fillColor=none;align=left;verticalAlign=middle;fontSize=13;fontStyle=2;fontColor=#333333;" value="(b) Inside the ConditionalDecoder Estimator" vertex="1">
+          <mxGeometry x="28" y="650" width="360" height="22" as="geometry" />
+        </mxCell>
+        <mxCell id="b_bg" parent="1" style="rounded=1;whiteSpace=wrap;html=1;arcSize=10;strokeWidth=1.5;fillColor=#FBFFFB;strokeColor=#85B785;" value="" vertex="1">
+          <mxGeometry x="20" y="678" width="2140" height="500" as="geometry" />
+        </mxCell>
+
+        <mxCell id="b_x" parent="1" style="rounded=1;whiteSpace=wrap;html=1;arcSize=18;strokeWidth=2;fontSize=12;fillColor=#FFF3CD;strokeColor=#D4930A;fontColor=#7A4500;" value="&lt;b&gt;x&lt;/b&gt;&lt;br/&gt;current noisy mel state" vertex="1">
+          <mxGeometry x="62" y="790" width="164" height="70" as="geometry" />
+        </mxCell>
+        <mxCell id="b_mu" parent="1" style="rounded=1;whiteSpace=wrap;html=1;arcSize=18;strokeWidth=2;fontSize=12;fillColor=#FFF3CD;strokeColor=#D4930A;fontColor=#7A4500;" value="&lt;b&gt;mu&lt;/b&gt;&lt;br/&gt;encoder conditioning" vertex="1">
+          <mxGeometry x="62" y="884" width="164" height="70" as="geometry" />
+        </mxCell>
+        <mxCell id="b_spk" parent="1" style="rounded=1;whiteSpace=wrap;html=1;arcSize=18;strokeWidth=2;fontSize=12;fillColor=#FFF3CD;strokeColor=#D4930A;fontColor=#7A4500;" value="&lt;b&gt;spks&lt;/b&gt;&lt;br/&gt;80-d speaker vector" vertex="1">
+          <mxGeometry x="62" y="978" width="164" height="70" as="geometry" />
+        </mxCell>
+        <mxCell id="b_cond" parent="1" style="rounded=1;whiteSpace=wrap;html=1;arcSize=18;strokeWidth=2;fontSize=12;fillColor=#FFF3CD;strokeColor=#D4930A;fontColor=#7A4500;" value="&lt;b&gt;cond&lt;/b&gt;&lt;br/&gt;prompt mel prefix / zeros" vertex="1">
+          <mxGeometry x="62" y="1072" width="164" height="70" as="geometry" />
+        </mxCell>
+        <mxCell id="b_time" parent="1" style="rounded=1;whiteSpace=wrap;html=1;arcSize=18;strokeWidth=2;fontSize=12;fillColor=#FFF3CD;strokeColor=#D4930A;fontColor=#7A4500;" value="&lt;b&gt;t&lt;/b&gt; (and &lt;b&gt;r&lt;/b&gt; for meanflow)&lt;br/&gt;time embedding inputs" vertex="1">
+          <mxGeometry x="260" y="790" width="170" height="70" as="geometry" />
+        </mxCell>
+
+        <mxCell id="b_time_emb" parent="1" style="rounded=1;whiteSpace=wrap;html=1;arcSize=14;strokeWidth=1.5;fontSize=11;fillColor=#B8D8FF;strokeColor=#2A55A0;fontColor=#0A2A70;" value="&lt;b&gt;SinusoidalPosEmb + Timestep MLP&lt;/b&gt;&lt;br/&gt;optional time mixer for meanflow" vertex="1">
+          <mxGeometry x="476" y="784" width="238" height="82" as="geometry" />
+        </mxCell>
+        <mxCell id="b_pack" parent="1" style="rounded=1;whiteSpace=wrap;html=1;arcSize=14;strokeWidth=1.5;fontSize=11;fillColor=#B8D8FF;strokeColor=#2A55A0;fontColor=#0A2A70;" value="&lt;b&gt;Pack / Concatenate Channels&lt;/b&gt;&lt;br/&gt;x + mu + speaker + cond" vertex="1">
+          <mxGeometry x="476" y="920" width="238" height="70" as="geometry" />
+        </mxCell>
+
+        <mxCell id="b_unet_group" parent="1" style="rounded=1;whiteSpace=wrap;html=1;arcSize=8;strokeWidth=2;fillColor=#EAF5EA;strokeColor=#2E8A2E;verticalAlign=top;fontSize=12;fontStyle=1;fontColor=#145214;" value="&lt;b&gt;Causal U-Net Style Estimator&lt;/b&gt;" vertex="1">
+          <mxGeometry x="770" y="740" width="1010" height="300" as="geometry" />
+        </mxCell>
+        <mxCell id="b_down" parent="1" style="rounded=1;whiteSpace=wrap;html=1;arcSize=14;strokeWidth=1.5;fontSize=11;fillColor=#B0DEB0;strokeColor=#2A7A2A;fontColor=#144414;" value="&lt;b&gt;Down Blocks&lt;/b&gt;&lt;br/&gt;causal ResNet1D&lt;br/&gt;transformer blocks&lt;br/&gt;downsample" vertex="1">
+          <mxGeometry x="810" y="832" width="200" height="114" as="geometry" />
+        </mxCell>
+        <mxCell id="b_mid" parent="1" style="rounded=1;whiteSpace=wrap;html=1;arcSize=14;strokeWidth=1.5;fontSize=11;fillColor=#9ED49E;strokeColor=#2A7A2A;fontColor=#144414;" value="&lt;b&gt;Mid Blocks&lt;/b&gt;&lt;br/&gt;12 causal ResNet + transformer stages" vertex="1">
+          <mxGeometry x="1076" y="846" width="214" height="86" as="geometry" />
+        </mxCell>
+        <mxCell id="b_up" parent="1" style="rounded=1;whiteSpace=wrap;html=1;arcSize=14;strokeWidth=1.5;fontSize=11;fillColor=#B0DEB0;strokeColor=#2A7A2A;fontColor=#144414;" value="&lt;b&gt;Up Blocks&lt;/b&gt;&lt;br/&gt;skip connections&lt;br/&gt;causal ResNet1D&lt;br/&gt;transformer blocks&lt;br/&gt;upsample" vertex="1">
+          <mxGeometry x="1356" y="818" width="210" height="142" as="geometry" />
+        </mxCell>
+        <mxCell id="b_final" parent="1" style="rounded=1;whiteSpace=wrap;html=1;arcSize=14;strokeWidth=1.5;fontSize=11;fillColor=#9ED49E;strokeColor=#2A7A2A;fontColor=#144414;" value="&lt;b&gt;Final Causal Block + 1x1 Conv&lt;/b&gt;&lt;br/&gt;project to 80 channels" vertex="1">
+          <mxGeometry x="1616" y="846" width="134" height="86" as="geometry" />
+        </mxCell>
+        <mxCell id="b_out" parent="1" style="rounded=1;whiteSpace=wrap;html=1;arcSize=18;strokeWidth=2;fontSize=12;fillColor=#E0F0FF;strokeColor=#2870C0;fontColor=#0A3080;" value="&lt;b&gt;dx / dt&lt;/b&gt;&lt;br/&gt;predicted flow update" vertex="1">
+          <mxGeometry x="1840" y="852" width="164" height="72" as="geometry" />
+        </mxCell>
+
+        <mxCell id="be1" edge="1" parent="1" source="b_time" target="b_time_emb" style="endArrow=block;endFill=1;strokeWidth=2;rounded=0;html=1;strokeColor=#333333;" value="">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="be2" edge="1" parent="1" source="b_x" target="b_pack" style="endArrow=block;endFill=1;strokeWidth=2;rounded=0;html=1;strokeColor=#333333;" value="">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="be3" edge="1" parent="1" source="b_mu" target="b_pack" style="endArrow=block;endFill=1;strokeWidth=2;rounded=0;html=1;strokeColor=#333333;" value="">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="be4" edge="1" parent="1" source="b_spk" target="b_pack" style="endArrow=block;endFill=1;strokeWidth=1.5;rounded=0;html=1;strokeColor=#B86010;" value="">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="be5" edge="1" parent="1" source="b_cond" target="b_pack" style="endArrow=block;endFill=1;strokeWidth=1.5;rounded=0;html=1;strokeColor=#B86010;" value="">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="be6" edge="1" parent="1" source="b_pack" target="b_down" style="endArrow=block;endFill=1;strokeWidth=2;rounded=0;html=1;strokeColor=#333333;" value="">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="be7" edge="1" parent="1" source="b_time_emb" target="b_down" style="endArrow=open;endSize=10;strokeWidth=1.5;rounded=0;html=1;strokeColor=#4A7AC0;fontSize=10;fontColor=#1A3870;" value="modulates blocks">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="be8" edge="1" parent="1" source="b_down" target="b_mid" style="endArrow=block;endFill=1;strokeWidth=2;rounded=0;html=1;strokeColor=#333333;" value="">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="be9" edge="1" parent="1" source="b_mid" target="b_up" style="endArrow=block;endFill=1;strokeWidth=2;rounded=0;html=1;strokeColor=#333333;" value="">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="be10" edge="1" parent="1" source="b_up" target="b_final" style="endArrow=block;endFill=1;strokeWidth=2;rounded=0;html=1;strokeColor=#333333;" value="">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="be11" edge="1" parent="1" source="b_final" target="b_out" style="endArrow=block;endFill=1;strokeWidth=2;rounded=0;html=1;strokeColor=#333333;" value="">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+
+        <mxCell id="b_note1" parent="1" style="rounded=1;whiteSpace=wrap;html=1;arcSize=12;strokeWidth=1.5;dashed=1;fillColor=#FFF4F4;strokeColor=#C05050;fontSize=12;fontColor=#7A2020;" value="&lt;b&gt;Important&lt;/b&gt;&lt;br/&gt;The decoder does not attend to raw speech tokens directly. Token information has already been compressed into the mel-rate conditioning sequence `mu` by the upsampling Conformer encoder." vertex="1">
+          <mxGeometry x="770" y="1060" width="590" height="72" as="geometry" />
+        </mxCell>
+        <mxCell id="b_note2" parent="1" style="rounded=1;whiteSpace=wrap;html=1;arcSize=12;strokeWidth=1.5;dashed=1;fillColor=#F5F5F5;strokeColor=#999999;fontSize=11;fontColor=#555555;" value="This is why the bottleneck is expensive: the model first expands tokens to mel-rate, then runs an iterative causal generative process over the whole mel timeline." vertex="1">
+          <mxGeometry x="1440" y="1060" width="500" height="60" as="geometry" />
+        </mxCell>
+
+        <mxCell id="leg1" parent="1" style="text;html=1;strokeColor=none;fillColor=none;align=left;verticalAlign=middle;fontSize=12;fontColor=#333333;" value="&lt;b&gt;Legend&lt;/b&gt;" vertex="1">
+          <mxGeometry x="1938" y="104" width="120" height="20" as="geometry" />
+        </mxCell>
+        <mxCell id="leg2" parent="1" style="text;html=1;strokeColor=none;fillColor=none;align=left;verticalAlign=middle;fontSize=11;fontColor=#333333;" value="solid = active runtime path" vertex="1">
+          <mxGeometry x="1938" y="128" width="220" height="18" as="geometry" />
+        </mxCell>
+        <mxCell id="leg3" parent="1" style="text;html=1;strokeColor=none;fillColor=none;align=left;verticalAlign=middle;fontSize=11;fontColor=#888888;" value="gray / blue dashed = note or repeated solver call" vertex="1">
+          <mxGeometry x="1938" y="148" width="250" height="18" as="geometry" />
+        </mxCell>
+        <mxCell id="leg4" parent="1" style="text;html=1;strokeColor=none;fillColor=none;align=left;verticalAlign=middle;fontSize=11;fontColor=#B86010;" value="orange = prompt / speaker conditioning" vertex="1">
+          <mxGeometry x="1938" y="168" width="240" height="18" as="geometry" />
+        </mxCell>
+      </root>
+    </mxGraphModel>
+  </diagram>
+</mxfile>
