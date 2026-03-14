@@ -142,6 +142,26 @@ _Last updated: 2026-03-14_
   - disabling the `long_tail` force-EOS rule is clearly bad
   - the current safe assumption is still full analyzer inspection every step
 - removed the temporary alignment sweep controls and runner after recording the conclusion, so the runtime stays on the validated scheduled path
+- rewrote the scheduled alignment analyzer to reduce hot-path overhead without weakening the guard:
+  - removed the scheduled hook's per-step `.cpu()` attention copy
+  - removed the growing CPU-side full alignment matrix
+  - replaced it with rolling GPU-local state for:
+    - recent rows
+    - early-text activation max
+    - post-completion tail mass
+    - post-completion repetition mass
+- validated the GPU-local scheduled analyzer rewrite on the `4060 Ti`:
+  - `errors=[]`
+  - manual listening stayed clean
+  - clearest high-load gain at `c8`:
+    - `wall_s: 11.0954 -> 9.5139`
+    - `audio_seconds_per_second: 3.1941 -> 3.4518`
+    - `stage_t3_s_mean: 6.9425 -> 5.6515`
+    - `stage_t3_first_token_s_mean: 0.2016 -> 0.1561`
+- updated the current `T3` bottleneck read again:
+  - CPU copies and full-history growth were a real part of the scheduled guard overhead
+  - that part is now reduced
+  - the next likely structural cost is still `output_attentions=True` forcing the slower attention path
 
 ## Current Focus
 
@@ -167,6 +187,7 @@ Status:
 - the new latency KPIs show `T3` first-token time is much better than full audio-ready time
 - next target is to validate staggered arrivals, profile `T3` further, and then add true first-audio-chunk measurement
 - the alignment guard stays enabled while this profiling continues, because the recent experiments showed it is necessary for quality
+- the current best analyzer implementation is now the GPU-local scheduled version, but the attention-output fallback is still likely the next guard-path tax
 
 ## Current Baseline Judgment
 

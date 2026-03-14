@@ -634,3 +634,46 @@ Repo note:
 
 - the temporary alignment sweep controls and helper script were removed after these experiments
 - the project is back on the simpler validated scheduled runtime path, while keeping the lesson from the sweep recorded here
+
+## GPU-Local Scheduled Alignment State Rewrite
+
+This was the next scheduled-path optimization after the alignment sweep conclusion.
+
+Goal:
+
+- keep the same guard behavior
+- remove the obvious scheduled-path implementation waste
+
+Code change summary:
+
+- removed the scheduled hook's per-step `.cpu()` attention copy
+- removed the growing CPU-side full alignment matrix
+- replaced the scheduled request state with rolling GPU-local summaries:
+  - recent alignment rows
+  - early-text activation max
+  - post-completion tail mass
+  - post-completion repetition mass
+
+Important constraint:
+
+- this change did **not** remove the deeper `output_attentions=True` cost
+- it only removed the CPU-copy and full-history-growth part of the scheduled guard overhead
+
+Latest benchmark result:
+
+- `errors=[]` through `concurrency=8`
+- manual listening stayed clean
+
+Most useful directional comparison was at `c8` against the last clean pre-change run:
+
+- `wall_s`: `11.0954 -> 9.5139`
+- `audio_seconds_per_second`: `3.1941 -> 3.4518`
+- `stage_t3_s_mean`: `6.9425 -> 5.6515`
+- `stage_t3_first_token_s_mean`: `0.2016 -> 0.1561`
+
+Current interpretation:
+
+- the scheduled analyzer was paying a real CPU-side overhead
+- the GPU-local rewrite removed a meaningful part of that overhead
+- output quality still looked healthy on manual listening
+- the next likely remaining guard-path cost is still the attention fallback caused by `output_attentions=True`

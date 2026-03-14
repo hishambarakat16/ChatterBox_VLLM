@@ -312,6 +312,25 @@ Current alignment-guard read:
     - inspect every step
     - keep the existing EOS guard policies enabled
 - the temporary alignment experiment knobs were removed after this conclusion so the runtime stays focused on the validated path
+- latest implementation step:
+  - the scheduled analyzer was rewritten to keep its rolling state on GPU instead of copying attention to CPU and growing a full CPU-side alignment matrix every decode step
+  - the guard heuristics stayed the same in intent:
+    - same selected heads
+    - same EOS suppression
+    - same long-tail / repetition forcing logic
+  - but the state now keeps only rolling GPU-local summaries instead of a full accumulated alignment history
+- latest benchmark read after that rewrite:
+  - manual listening stayed clean
+  - `errors=[]` still held through `concurrency=8`
+  - the clearest win was at `c8`:
+    - `wall_s`: `11.0954 -> 9.5139`
+    - `audio_seconds_per_second`: `3.1941 -> 3.4518`
+    - `stage_t3_s_mean`: `6.9425 -> 5.6515`
+    - `stage_t3_first_token_s_mean`: `0.2016 -> 0.1561`
+- cautious interpretation:
+  - this removed a real chunk of scheduled-guard overhead
+  - but it did not remove the deeper `output_attentions=True` cost
+  - the next likely structural limiter inside the guard path is still the attention fallback itself
 
 Important clarification:
 
@@ -330,6 +349,8 @@ Important clarification:
   - validate the hardened scheduler with staggered-arrival benchmarks
   - profile deeper inside `T3`, since `T3` still dominates total compute in the current timing split
   - keep the alignment guardrail enabled while profiling, since the experiments showed it is necessary for output quality
+  - treat the new GPU-local scheduled guard as the current best version of the analyzer path
+  - next deeper guard question is no longer CPU copies/history growth, but whether `output_attentions=True` can be made cheaper or replaced
   - add true first-audio-chunk measurement once partial audio emission exists
   - only then decide whether `S3` becomes the next real bottleneck
   - keep tracking GPU utilization and `VRAM`
