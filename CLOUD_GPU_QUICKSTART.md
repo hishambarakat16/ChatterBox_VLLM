@@ -4,35 +4,12 @@ This is the shortest path to run the current Chatterbox baseline and the new str
 
 ## 1. Clone The Repo
 
-Repo:
-
-```text
-https://github.com/hishambarakat16/ChatterBox_S3_Concurrency.git
-```
-
-If you want to clone with a GitHub token instead of SSH, use:
-
 ```bash
 export GITHUB_TOKEN=YOUR_GITHUB_TOKEN
 git clone https://$GITHUB_TOKEN@github.com/hishambarakat16/ChatterBox_S3_Concurrency.git
 cd ChatterBox_S3_Concurrency
 git submodule update --init external/chatterbox
 ```
-
-If you want the original SSH version instead, use:
-
-```bash
-git clone git@github.com:hishambarakat16/ChatterBox_S3_Concurrency.git
-cd ChatterBox_S3_Concurrency
-git submodule update --init external/chatterbox
-```
-
-Notes:
-
-- The top-level repo may need your token if it is private.
-- This cloud path intentionally initializes only `external/chatterbox`.
-- Do not run `git submodule update --init --recursive` on the GPU box unless you actually need the other repos.
-- Do not paste the real token into the markdown. Keep it in `GITHUB_TOKEN`.
 
 ## 2. Create The Python Environment
 
@@ -69,10 +46,6 @@ python -c "from chatterbox import ChatterboxMultilingualTTS, ChatterboxMultiling
 
 ## 6. Pick A Prompt File
 
-You need a real prompt wav/flac file for the multilingual model.
-
-Example placeholder:
-
 ```bash
 export PROMPT_AUDIO=/absolute/path/to/reference.wav
 ```
@@ -103,20 +76,7 @@ PYTHONPATH=external/chatterbox/src python external/chatterbox/compare_multilingu
   --runs 3
 ```
 
-## 9. Optional: Run A Longer Prompt
-
-```bash
-PYTHONPATH=external/chatterbox/src python external/chatterbox/compare_multilingual_runtime.py \
-  --impl streaming \
-  --device cuda \
-  --language-id ar \
-  --audio-prompt-path "$PROMPT_AUDIO" \
-  --text "هذا اختبار أطول قليلًا حتى نرى إذا كان السلوك يختلف مع نص أطول ومع وقت توليد أكبر." \
-  --warmup-runs 1 \
-  --runs 3
-```
-
-## 10. Send Back These Results
+## 9. Send Back These Results
 
 Send back:
 
@@ -126,9 +86,3 @@ Send back:
 - full terminal output from the streaming run
 - whether either run crashed or OOMed
 - whether both runs produced the same rough audio length
-
-## Notes
-
-- This first pass is not a true concurrency benchmark yet.
-- It is only for validating that the new runtime path works on GPU and can be compared against the baseline.
-- The next step after this is a real multi-session streaming benchmark.
