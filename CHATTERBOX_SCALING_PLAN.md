@@ -20,6 +20,12 @@ We do not need a long research phase before acting.
 
 We need one baseline measurement set, then we fix the runtime and compare against it.
 
+Current validated baseline env note:
+
+- `RTX 4060 Ti` with stock `torch 2.6.0+cu124` was fine
+- the real blocker was PyPI Perth, not CUDA on that machine
+- reinstalling Perth from source fixed baseline loading
+
 Repo strategy:
 
 - use `external/chatterbox/` as the working fork
@@ -112,9 +118,9 @@ If S3 is improved and concurrency is still poor:
 ## Immediate Work Order
 
 1. use [CLOUD_GPU_QUICKSTART.md](/Users/hisham/Code/Bahraini_TTS/CLOUD_GPU_QUICKSTART.md) on the GPU box
-2. apply [patches/chatterbox_streaming_runtime.patch](/Users/hisham/Code/Bahraini_TTS/patches/chatterbox_streaming_runtime.patch)
-3. capture baseline vs streaming-runtime numbers with [compare_multilingual_runtime.py](/Users/hisham/Code/Bahraini_TTS/external/chatterbox/compare_multilingual_runtime.py)
-4. confirm the new runtime path is functionally valid on GPU
+2. install Perth from source in that env
+3. apply [patches/chatterbox_streaming_runtime.patch](/Users/hisham/Code/Bahraini_TTS/patches/chatterbox_streaming_runtime.patch)
+4. capture baseline vs streaming-runtime numbers with [compare_multilingual_runtime.py](/Users/hisham/Code/Bahraini_TTS/external/chatterbox/compare_multilingual_runtime.py)
 5. only then attack `S3`
 
 ## Reference Scope

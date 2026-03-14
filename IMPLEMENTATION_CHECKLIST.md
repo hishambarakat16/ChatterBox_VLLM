@@ -6,11 +6,18 @@
 
 ## Baseline
 
-- [ ] run current Chatterbox once as baseline on GPU
+- [x] run current Chatterbox once as baseline on GPU
 - [ ] record first-chunk latency
 - [ ] record inter-chunk latency
-- [ ] record full-response latency
+- [x] record full-response latency
 - [ ] record VRAM usage
+
+Current baseline smoke result:
+
+- `RTX 4060 Ti`
+- `load_s=22.2723`
+- `latency_s=[4.128, 3.6289, 4.3737]`
+- `num_samples=114240`
 
 ## Runtime Refactor
 

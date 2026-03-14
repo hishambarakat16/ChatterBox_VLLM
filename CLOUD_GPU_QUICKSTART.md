@@ -18,7 +18,8 @@ Use Python `3.11`.
 ```bash
 conda create -y -n chatterbox-s3 python=3.11
 conda activate chatterbox-s3
-python -m pip install --upgrade pip setuptools wheel
+python -m pip install --upgrade pip wheel
+python -m pip install "setuptools<81"
 ```
 
 ## 3. Apply The Local Chatterbox Runtime Patch
@@ -31,17 +32,19 @@ Run this from the repo root:
 git -C external/chatterbox apply ../../patches/chatterbox_streaming_runtime.patch
 ```
 
-## 4. Install Chatterbox From Source
+## 4. Install Chatterbox And Perth From Source
 
 ```bash
 pip install -e external/chatterbox
-pip install --upgrade torch==2.7.0 torchaudio==2.7.0 --index-url https://download.pytorch.org/whl/cu128
+pip uninstall -y resemble-perth
+pip install --no-cache-dir git+https://github.com/resemble-ai/Perth.git
 ```
 
 ## 5. Sanity Check The Environment
 
 ```bash
 python -c "import torch; print('torch', torch.__version__); print('cuda', torch.version.cuda); print('cuda_available', torch.cuda.is_available()); print('device_count', torch.cuda.device_count()); print('gpu', torch.cuda.get_device_name(0) if torch.cuda.is_available() else 'none')"
+python -c "import perth; print(perth.PerthImplicitWatermarker)"
 python -c "from chatterbox import ChatterboxMultilingualTTS, ChatterboxMultilingualStreamingTTS; print('imports_ok')"
 ```
 

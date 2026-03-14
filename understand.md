@@ -29,6 +29,7 @@ Only log items that are clearly confirmed in discussion.
 - HM understands the current fix is `runtime/session isolation first`, then `S3` redesign only if concurrency is still poor.
 - HM understands the target runtime shape is `shared worker + explicit session state`, not immediate model replacement.
 - HM understands the current portable execution path is `CLOUD_GPU_QUICKSTART.md` plus `patches/chatterbox_streaming_runtime.patch`, not a published Chatterbox fork commit yet.
+- HM understands the first successful baseline run on `4060 Ti` required replacing PyPI Perth with Perth from source.
 
 ### Project State
 

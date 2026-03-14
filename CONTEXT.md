@@ -60,10 +60,11 @@ The current issue is therefore:
 
 Not just one slow function.
 
-There is also a separate current baseline issue:
+There was also a separate baseline environment issue:
 
-- on the tested `4060 Ti` env, upstream baseline currently fails before inference because `perth.PerthImplicitWatermarker` resolves to `None`
-- that is a dependency/runtime issue, not evidence against the streaming runtime work
+- on the tested `4060 Ti` env, the PyPI Perth package exposed `perth.PerthImplicitWatermarker` as `None`
+- reinstalling Perth from source fixed that
+- that was a dependency/runtime issue, not evidence against the streaming runtime work
 
 ### 3. The current S3 path is likely the first hot spot
 
@@ -134,6 +135,13 @@ Important current repo fact:
   - [patches/chatterbox_streaming_runtime.patch](/Users/hisham/Code/Bahraini_TTS/patches/chatterbox_streaming_runtime.patch)
   - [CLOUD_GPU_QUICKSTART.md](/Users/hisham/Code/Bahraini_TTS/CLOUD_GPU_QUICKSTART.md)
 - the current portable patch also carries a safe Perth fallback so benchmarking is not blocked by the watermark dependency
+
+Current validated baseline smoke result:
+
+- GPU: `RTX 4060 Ti`
+- `load_s=22.2723`
+- `latency_s=[4.128, 3.6289, 4.3737]`
+- `num_samples=114240`
 
 The target runtime shape is:
 
