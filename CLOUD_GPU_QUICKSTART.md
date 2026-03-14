@@ -64,7 +64,28 @@ python -c "from chatterbox import ChatterboxMultilingualTTS, ChatterboxMultiling
 export PROMPT_AUDIO=$PWD/SPK_17_000003.wav
 ```
 
-## 7. Run Baseline Concurrency Benchmark
+## 7. Show Original Out-Of-The-Box Chatterbox Single Request
+
+This uses the original `ChatterboxMultilingualTTS` path through `mtl_tts.py`.
+The harness here is only for timing and saving the output WAV.
+
+```bash
+PYTHONPATH=external/chatterbox/src python external/chatterbox/compare_multilingual_runtime.py \
+  --impl baseline \
+  --device cuda \
+  --language-id ar \
+  --audio-prompt-path "$PROMPT_AUDIO" \
+  --text "مرحبا، هذا اختبار للبنية الحالية." \
+  --warmup-runs 0 \
+  --runs 1 \
+  --output-wav original_baseline.wav
+```
+
+## 8. Show Original Out-Of-The-Box Chatterbox Shared-Instance Concurrency Failure
+
+This still uses the original `baseline` path. On the tested `4060 Ti` setup, `concurrency=2`
+historically failed or produced logically broken results here. This is the reference demo
+for why the new scheduler work was needed.
 
 ```bash
 PYTHONPATH=external/chatterbox/src python external/chatterbox/benchmark_multilingual_concurrency.py \
@@ -76,7 +97,7 @@ PYTHONPATH=external/chatterbox/src python external/chatterbox/benchmark_multilin
   --concurrency-levels 1 2
 ```
 
-## 8. Run Streaming Concurrency Benchmark
+## 9. Run Streaming Concurrency Benchmark
 
 ```bash
 PYTHONPATH=external/chatterbox/src python external/chatterbox/benchmark_multilingual_concurrency.py \
@@ -88,7 +109,7 @@ PYTHONPATH=external/chatterbox/src python external/chatterbox/benchmark_multilin
   --concurrency-levels 1 2
 ```
 
-## 9. Run Concurrent T3 Benchmark
+## 10. Run Concurrent T3 Benchmark
 
 ```bash
 PYTHONPATH=external/chatterbox/src python external/chatterbox/benchmark_multilingual_concurrency.py \
@@ -104,7 +125,7 @@ PYTHONPATH=external/chatterbox/src python external/chatterbox/benchmark_multilin
 
 Use `--trace-shapes` only when you are debugging a regression. It is not needed for normal benchmark runs anymore.
 
-## 10. Run Scheduled T3 Benchmark
+## 11. Run Scheduled T3 Benchmark
 
 ```bash
 PYTHONPATH=external/chatterbox/src python external/chatterbox/benchmark_multilingual_concurrency.py \
@@ -117,7 +138,7 @@ PYTHONPATH=external/chatterbox/src python external/chatterbox/benchmark_multilin
   --output-dir benchmark_wavs
 ```
 
-## 11. Run Scheduled Trace Debug Benchmark
+## 12. Run Scheduled Trace Debug Benchmark
 
 Use this only when you want to inspect scheduler batching behavior or debug a regression.
 
@@ -135,13 +156,14 @@ PYTHONPATH=external/chatterbox/src python external/chatterbox/benchmark_multilin
 
 Use `--trace-shapes` only when you are debugging a regression or verifying scheduler cohort behavior.
 
-## 12. Send Back These Results
+## 13. Send Back These Results
 
 Send back:
 
 - GPU model
 - CUDA available output from step 5
-- full terminal output from the baseline run
+- full terminal output from the original single-request baseline run
+- full terminal output from the original shared-instance baseline concurrency run
 - full terminal output from the streaming run
 - full terminal output from the concurrent run
 - full terminal output from the scheduled run
