@@ -41,6 +41,10 @@
         font-family: ui-monospace, "SFMono-Regular", Menlo, Consolas, monospace;
       }
 
+      code {
+        overflow-wrap: anywhere;
+      }
+
       .page {
         width: 100%;
         max-width: 1900px;
@@ -176,7 +180,7 @@
       }
 
       .pipeline {
-        min-width: 2380px;
+        min-width: 2720px;
         display: flex;
         align-items: stretch;
         gap: 10px;
@@ -350,6 +354,10 @@
           CFG rows, how prefill is assembled, how the cached decode loop runs, what state stays request-local, and where
           speculation would have to fit if added later.
         </div>
+        <div class="subtitle">
+          Dimension labels beside each tuple are semantic mnemonics, not code variable names, so the meaning of each
+          axis stays visible without reopening the trace notes.
+        </div>
         <ul class="source-list">
           <li><code>architecture/t3_shape_contract.md</code></li>
           <li><code>external/chatterbox/src/chatterbox/runtime/worker_scheduled.py</code></li>
@@ -379,19 +387,21 @@
         </div>
         <div class="summary-card hero">
           <div class="summary-label">Prefill Length</div>
-          <div class="summary-value"><code>(2, 72, 1024)</code></div>
+          <div class="summary-value"><code>(2, 72, 1024)</code> <code>(cfg_rows, prefill_seq_len_with_bos, hidden_size)</code></div>
           <div class="summary-note">
             Current trace shows <code>71</code> tokens from <code>prepare_input_embeds()</code> plus one appended BOS
-            speech embedding. Prefill output is also now traced: <code>logits (2, 72, 8194)</code> and first-layer KV
-            cache <code>(2, 16, 72, 64)</code>.
+            speech embedding. Prefill output is also now traced: <code>logits (2, 72, 8194)</code>
+            <code>(cfg_rows, prefill_seq_len_with_bos, vocab_size)</code> and first-layer KV cache
+            <code>(2, 16, 72, 64)</code> <code>(cfg_rows, num_heads, cache_seq_len, head_dim)</code>.
           </div>
         </div>
         <div class="summary-card hero">
           <div class="summary-label">Cached Decode Step</div>
-          <div class="summary-value"><code>(2, 1, 1024)</code></div>
+          <div class="summary-value"><code>(2, 1, 1024)</code> <code>(cfg_rows, decode_step_token_len, hidden_size)</code></div>
           <div class="summary-note">
             One narrow cached step per logical request. The first cached-step output side is now also traced:
-            <code>logits (2, 1, 8194)</code> and first-layer KV cache grows to <code>(2, 16, 73, 64)</code>.
+            <code>logits (2, 1, 8194)</code> <code>(cfg_rows, decode_step_token_len, vocab_size)</code> and first-layer
+            KV cache grows to <code>(2, 16, 73, 64)</code> <code>(cfg_rows, num_heads, cache_seq_len_plus_1, head_dim)</code>.
           </div>
         </div>
       </div>
@@ -447,7 +457,7 @@
               <div class="stage-body">
                 <div class="cell">
                   <div class="cell-title">Exact Shape</div>
-                  <span class="shape-line"><code>text_tokens (2, 36)</code></span>
+                  <span class="shape-line"><code>text_tokens (2, 36)</code> <code>(cfg_rows, text_seq_len)</code></span>
                 </div>
                 <div class="cell">
                   <div class="cell-title">Meaning</div>
@@ -474,10 +484,10 @@
               <div class="stage-body">
                 <div class="cell">
                   <div class="cell-title">Confirmed Shapes</div>
-                  <span class="shape-line"><code>cond_emb (2, 34, 1024)</code></span>
-                  <span class="shape-line"><code>text_emb (2, 36, 1024)</code></span>
-                  <span class="shape-line"><code>speech_emb (2, 1, 1024)</code></span>
-                  <span class="shape-line"><code>embeds (2, 71, 1024)</code></span>
+                  <span class="shape-line"><code>cond_emb (2, 34, 1024)</code> <code>(cfg_rows, cond_seq_len, hidden_size)</code></span>
+                  <span class="shape-line"><code>text_emb (2, 36, 1024)</code> <code>(cfg_rows, text_seq_len, hidden_size)</code></span>
+                  <span class="shape-line"><code>speech_emb (2, 1, 1024)</code> <code>(cfg_rows, speech_seed_len, hidden_size)</code></span>
+                  <span class="shape-line"><code>embeds (2, 71, 1024)</code> <code>(cfg_rows, prefill_seq_len_no_bos, hidden_size)</code></span>
                   <span class="shape-line"><code>len_cond = 34</code></span>
                 </div>
                 <div class="cell">
@@ -501,19 +511,19 @@
               <div class="stage-body">
                 <div class="cell">
                   <div class="cell-title">Exact Shape</div>
-                  <span class="shape-line"><code>prefill.bos bos_pos_embed (1, 1, 1024)</code></span>
-                  <span class="shape-line"><code>prefill.bos bos_embed (2, 1, 1024)</code></span>
-                  <span class="shape-line"><code>prefill.batch inputs_embeds (2, 72, 1024)</code></span>
+                  <span class="shape-line"><code>prefill.bos bos_pos_embed (1, 1, 1024)</code> <code>(shared_pos_rows, bos_token_len, hidden_size)</code></span>
+                  <span class="shape-line"><code>prefill.bos bos_embed (2, 1, 1024)</code> <code>(cfg_rows, bos_token_len, hidden_size)</code></span>
+                  <span class="shape-line"><code>prefill.batch inputs_embeds (2, 72, 1024)</code> <code>(cfg_rows, prefill_seq_len_with_bos, hidden_size)</code></span>
                 </div>
                 <div class="cell">
                   <div class="cell-title">Prefill Output</div>
-                  <span class="shape-line"><code>prefill.output logits (2, 72, 8194)</code></span>
-                  <span class="shape-line"><code>prefill.output past_key_values[0][0] (2, 16, 72, 64)</code></span>
-                  <span class="shape-line"><code>prefill.output past_key_values[0][1] (2, 16, 72, 64)</code></span>
+                  <span class="shape-line"><code>prefill.output logits (2, 72, 8194)</code> <code>(cfg_rows, prefill_seq_len_with_bos, vocab_size)</code></span>
+                  <span class="shape-line"><code>prefill.output past_key_values[0][0] (2, 16, 72, 64)</code> <code>(cfg_rows, num_heads, cache_seq_len, head_dim)</code></span>
+                  <span class="shape-line"><code>prefill.output past_key_values[0][1] (2, 16, 72, 64)</code> <code>(cfg_rows, num_heads, cache_seq_len, head_dim)</code></span>
                 </div>
                 <div class="cell">
                   <div class="cell-title">Meaning</div>
-                  <div class="note">This is the actual transformer prefill input: the <code>(2, 71, 1024)</code> embed sequence plus one BOS speech embedding. The trace now confirms both the prefill vocabulary dimension <code>8194</code> and the first-layer KV cache layout.</div>
+                  <div class="note">This is the actual transformer prefill input: the <code>(2, 71, 1024)</code> <code>(cfg_rows, prefill_seq_len_no_bos, hidden_size)</code> embed sequence plus one BOS speech embedding. The trace now confirms both the prefill vocabulary dimension <code>8194</code> and the first-layer KV cache layout.</div>
                 </div>
               </div>
             </div>
@@ -532,19 +542,19 @@
               <div class="stage-body">
                 <div class="cell">
                   <div class="cell-title">Exact Shape</div>
-                  <span class="shape-line"><code>decode.batch inputs_embeds (2, 1, 1024)</code></span>
-                  <span class="shape-line"><code>decode.next_token_pos_embed (1, 1, 1024)</code></span>
-                  <span class="shape-line"><code>decode.next_token_embed_base (1, 1, 1024)</code></span>
+                  <span class="shape-line"><code>decode.batch inputs_embeds (2, 1, 1024)</code> <code>(cfg_rows, decode_step_token_len, hidden_size)</code></span>
+                  <span class="shape-line"><code>decode.next_token_pos_embed (1, 1, 1024)</code> <code>(shared_pos_rows, decode_step_token_len, hidden_size)</code></span>
+                  <span class="shape-line"><code>decode.next_token_embed_base (1, 1, 1024)</code> <code>(logical_request_rows, decode_step_token_len, hidden_size)</code></span>
                 </div>
                 <div class="cell">
                   <div class="cell-title">First Cached-Step Output</div>
-                  <span class="shape-line"><code>decode.output.first_cached_step logits (2, 1, 8194)</code></span>
-                  <span class="shape-line"><code>decode.output.first_cached_step past_key_values[0][0] (2, 16, 73, 64)</code></span>
-                  <span class="shape-line"><code>decode.output.first_cached_step past_key_values[0][1] (2, 16, 73, 64)</code></span>
+                  <span class="shape-line"><code>decode.output.first_cached_step logits (2, 1, 8194)</code> <code>(cfg_rows, decode_step_token_len, vocab_size)</code></span>
+                  <span class="shape-line"><code>decode.output.first_cached_step past_key_values[0][0] (2, 16, 73, 64)</code> <code>(cfg_rows, num_heads, cache_seq_len_plus_1, head_dim)</code></span>
+                  <span class="shape-line"><code>decode.output.first_cached_step past_key_values[0][1] (2, 16, 73, 64)</code> <code>(cfg_rows, num_heads, cache_seq_len_plus_1, head_dim)</code></span>
                 </div>
                 <div class="cell">
                   <div class="cell-title">Meaning</div>
-                  <div class="note">After prefill, every later decode round sends exactly one new speech-token embedding back through the transformer with KV cache. One sampled token is embedded as <code>(1, 1, 1024)</code> and then duplicated back to CFG width. The first traced cached step confirms the expected cache growth from sequence length <code>72</code> to <code>73</code>.</div>
+                  <div class="note">After prefill, every later decode round sends exactly one new speech-token embedding back through the transformer with KV cache. One sampled token is embedded as <code>(1, 1, 1024)</code> <code>(logical_request_rows, decode_step_token_len, hidden_size)</code> and then duplicated back to CFG width. The first traced cached step confirms the expected cache growth from sequence length <code>72</code> to <code>73</code>.</div>
                 </div>
                 <div class="note-box">
                   <div class="cell-title">Where Speculation Would Fit</div>
@@ -620,10 +630,10 @@
               <div class="stage-body">
                 <div class="cell">
                   <div class="cell-title">Exact Output</div>
-                  <span class="shape-line"><code>predicted_tokens (1, 94)</code></span>
-                  <span class="shape-line"><code>filtered speech_tokens (93,)</code></span>
-                  <span class="shape-line"><code>predicted_tokens (1, 96)</code></span>
-                  <span class="shape-line"><code>filtered speech_tokens (95,)</code></span>
+                  <span class="shape-line"><code>predicted_tokens (1, 94)</code> <code>(logical_request_rows, emitted_token_len_with_eos)</code></span>
+                  <span class="shape-line"><code>filtered speech_tokens (93,)</code> <code>(emitted_token_len_no_eos,)</code></span>
+                  <span class="shape-line"><code>predicted_tokens (1, 96)</code> <code>(logical_request_rows, emitted_token_len_with_eos)</code></span>
+                  <span class="shape-line"><code>filtered speech_tokens (95,)</code> <code>(emitted_token_len_no_eos,)</code></span>
                 </div>
                 <div class="cell">
                   <div class="cell-title">Meaning</div>
@@ -656,7 +666,7 @@
               </tr>
               <tr>
                 <td>prefill shape</td>
-                <td><code>(2, 72, 1024)</code></td>
+                <td><code>(2, 72, 1024)</code> <code>(cfg_rows, prefill_seq_len_with_bos, hidden_size)</code></td>
               </tr>
               <tr>
                 <td>speech-token vocabulary</td>
@@ -664,19 +674,19 @@
               </tr>
               <tr>
                 <td>prefill first-layer KV cache</td>
-                <td><code>(2, 16, 72, 64)</code></td>
+                <td><code>(2, 16, 72, 64)</code> <code>(cfg_rows, num_heads, cache_seq_len, head_dim)</code></td>
               </tr>
               <tr>
                 <td>cached decode-step shape</td>
-                <td><code>(2, 1, 1024)</code></td>
+                <td><code>(2, 1, 1024)</code> <code>(cfg_rows, decode_step_token_len, hidden_size)</code></td>
               </tr>
               <tr>
                 <td>first cached-step logits</td>
-                <td><code>(2, 1, 8194)</code></td>
+                <td><code>(2, 1, 8194)</code> <code>(cfg_rows, decode_step_token_len, vocab_size)</code></td>
               </tr>
               <tr>
                 <td>first cached-step first-layer KV cache</td>
-                <td><code>(2, 16, 73, 64)</code></td>
+                <td><code>(2, 16, 73, 64)</code> <code>(cfg_rows, num_heads, cache_seq_len_plus_1, head_dim)</code></td>
               </tr>
               <tr>
                 <td>output row count after CFG combine</td>

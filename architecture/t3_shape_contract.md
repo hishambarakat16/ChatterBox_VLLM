@@ -115,7 +115,7 @@ That happens in [scheduled_decode.py](/Users/hisham/Code/Bahraini_TTS/external/c
 
 Per request, the shape is:
 
-- `(2, 1, D)`
+- `(2, 1, D)` `(cfg_rows, decode_step_token_len, hidden_size)`
 
 where the `2` is the CFG cond/uncond pair.
 
@@ -136,18 +136,40 @@ So:
 
 These came from the `scheduled`, `concurrency=1`, `--trace-shapes` runs on 2026-03-14.
 
+Dimension labels used below are semantic mnemonics, not code symbols:
+
+- `cfg_rows`
+- `shared_pos_rows`
+- `logical_request_rows`
+- `cond_seq_len`
+- `text_seq_len`
+- `speech_seed_len`
+- `bos_token_len`
+- `prefill_seq_len_no_bos`
+- `prefill_seq_len_with_bos`
+- `decode_step_token_len`
+- `cache_seq_len`
+- `cache_seq_len_plus_1`
+- `token_len`
+- `hidden_size`
+- `vocab_size`
+- `num_heads`
+- `head_dim`
+- `emitted_token_len_with_eos`
+- `emitted_token_len_no_eos`
+
 ### Worker Entry
 
-- `text_tokens`: `(2, 36)` `torch.int32` `cuda:0`
+- `text_tokens`: `(2, 36)` `(cfg_rows, text_seq_len)` `torch.int32` `cuda:0`
 
 ### T3 Input Embeddings
 
 From [t3.py](/Users/hisham/Code/Bahraini_TTS/external/chatterbox/src/chatterbox/models/t3/t3.py):
 
-- `cond_emb`: `(2, 34, 1024)` `torch.float32` `cuda:0`
-- `text_emb`: `(2, 36, 1024)` `torch.float32` `cuda:0`
-- `speech_emb`: `(2, 1, 1024)` `torch.float32` `cuda:0`
-- `embeds`: `(2, 71, 1024)` `torch.float32` `cuda:0`
+- `cond_emb`: `(2, 34, 1024)` `(cfg_rows, cond_seq_len, hidden_size)` `torch.float32` `cuda:0`
+- `text_emb`: `(2, 36, 1024)` `(cfg_rows, text_seq_len, hidden_size)` `torch.float32` `cuda:0`
+- `speech_emb`: `(2, 1, 1024)` `(cfg_rows, speech_seed_len, hidden_size)` `torch.float32` `cuda:0`
+- `embeds`: `(2, 71, 1024)` `(cfg_rows, prefill_seq_len_no_bos, hidden_size)` `torch.float32` `cuda:0`
 - `len_cond`: `34`
 
 Interpretation:
@@ -159,14 +181,14 @@ Interpretation:
 
 From [scheduled_decode.py](/Users/hisham/Code/Bahraini_TTS/external/chatterbox/src/chatterbox/models/t3/inference/scheduled_decode.py):
 
-- `prefill.input text_tokens`: `(2, 36)` `torch.int64` `cuda:0`
-- `prefill.input embeds`: `(2, 71, 1024)` `torch.float32` `cuda:0`
-- `prefill.bos bos_pos_embed`: `(1, 1, 1024)` `torch.float32` `cuda:0`
-- `prefill.bos bos_embed`: `(2, 1, 1024)` `torch.float32` `cuda:0`
-- `prefill.batch inputs_embeds`: `(2, 72, 1024)` `torch.float32` `cuda:0`
-- `prefill.output logits`: `(2, 72, 8194)` `torch.float32` `cuda:0`
-- `prefill.output past_key_values[0][0]`: `(2, 16, 72, 64)` `torch.float32` `cuda:0`
-- `prefill.output past_key_values[0][1]`: `(2, 16, 72, 64)` `torch.float32` `cuda:0`
+- `prefill.input text_tokens`: `(2, 36)` `(cfg_rows, text_seq_len)` `torch.int64` `cuda:0`
+- `prefill.input embeds`: `(2, 71, 1024)` `(cfg_rows, prefill_seq_len_no_bos, hidden_size)` `torch.float32` `cuda:0`
+- `prefill.bos bos_pos_embed`: `(1, 1, 1024)` `(shared_pos_rows, bos_token_len, hidden_size)` `torch.float32` `cuda:0`
+- `prefill.bos bos_embed`: `(2, 1, 1024)` `(cfg_rows, bos_token_len, hidden_size)` `torch.float32` `cuda:0`
+- `prefill.batch inputs_embeds`: `(2, 72, 1024)` `(cfg_rows, prefill_seq_len_with_bos, hidden_size)` `torch.float32` `cuda:0`
+- `prefill.output logits`: `(2, 72, 8194)` `(cfg_rows, prefill_seq_len_with_bos, vocab_size)` `torch.float32` `cuda:0`
+- `prefill.output past_key_values[0][0]`: `(2, 16, 72, 64)` `(cfg_rows, num_heads, cache_seq_len, head_dim)` `torch.float32` `cuda:0`
+- `prefill.output past_key_values[0][1]`: `(2, 16, 72, 64)` `(cfg_rows, num_heads, cache_seq_len, head_dim)` `torch.float32` `cuda:0`
 
 Interpretation:
 
@@ -183,29 +205,29 @@ Interpretation:
 
 Repeated decode rounds show:
 
-- `decode.batch inputs_embeds`: `(2, 1, 1024)` `torch.float32` `cuda:0`
-- `decode.next_token_pos_embed`: `(1, 1, 1024)` `torch.float32` `cuda:0`
-- `decode.next_token_embed_base`: `(1, 1, 1024)` `torch.float32` `cuda:0`
-- `decode.output.first_cached_step logits`: `(2, 1, 8194)` `torch.float32` `cuda:0`
-- `decode.output.first_cached_step past_key_values[0][0]`: `(2, 16, 73, 64)` `torch.float32` `cuda:0`
-- `decode.output.first_cached_step past_key_values[0][1]`: `(2, 16, 73, 64)` `torch.float32` `cuda:0`
+- `decode.batch inputs_embeds`: `(2, 1, 1024)` `(cfg_rows, decode_step_token_len, hidden_size)` `torch.float32` `cuda:0`
+- `decode.next_token_pos_embed`: `(1, 1, 1024)` `(shared_pos_rows, decode_step_token_len, hidden_size)` `torch.float32` `cuda:0`
+- `decode.next_token_embed_base`: `(1, 1, 1024)` `(logical_request_rows, decode_step_token_len, hidden_size)` `torch.float32` `cuda:0`
+- `decode.output.first_cached_step logits`: `(2, 1, 8194)` `(cfg_rows, decode_step_token_len, vocab_size)` `torch.float32` `cuda:0`
+- `decode.output.first_cached_step past_key_values[0][0]`: `(2, 16, 73, 64)` `(cfg_rows, num_heads, cache_seq_len_plus_1, head_dim)` `torch.float32` `cuda:0`
+- `decode.output.first_cached_step past_key_values[0][1]`: `(2, 16, 73, 64)` `(cfg_rows, num_heads, cache_seq_len_plus_1, head_dim)` `torch.float32` `cuda:0`
 
 Interpretation:
 
 - after prefill, the entire decode loop is a sequence of extremely narrow cached steps
 - this is one of the main reasons GPU saturation is poor
-- one newly sampled token is embedded as `(1, 1, 1024)` and then duplicated back to `(2, 1, 1024)` for CFG
-- raw first cached-step logits are now explicitly confirmed as `(2, 1, 8194)`
+- one newly sampled token is embedded as `(1, 1, 1024)` `(logical_request_rows, decode_step_token_len, hidden_size)` and then duplicated back to `(2, 1, 1024)` `(cfg_rows, decode_step_token_len, hidden_size)` for CFG
+- raw first cached-step logits are now explicitly confirmed as `(2, 1, 8194)` `(cfg_rows, decode_step_token_len, vocab_size)`
 - first-layer KV cache grows from sequence length `72` to `73` after one cached decode step, exactly as expected
 
 ### Final Token Output
 
 From the two trace runs:
 
-- `predicted_tokens`: `(1, 94)` `torch.int64` `cuda:0`
-- filtered `speech_tokens`: `(93,)` `torch.int64` `cuda:0`
-- `predicted_tokens`: `(1, 96)` `torch.int64` `cuda:0`
-- filtered `speech_tokens`: `(95,)` `torch.int64` `cuda:0`
+- `predicted_tokens`: `(1, 94)` `(logical_request_rows, emitted_token_len_with_eos)` `torch.int64` `cuda:0`
+- filtered `speech_tokens`: `(93,)` `(emitted_token_len_no_eos,)` `torch.int64` `cuda:0`
+- `predicted_tokens`: `(1, 96)` `(logical_request_rows, emitted_token_len_with_eos)` `torch.int64` `cuda:0`
+- filtered `speech_tokens`: `(95,)` `(emitted_token_len_no_eos,)` `torch.int64` `cuda:0`
 
 Interpretation:
 
@@ -219,8 +241,8 @@ These are strong enough to treat as the current production contract.
 
 - CFG expands each request into exactly `2` rows inside `T3`
 - hidden size is currently `1024`
-- current prefill shape is `(<2 rows>, <long sequence>, 1024)`
-- current cached decode step shape is always `(<2 rows>, 1, 1024)`
+- current prefill shape is `(<cfg_rows>, <prefill_seq_len_with_bos>, <hidden_size>)`
+- current cached decode step shape is always `(<cfg_rows>, <decode_step_token_len>, <hidden_size>)`
 
 ### State Ownership
 
@@ -253,24 +275,24 @@ These are the remaining items not yet fully locked down by the current trace.
 
 Already confirmed:
 
-- prefill `output.logits.shape = (2, 72, 8194)`
-- first cached decode-step `output.logits.shape = (2, 1, 8194)`
+- prefill `output.logits.shape = (2, 72, 8194)` `(cfg_rows, prefill_seq_len_with_bos, vocab_size)`
+- first cached decode-step `output.logits.shape = (2, 1, 8194)` `(cfg_rows, decode_step_token_len, vocab_size)`
 
 ### KV Cache Shapes
 
 Already confirmed:
 
-- prefill `past_key_values[0][0].shape = (2, 16, 72, 64)`
-- prefill `past_key_values[0][1].shape = (2, 16, 72, 64)`
-- first cached decode-step `past_key_values[0][0].shape = (2, 16, 73, 64)`
-- first cached decode-step `past_key_values[0][1].shape = (2, 16, 73, 64)`
+- prefill `past_key_values[0][0].shape = (2, 16, 72, 64)` `(cfg_rows, num_heads, cache_seq_len, head_dim)`
+- prefill `past_key_values[0][1].shape = (2, 16, 72, 64)` `(cfg_rows, num_heads, cache_seq_len, head_dim)`
+- first cached decode-step `past_key_values[0][0].shape = (2, 16, 73, 64)` `(cfg_rows, num_heads, cache_seq_len_plus_1, head_dim)`
+- first cached decode-step `past_key_values[0][1].shape = (2, 16, 73, 64)` `(cfg_rows, num_heads, cache_seq_len_plus_1, head_dim)`
 
 ### Positional Embedding Shape
 
 Already confirmed:
 
-- `speech_pos_emb.get_fixed_embedding(0).shape = (1, 1, 1024)`
-- first decode-step positional embedding shape is also `(1, 1, 1024)`
+- `speech_pos_emb.get_fixed_embedding(0).shape = (1, 1, 1024)` `(shared_pos_rows, token_len, hidden_size)`
+- first decode-step positional embedding shape is also `(1, 1, 1024)` `(shared_pos_rows, token_len, hidden_size)`
 
 This means the current positional-embedding boundary is consistent with a blockwise speculative design, but later positions should still be assumed to use the same fixed-embedding API rather than hard-coded.
 
@@ -321,7 +343,7 @@ Current production `T3` has these repo-specific properties:
 - CFG duplication already exists before scheduled decode
 - per-request runtime state already exists
 - alignment guard can mutate logits before token commit
-- cached decode step is extremely narrow: `(2, 1, 1024)`
+- cached decode step is extremely narrow: `(2, 1, 1024)` `(cfg_rows, decode_step_token_len, hidden_size)`
 
 So the right mental model is:
 
