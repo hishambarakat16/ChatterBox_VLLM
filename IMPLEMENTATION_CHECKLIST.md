@@ -33,6 +33,10 @@ Current streaming-runtime smoke result:
 - `latency_s=[4.4991, 4.7963, 5.3084]`
 - `num_samples=123840`
 
+Current traced single-request reference:
+
+- [TRACE_RUN_RESULTS.md](/Users/hisham/Code/Bahraini_TTS/TRACE_RUN_RESULTS.md)
+
 ## Runtime Refactor
 
 - [x] create `mtl_tts_streaming.py` beside the original runtime wrapper
@@ -65,6 +69,7 @@ Current read:
 - Layer 1 runtime works, but it is slower than baseline on the first single-request smoke test
 - current `concurrency=2` is still not correct
 - `T3` shared inference state is the first suspect
+- traced single-request flow is sane end-to-end
 
 ## Decision Rule
 

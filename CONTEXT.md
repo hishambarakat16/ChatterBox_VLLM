@@ -43,6 +43,7 @@ Serving-shape visual:
 - [chatterbox_serving_shape_current_vs_target.html](/Users/hisham/Code/Bahraini_TTS/architecture/chatterbox_serving_shape_current_vs_target.html)
 - [CLOUD_GPU_QUICKSTART.md](/Users/hisham/Code/Bahraini_TTS/CLOUD_GPU_QUICKSTART.md)
 - [CHATTERBOX_STATE_FLOW.md](/Users/hisham/Code/Bahraini_TTS/CHATTERBOX_STATE_FLOW.md)
+- [TRACE_RUN_RESULTS.md](/Users/hisham/Code/Bahraini_TTS/TRACE_RUN_RESULTS.md)
 
 ## What We Know
 
@@ -166,23 +167,18 @@ Important current repo fact:
 
 Current validated baseline smoke result:
 
-- GPU: `RTX 4060 Ti`
-- `load_s=22.2723`
-- `latency_s=[4.128, 3.6289, 4.3737]`
-- `num_samples=114240`
+- see [TRACE_RUN_RESULTS.md](/Users/hisham/Code/Bahraini_TTS/TRACE_RUN_RESULTS.md)
 
 Current validated Layer 1 streaming-runtime smoke result:
 
-- GPU: `RTX 4060 Ti`
-- `load_s=22.2407`
-- `latency_s=[4.4991, 4.7963, 5.3084]`
-- `num_samples=123840`
+- see [TRACE_RUN_RESULTS.md](/Users/hisham/Code/Bahraini_TTS/TRACE_RUN_RESULTS.md)
 
 Immediate interpretation:
 
 - Layer 1 runtime is functionally working
 - it is slower than baseline on this single-request smoke test
 - this does not yet answer the concurrency question
+- the traced single-request flow now confirms the tensor/state path is sane before concurrency is introduced
 
 The target runtime shape is:
 
@@ -207,7 +203,7 @@ If the runtime is request-safe but concurrency is still poor:
 The shortest path is:
 
 1. treat current Chatterbox as baseline
-2. validate the new Layer 1 runtime path on GPU using the patch + quickstart flow
+2. validate the new Layer 1 runtime path on GPU using the forked submodule + quickstart flow
 3. compare baseline vs new runtime path under simultaneous requests
 4. make `2` simultaneous requests work correctly on one shared model instance
 5. only then decide whether `S3` must change first

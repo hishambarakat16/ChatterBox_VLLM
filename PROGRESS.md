@@ -12,7 +12,7 @@ _Last updated: 2026-03-14_
 - reduced the project docs to a streaming-concurrency focus
 - defined the local Chatterbox fork strategy and minimal-file-duplication plan
 - added Layer 1 streaming-runtime scaffolding inside `external/chatterbox`
-- created [chatterbox_serving_shape_current_vs_target.html](/Users/hisham/Code/Bahraini_TTS/architecture/chatterbox_serving_shape_current_vs_target.html) as a compact diagram-only current-vs-target serving architecture board
+- expanded [chatterbox_serving_shape_current_vs_target.html](/Users/hisham/Code/Bahraini_TTS/architecture/chatterbox_serving_shape_current_vs_target.html) into a self-contained engineering diagram with current end-to-end flow, trace shapes, concurrency hazards, target redesign, and per-file rewrite map
 - created [patches/chatterbox_streaming_runtime.patch](/Users/hisham/Code/Bahraini_TTS/patches/chatterbox_streaming_runtime.patch) so the local Chatterbox runtime changes can be reproduced on a GPU box
 - created [CLOUD_GPU_QUICKSTART.md](/Users/hisham/Code/Bahraini_TTS/CLOUD_GPU_QUICKSTART.md) with the required-only cloud setup and run commands
 - confirmed on a `4060 Ti` that PyPI Perth was the real blocker because `perth.PerthImplicitWatermarker` resolved to `None`
@@ -26,6 +26,7 @@ _Last updated: 2026-03-14_
 - added an opt-in shape-trace path across baseline, streaming, T3, and S3 code paths, now exposed through `--trace-shapes` on the benchmark scripts
 - added [t3_concurrent_inference_findings.md](/Users/hisham/Code/Bahraini_TTS/architecture/t3_concurrent_inference_findings.md) with the focused `T3` concurrency hazard review, short-term correctness fix, and long-term scheduler recommendation
 - switched the intended cloud workflow from patch-application toward a real forked `external/chatterbox` submodule path
+- captured traced single-request baseline and streaming runs in [TRACE_RUN_RESULTS.md](/Users/hisham/Code/Bahraini_TTS/TRACE_RUN_RESULTS.md)
 
 ## Current Focus
 
@@ -82,10 +83,10 @@ More precise current read:
 
 ## Current Comparison Note
 
-- baseline avg full-response latency: about `4.04s`
-- streaming avg full-response latency: about `4.87s`
-- current Layer 1 runtime is therefore slower on this single-request smoke test
-- the output lengths also differ (`114240` vs `123840` samples), so this is not a perfectly length-matched comparison yet
+- see [TRACE_RUN_RESULTS.md](/Users/hisham/Code/Bahraini_TTS/TRACE_RUN_RESULTS.md) for the current trusted single-request traced runs
+- current read stays the same:
+  - both baseline and streaming wrappers are structurally healthy for one request
+  - output lengths differ, so raw latency comparisons are not perfectly length-matched
 
 ## Current Concurrency Note
 
@@ -102,6 +103,7 @@ Interpretation:
 - the next technical target is `2` simultaneous requests, not higher concurrency yet
 - the current best short-term `T3` fix is a coarse full-decode lock plus request-local backend/analyzer state
 - the current best long-term `T3` shape is a centralized batched decode scheduler with per-request contexts
+- the new single-request traces confirm the tensor flow itself is sane before concurrency is introduced
 
 ## Not Current Work
 

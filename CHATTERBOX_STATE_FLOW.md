@@ -9,6 +9,10 @@ Use it for two things:
 - avoid guessing about tensor shapes while changing concurrency behavior
 - separate `shared immutable model state` from `per-request mutable decode state`
 
+Visual companion:
+
+- [architecture/chatterbox_serving_shape_current_vs_target.html](/Users/hisham/Code/Bahraini_TTS/architecture/chatterbox_serving_shape_current_vs_target.html)
+
 The current immediate goal is:
 
 - make `2` simultaneous requests complete correctly on one shared model instance
