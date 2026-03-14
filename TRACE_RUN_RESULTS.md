@@ -101,13 +101,13 @@ Termination note:
   - `85 -> 170`
   - `105 -> 210`
 - `forcing EOS` appears in healthy single-request runs, so it should be treated as a warning signal, not as failure by itself.
-- The main remaining problem is still concurrency correctness, not single-request shape flow.
+- These traces established that the single-request shape flow was healthy before concurrency work continued.
 
 ## Current Interpretation
 
 - Baseline and streaming wrappers both work for single request.
 - The wrapper did not break the end-to-end tensor flow.
-- The next target was:
+- At that point, the next target was:
   - one shared model instance
   - `2` simultaneous requests
   - both outputs correct
@@ -238,3 +238,144 @@ Saved audio:
   - correctness is restored
   - real scalability is not
   - the next architecture target is a `T3` scheduler or more granular `T3` stepping model
+
+## Scheduled Runtime Benchmark
+
+Tested implementation:
+
+- `benchmark_multilingual_concurrency.py --impl scheduled`
+
+Runtime shape:
+
+- one shared `T3` weight copy on GPU
+- one scheduler per shared `T3` worker
+- one per-request mutable decode state object per active request
+- batch-compatible `T3` prefill and batched `T3` decode steps
+- `S3` still unchanged
+
+Important semantic note:
+
+- this batches multiple separate requests together for `T3`
+- it is not "one request has four internal lanes"
+- each request still has its own:
+  - KV cache
+  - generated token history
+  - stop/alignment state
+  - output waveform
+
+### Non-Trace Benchmark
+
+Command shape:
+
+- `benchmark_multilingual_concurrency.py --impl scheduled --concurrency-levels 1 4 --output-dir benchmark_wavs`
+
+#### Concurrency = 1
+
+Result:
+
+- `load_s=21.7485`
+- `wall_s=3.8411`
+- `request_latencies_s=[3.8402]`
+- `num_samples=[95040]`
+- `audio_seconds_total=3.96`
+- `audio_seconds_per_second=1.0309`
+- `saved_wavs=['benchmark_wavs/scheduled_c1_r0.wav']`
+- `errors=[]`
+
+#### Concurrency = 4
+
+Result:
+
+- `wall_s=10.0345`
+- `request_latencies_s=[5.8106, 9.9176, 5.8108, 9.9207]`
+- `mean_latency_s=7.8649`
+- `p95_latency_s=9.9202`
+- `num_samples=[108480, 106560, 115200, 103680]`
+- `audio_seconds_total=18.08`
+- `audio_seconds_per_second=1.8018`
+- `saved_wavs=['benchmark_wavs/scheduled_c4_r0.wav', 'benchmark_wavs/scheduled_c4_r1.wav', 'benchmark_wavs/scheduled_c4_r2.wav', 'benchmark_wavs/scheduled_c4_r3.wav']`
+- `errors=[]`
+
+### Trace Benchmark
+
+Command shape:
+
+- `benchmark_multilingual_concurrency.py --impl scheduled --concurrency-levels 1 2 --trace-shapes --output-dir benchmark_wavs`
+
+#### Concurrency = 1
+
+Result:
+
+- `load_s=23.9379`
+- `wall_s=4.3153`
+- `request_latencies_s=[4.3145]`
+- `num_samples=[114240]`
+- `audio_seconds_total=4.76`
+- `audio_seconds_per_second=1.1031`
+- `saved_wavs=['benchmark_wavs/scheduled_c1_r0.wav']`
+- `errors=[]`
+
+#### Concurrency = 2
+
+Result:
+
+- `wall_s=4.2557`
+- `request_latencies_s=[4.239, 4.2546]`
+- `mean_latency_s=4.2468`
+- `p95_latency_s=4.2538`
+- `num_samples=[102720, 78720]`
+- `audio_seconds_total=7.56`
+- `audio_seconds_per_second=1.7764`
+- `saved_wavs=['benchmark_wavs/scheduled_c2_r0.wav', 'benchmark_wavs/scheduled_c2_r1.wav']`
+- `errors=[]`
+
+Trace highlights:
+
+- `[runtime/t3_scheduler.py] run_cohort`
+  - `requests 2`
+  - `batch_key (36, 150)`
+- `[models/t3/inference/scheduled_decode.py] prefill.batch`
+  - `requests 2`
+  - `inputs_embeds (4, 72, 1024)`
+
+Interpretation:
+
+- the scheduler grouped two separate requests into one `T3` cohort
+- `inputs_embeds (4, 72, 1024)` is exactly:
+  - `2 requests x 2 CFG rows = 4`
+- the two requests still produced different outputs:
+  - `predicted_tokens (1, 108)` for one request
+  - `predicted_tokens (1, 83)` for the other
+- so the requests are batched together for `T3`, but their mutable decode state remains separate
+
+### Scheduled vs Coarse-Lock Concurrent
+
+Using the previously validated `concurrent` path as the comparison point:
+
+- `c1` throughput improved from `0.8549` to `1.0309`
+  - about `+20.6%`
+- `c1` wall time improved from `5.2871s` to `3.8411s`
+  - about `27.3%` lower
+- `c2` traced throughput improved from `1.1257` to `1.7764`
+  - about `+57.8%`
+- `c2` traced wall time improved from `6.8933s` to `4.2557s`
+  - about `38.3%` lower
+- `c2` traced `p95` latency improved from `6.7747s` to `4.2538s`
+  - about `37.2%` lower
+- `c4` throughput improved from `1.2339` to `1.8018`
+  - about `+46.0%`
+- `c4` wall time improved from `12.7722s` to `10.0345s`
+  - about `21.4%` lower
+
+### What This Means
+
+- The `scheduled` runtime is the first path that improves both correctness and scaling.
+- The scheduler is doing real batched `T3` work, not just renaming the old full-decode lock.
+- This is still an inference/serving change, not a retraining change.
+- The current scheduler is still limited:
+  - it batches a same-shape cohort to completion
+  - it does not yet admit new requests dynamically mid-cohort
+- That means the design is better, but not yet a full production scheduler.
+- `S3` now becomes a more plausible next bottleneck because `T3` is no longer fully serialized.
+- VRAM likely increased somewhat because each active request keeps its own mutable decode state and cache.
+- VRAM increase was observed qualitatively during testing, but has not been measured formally yet.

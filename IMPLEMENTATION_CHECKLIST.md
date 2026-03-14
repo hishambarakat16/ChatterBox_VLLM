@@ -13,12 +13,14 @@
 
 Gate status:
 
-- achieved in the `concurrent` A/B runtime path
+- achieved first in the `concurrent` A/B runtime path
+- improved further in the `scheduled` A/B runtime path
 - still correct at `concurrency=4`
-- implementation shape:
+- current best implementation shape:
   - request-local `T3` backend
-  - request-local alignment analyzer
-  - coarse full-decode `T3` lock
+  - request-local alignment analyzer state
+  - shared `T3` weights
+  - cohort-based `T3` scheduler
 
 ## Baseline
 
@@ -58,21 +60,28 @@ Current traced single-request reference:
 - [ ] remove shared mutable request state from the model object
 - [ ] make conditionals explicit per request
 - [ ] keep model weights shared and read-only
+- [x] add a cohort-based `T3` scheduler path
+- [ ] make the scheduler admit new requests dynamically mid-cohort
 
 ## Concurrency Safety
 
 - [x] make one model instance safe for `2` active sessions first
 - [x] verify the new `concurrent` path remains correct at `concurrency=4`
+- [x] verify the new `scheduled` path remains correct at `concurrency=4`
 - [ ] remove hidden cross-request mutation
 - [ ] identify batch-size-1 assumptions on the serving path
 - [ ] isolate caches by session
 - [x] stop mutating shared `T3` inference state during active requests in the new `concurrent` path
-- [ ] replace the coarse full-decode `T3` lock with a better scheduler
+- [x] replace the coarse full-decode `T3` lock with a first-pass cohort scheduler
+- [ ] make `T3` scheduling fully dynamic instead of cohort-to-completion
+- [ ] measure peak `VRAM` for `concurrent` vs `scheduled`
 
 Current note:
 
 - baseline and `streaming` are still not the concurrency-safe paths
-- the new `concurrent` A/B path is currently the only validated path for `concurrency=2` and `4`
+- the new `concurrent` A/B path restored correctness first
+- the new `scheduled` A/B path is now the best validated path for `concurrency=2` and `4`
+- the trace confirms it batches multiple separate requests together for `T3`
 
 ## S3 Work
 
@@ -83,13 +92,14 @@ Current note:
 Current read:
 
 - Layer 1 runtime works, but it is slower than baseline on the first single-request smoke test
-- current `concurrency=2` is now correct in the `concurrent` path
-- current `concurrency=4` is also correct in the `concurrent` path
+- current `concurrency=2` is now correct in both `concurrent` and `scheduled`
+- current `concurrency=4` is also correct in both `concurrent` and `scheduled`
 - `T3` shared inference state was the first blocker, and the first-pass fix worked
 - traced single-request flow is sane end-to-end
 - next question is efficiency:
-  - coarse `T3` lock cost
-  - only after reducing that lock can we measure `S3` concurrency cost cleanly
+  - improve beyond same-shape cohort scheduling
+  - measure `VRAM`
+  - quantify whether `S3` is now the next bottleneck
 
 ## Decision Rule
 
@@ -101,4 +111,5 @@ Current status:
 
 - that first gate is done
 - `concurrency=4` did not fail
-- the next decision point is how to replace coarse `T3` serialization with a scheduler or more granular stepping model
+- the coarse `T3` lock has now been replaced by a first-pass cohort scheduler
+- the next decision point is how to make that scheduler more dynamic and how to measure `S3` under the less-serialized front half

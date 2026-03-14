@@ -1,6 +1,6 @@
 # Cloud GPU Quickstart
 
-This is the shortest path to run the current Chatterbox baseline, the streaming runtime, and the new T3-concurrent A/B runtime on a GPU box.
+This is the shortest path to run the current Chatterbox baseline, the streaming runtime, the first-pass `concurrent` runtime, and the newer `scheduled` runtime on a GPU box.
 
 Reference for the current tensor/state flow:
 
@@ -113,12 +113,29 @@ PYTHONPATH=external/chatterbox/src python external/chatterbox/benchmark_multilin
   --language-id ar \
   --audio-prompt-path "$PROMPT_AUDIO" \
   --text "مرحبا، هذا اختبار للبنية الحالية." \
+  --concurrency-levels 1 4 \
+  --output-dir benchmark_wavs
+```
+
+## 11. Run Scheduled Trace Debug Benchmark
+
+Use this only when you want to inspect scheduler batching behavior or debug a regression.
+
+```bash
+PYTHONPATH=external/chatterbox/src python external/chatterbox/benchmark_multilingual_concurrency.py \
+  --impl scheduled \
+  --device cuda \
+  --language-id ar \
+  --audio-prompt-path "$PROMPT_AUDIO" \
+  --text "مرحبا، هذا اختبار للبنية الحالية." \
   --concurrency-levels 1 2 \
   --trace-shapes \
   --output-dir benchmark_wavs
 ```
 
-## 11. Send Back These Results
+Use `--trace-shapes` only when you are debugging a regression or verifying scheduler cohort behavior.
+
+## 12. Send Back These Results
 
 Send back:
 
@@ -128,6 +145,7 @@ Send back:
 - full terminal output from the streaming run
 - full terminal output from the concurrent run
 - full terminal output from the scheduled run
+- full terminal output from the scheduled trace-debug run if you used it
 - whether either run crashed or OOMed
 - whether `concurrency=2` or `concurrency=4` failed
 - whether any output was obviously truncated

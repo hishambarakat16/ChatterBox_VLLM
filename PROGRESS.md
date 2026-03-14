@@ -25,6 +25,7 @@ _Last updated: 2026-03-14_
 - added [CHATTERBOX_STATE_FLOW.md](/Users/hisham/Code/Bahraini_TTS/CHATTERBOX_STATE_FLOW.md) as the file-by-file input/output and state-shape reference
 - added an opt-in shape-trace path across baseline, streaming, T3, and S3 code paths, now exposed through `--trace-shapes` on the benchmark scripts
 - added [t3_concurrent_inference_findings.md](/Users/hisham/Code/Bahraini_TTS/architecture/t3_concurrent_inference_findings.md) with the focused `T3` concurrency hazard review, short-term correctness fix, and long-term scheduler recommendation
+- added [t3_serving_research_memo.md](/Users/hisham/Code/Bahraini_TTS/architecture/t3_serving_research_memo.md) with the focused research read on whether `prefill + step + scheduler` serving is already solved in TTS or mainly inherited from LLM serving
 - switched the intended cloud workflow from patch-application toward a real forked `external/chatterbox` submodule path
 - captured traced single-request baseline and streaming runs in [TRACE_RUN_RESULTS.md](/Users/hisham/Code/Bahraini_TTS/TRACE_RUN_RESULTS.md)
 - added a first-pass `concurrent` runtime path with:
@@ -40,6 +41,24 @@ _Last updated: 2026-03-14_
   - `errors=[]`
   - all four outputs saved successfully
   - correctness held, but throughput scaling remained weak
+- added a first-pass `scheduled` runtime path with:
+  - one shared `T3` worker
+  - one scheduler per shared `T3` worker
+  - per-request mutable decode state
+  - batched same-shape `T3` cohorts
+- validated `concurrency=2` on the `4060 Ti` with the new `scheduled` path:
+  - `errors=[]`
+  - trace confirmed one real batched cohort:
+    - `run_cohort requests 2`
+    - `prefill.batch inputs_embeds (4, 72, 1024)`
+- validated `concurrency=4` on the `4060 Ti` with the `scheduled` path:
+  - `errors=[]`
+  - all four outputs saved successfully
+  - throughput improved materially compared with the coarse-lock `concurrent` path
+- recorded the first concrete scheduler gains vs the coarse-lock path:
+  - `c1` throughput: `0.8549 -> 1.0309` about `+20.6%`
+  - `c2` traced throughput: `1.1257 -> 1.7764` about `+57.8%`
+  - `c4` throughput: `1.2339 -> 1.8018` about `+46.0%`
 
 ## Current Focus
 
@@ -57,9 +76,10 @@ Immediate milestone:
 
 Status:
 
-- achieved in the current `concurrent` A/B path
+- achieved in the `concurrent` A/B path first
+- improved further in the `scheduled` A/B path
 - correctness holds through `concurrency=4`
-- next target is to remove the coarse `T3` serialization bottleneck
+- next target is to make the scheduler more dynamic and measure whether `S3` becomes the next bottleneck
 
 ## Current Baseline Judgment
 
@@ -77,8 +97,13 @@ More precise current read:
   - request-local backend state stored on shared `self`
   - persistent forward hooks installed on shared transformer layers
   - shared `output_attentions` config mutation
-- `S3` remains the first likely performance hot path after correctness is restored
-- but the coarse `T3` lock is currently hiding how concurrent `S3` really is
+- the old coarse `T3` lock is no longer the best path
+- the new `scheduled` path now proves batched `T3` serving improves performance without retraining
+- `S3` is now a more plausible next performance hot path
+- but the current scheduler is still cohort-to-completion, so dynamic admission is still missing
+- current research read:
+  - closest open-source TTS answers already exist in `CosyVoice` and `Fish Audio S2`
+  - but they mainly solve the problem by adopting `vLLM` / `SGLang` / `TensorRT-LLM` style serving, not by introducing a separate widely-used TTS-native scheduler layer
 
 ## Current Plan
 
@@ -87,8 +112,9 @@ More precise current read:
 3. compare baseline vs new runtime path
 4. make `concurrency=2` correct on one shared worker
 5. verify correctness beyond `2`
-6. replace coarse `T3` serialization with a scheduler or finer stepping model
-7. optimize `S3` next if it is still the next bottleneck after `T3` scheduling improves
+6. keep the new scheduler path as the main runtime branch
+7. make the scheduler more dynamic than same-shape cohort-to-completion
+8. optimize `S3` next if it is still the next bottleneck after `T3` scheduling improves
 
 ## Current Execution Path
 
@@ -96,7 +122,7 @@ More precise current read:
 - initialize only `external/chatterbox`
 - use the forked `external/chatterbox` submodule directly
 - replace PyPI Perth with Perth from source
-- run [benchmark_multilingual_concurrency.py](/Users/hisham/Code/Bahraini_TTS/external/chatterbox/benchmark_multilingual_concurrency.py) for `baseline` and `streaming`
+- run [benchmark_multilingual_concurrency.py](/Users/hisham/Code/Bahraini_TTS/external/chatterbox/benchmark_multilingual_concurrency.py) for `baseline`, `streaming`, `concurrent`, and `scheduled`
 
 ## Current Baseline Note
 
@@ -124,14 +150,21 @@ Interpretation:
 - the benchmark is useful because it exposed a real shared-state correctness bug
 - the next technical target is `2` simultaneous requests, not higher concurrency yet
 - the current best short-term `T3` fix is a coarse full-decode lock plus request-local backend/analyzer state
-- the current best long-term `T3` shape is a centralized batched decode scheduler with per-request contexts
+- the new `scheduled` path is the first validated centralized batched decode step in that direction
+- the current best long-term `T3` shape is still a more dynamic batched decode scheduler with per-request contexts
 - the new single-request traces confirm the tensor flow itself is sane before concurrency is introduced
 - the new `concurrent` runtime confirms the short-term `T3` fix is enough to restore correctness at `concurrency=2`
 - the `concurrent` runtime also remains correct at `concurrency=4`
+- the new `scheduled` runtime proves multiple separate requests can be batched together for `T3`
 - the remaining issue is now efficiency:
-  - one request waits behind the coarse `T3` lock
-  - throughput improves somewhat, but not enough to call the system scalable yet
-  - until that `T3` lock is replaced, `S3` is not being stress-tested behind a truly concurrent front half
+  - the scheduler still runs same-shape cohorts to completion
+  - throughput improved materially, but it is not yet the final serving shape
+  - `VRAM` increase was observed qualitatively and still needs formal measurement
+  - `S3` is now a more realistic next bottleneck candidate
+- current best systems direction:
+  - adapt an LLM-serving style `prefill + step + scheduler` design for `T3`
+  - do not treat the core scheduler idea itself as novel
+  - treat the speech-specific adaptation and evaluation as the real opportunity
 
 ## Not Current Work
 

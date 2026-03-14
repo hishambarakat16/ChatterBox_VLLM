@@ -92,6 +92,7 @@ Then:
 - [CLOUD_GPU_QUICKSTART.md](/Users/hisham/Code/Bahraini_TTS/CLOUD_GPU_QUICKSTART.md): required-only GPU setup and baseline-vs-streaming run commands
 - [cosyvoice_v1_linear_parallel_breakdown.md](/Users/hisham/Code/Bahraini_TTS/architecture/cosyvoice_v1_linear_parallel_breakdown.md): focused CozyVoice step-by-step and parallelism analysis
 - [t3_concurrent_inference_findings.md](/Users/hisham/Code/Bahraini_TTS/architecture/t3_concurrent_inference_findings.md): focused T3 concurrent-inference hazard review and architecture recommendation
+- [t3_serving_research_memo.md](/Users/hisham/Code/Bahraini_TTS/architecture/t3_serving_research_memo.md): focused research memo on whether shared-instance `prefill + step + scheduler` serving is already solved in TTS
 - [s3_origin_story.html](/Users/hisham/Code/Bahraini_TTS/architecture/s3_origin_story.html): lightweight visual explainer for the S3 lineage and current architecture
 - [REFERENCE_REPOS.md](/Users/hisham/Code/Bahraini_TTS/REFERENCE_REPOS.md): upstream references and clone strategy
 - [IMPLEMENTATION_CHECKLIST.md](/Users/hisham/Code/Bahraini_TTS/IMPLEMENTATION_CHECKLIST.md): execution checklist and design gaps
@@ -108,6 +109,8 @@ Then:
 - Main result: prompt preprocessing branches can be parallelized and pipeline-overlapped, but the single-utterance path still stays serial at the speech-token LM loop and the mel-level flow solver.
 - I also created [t3_concurrent_inference_findings.md](/Users/hisham/Code/Bahraini_TTS/architecture/t3_concurrent_inference_findings.md) after tracing the current Chatterbox `T3` concurrency failure.
 - Main result: the first correctness blocker is shared mutable `T3` inference state, especially request-local backend state stored on `self` and persistent forward hooks on shared transformer layers.
+- I also created [t3_serving_research_memo.md](/Users/hisham/Code/Bahraini_TTS/architecture/t3_serving_research_memo.md) after checking whether this serving problem is already solved elsewhere.
+- Main result: the closest existing TTS-side solutions already adapt `LLM` serving engines like `vLLM` and `SGLang`, so the right next move for Chatterbox `T3` is adaptation of that design, not inventing the scheduler pattern from scratch.
 
 ## Update Rules
 

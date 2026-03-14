@@ -23,9 +23,10 @@ Immediate milestone:
 
 Status:
 
-- achieved in the new `concurrent` A/B runtime path using request-local `T3` decode state plus a coarse full-decode `T3` lock
+- achieved first in the `concurrent` A/B runtime path using request-local `T3` decode state plus a coarse full-decode `T3` lock
+- improved further in the new `scheduled` A/B runtime path using batched `T3` cohorts
 - validated as correct through `concurrency=4`
-- next step is to remove the coarse `T3` serialization bottleneck and test true scaling
+- next step is to make the `T3` scheduler more dynamic and measure where `S3` becomes the next bottleneck
 
 ## Current Baseline
 
@@ -109,8 +110,13 @@ Current read:
 - the remaining problem is now latency/throughput efficiency, not immediate correctness
 - the new `concurrent` path also completes `concurrency=4` with `errors=[]`
 - but throughput gain is still weak because `T3` is effectively queued behind a coarse full-decode lock
+- the new `scheduled` path now batches multiple separate requests together for `T3` and is the current best validated runtime shape
+- trace evidence confirms that `2` separate requests were actually grouped into one `T3` cohort:
+  - `run_cohort requests 2`
+  - `prefill.batch inputs_embeds (4, 72, 1024)`
+- the scheduler keeps shared weights shared while keeping each request's mutable decode state separate
 
-### 3. The current S3 path is likely the first hot spot
+### 3. The current S3 path is likely the next hot spot
 
 - Chatterbox README says `speech-token -> mel` was the bottleneck
 - `S3` still does mel-space iterative decoding
@@ -125,10 +131,15 @@ Current order:
 
 Updated order:
 
-- `T3` correctness at `2` simultaneous requests: done in the `concurrent` path
-- `concurrency=4` correctness: also stable in the `concurrent` path
-- next isolate where throughput is still being lost: coarse `T3` lock first, then `S3` cost
-- note: as long as `T3` is serialized this way, `S3` is not being tested under a truly concurrent front half
+- `T3` correctness at `2` simultaneous requests: done
+- `concurrency=4` correctness: also stable
+- coarse full-decode `T3` serialization: replaced by the new `scheduled` path for same-shape cohorts
+- next isolate where throughput is still being lost:
+  - dynamic `T3` scheduling limitations
+  - then `S3` cost under the less-serialized front half
+- note:
+  - under the old `concurrent` path, `S3` was not being stress-tested cleanly because `T3` was still queued behind a coarse lock
+  - under the new `scheduled` path, `S3` is a much more plausible next limiter
 
 ### 4. Chatterbox S3 comes from the CosyVoice family
 
@@ -214,10 +225,31 @@ The target runtime shape is:
 - shared worker owns read-only model weights and helpers
 - session object owns request conditionals, caches, and decode progress
 - request-local `T3` decode path owns backend/analyzer state for each request
+- one scheduler per shared `T3` worker batches compatible requests together
+
+Current measured scheduler result:
+
+- `scheduled c1` throughput: `1.0309 audio_seconds_per_second`
+- `scheduled c4` throughput: `1.8018 audio_seconds_per_second`
+- compared with the coarse-lock `concurrent` path, that is:
+  - about `+20.6%` at `c1`
+  - about `+46.0%` at `c4`
+
+Important clarification:
+
+- if four separate requests arrive with the same batch key, the scheduler can batch those four requests together for `T3`
+- it is not "one request has four internal lanes"
+- it is "four separate requests progress together inside one shared `T3` batch"
+- the current scheduler still runs a same-shape cohort to completion rather than admitting new requests dynamically mid-cohort
 
 ### Phase 2: Improve streaming efficiency
 
-- replace the coarse full-decode `T3` lock with a better scheduling model
+- done first-pass:
+  - replace the coarse full-decode `T3` lock with a cohort-based `T3` scheduler
+- next:
+  - make the scheduler more dynamic
+  - measure peak `VRAM` for the scheduled path
+  - identify whether `S3` becomes the next real bottleneck
 - step active requests through `T3` in a more concurrency-friendly way
 - only then isolate `S3` as the next decoder hot path
 
