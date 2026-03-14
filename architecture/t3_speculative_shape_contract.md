@@ -14,6 +14,7 @@ This is not a production-serving design doc. It is a confirmed prototype contrac
 
 Prototype files:
 
+- [draft_model.py](/Users/hisham/Code/Bahraini_TTS/external/chatterbox/src/chatterbox/models/t3/inference/draft_model.py)
 - [speculative_decode.py](/Users/hisham/Code/Bahraini_TTS/external/chatterbox/src/chatterbox/models/t3/inference/speculative_decode.py)
 - [benchmark_t3_speculative_prototype.py](/Users/hisham/Code/Bahraini_TTS/external/chatterbox/benchmark_t3_speculative_prototype.py)
 
@@ -36,6 +37,15 @@ That means:
 - the current multilingual `T3` acts as both draft and verifier
 - the prototype proves correctness and shape alignment
 - it does not yet prove real production speedup
+
+A separate draft-model scaffold now also exists:
+
+- `draft_mode = layer_subset`
+- same multilingual token interface
+- same conditioning path
+- same BOS/EOS semantics
+- same embeddings and output heads
+- fewer transformer layers selected from the base multilingual `T3`
 
 ## External Boundary
 
@@ -199,17 +209,32 @@ Interpretation:
 - it does not yet prove concurrency improvement
 - it does not yet prove anything about a smaller external draft model
 
-Important caution:
+Important updated caution:
 
-- `baseline_t3_s = 4.2096`
-- `speculative_t3_s = 2.7783`
+The fair repeated benchmark now shows that self-draft is slower and heavier than baseline.
 
-This benchmark should not yet be treated as a trustworthy speedup claim, because:
+Measured with:
 
-- it is self-draft, not a smaller draft model
-- the run order is baseline first, speculative second
-- warm kernels and runtime state can bias the second measurement
-- concurrency was not exercised here
+- `max_new_tokens = 128`
+- `warmup_runs = 2`
+- `runs = 6`
+- alternating order between baseline-first and speculative-first
+
+Observed:
+
+- `baseline_t3_s_mean ~= 1.68s`
+- `speculative_t3_s_mean ~= 2.12s`
+- `speculative_vs_baseline_speedup_pct ~= -26%`
+- `baseline_peak_allocated_delta_mb ~= 151.8`
+- `speculative_peak_allocated_delta_mb ~= 230.5`
+- `exact_token_match = True`
+- `speculative_acceptance_rate_mean = 1.0`
+
+Interpretation:
+
+- self-draft remains a correctness scaffold
+- it is not a performance path
+- the benchmark is now telling the truth
 
 ## Likely Explanation For Audio Tail Trimming
 
@@ -224,12 +249,19 @@ That matches the observed facts:
 - exact token match was true
 - both baseline and speculative outputs rendered exactly 64 tokens
 
+Follow-up confirmation:
+
+- rerunning with `max_new_tokens = 128` produced natural stopping at `86` tokens
+- rendered audio sounded correct with no tail clipping
+- so the earlier clipping was effectively confirmed to be a token-cap artifact
+
 ## Current Safe Next Steps
 
 1. Keep this prototype as the correctness reference path.
 2. Make latency measurement fair with warmup and alternating benchmark order.
-3. Add a real smaller compatible draft model.
-4. Only then treat throughput or GPU-saturation numbers as architecture evidence.
+3. Use a real smaller compatible draft model instead of self-draft.
+4. Start with the layer-subset multilingual draft scaffold.
+5. Only then treat throughput or GPU-saturation numbers as architecture evidence.
 
 ## Short Summary
 
