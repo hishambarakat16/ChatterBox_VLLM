@@ -39,6 +39,44 @@ Benchmark entry point:
 
 - [benchmark_t3_speculative_prototype.py](/Users/hisham/Code/Bahraini_TTS/external/chatterbox/benchmark_t3_speculative_prototype.py)
 
+## First Benchmark Result
+
+The first real separate draft benchmark was run with:
+
+```bash
+PYTHONPATH=external/chatterbox/src python external/chatterbox/benchmark_t3_speculative_prototype.py \
+  --device cuda \
+  --language-id ar \
+  --audio-prompt-path "$PROMPT_AUDIO" \
+  --text "مرحبا، هذا اختبار للبنية الحالية." \
+  --max-new-tokens 128 \
+  --speculate-k 4 \
+  --draft-mode layer_subset \
+  --draft-layers 12 \
+  --draft-layer-selection even \
+  --warmup-runs 2 \
+  --runs 6
+```
+
+Observed:
+
+- `draft_layer_indices = [0, 3, 5, 8, 11, 13, 16, 18, 21, 24, 26, 29]`
+- `baseline_t3_s_mean ~= 1.73s`
+- `speculative_t3_s_mean ~= 31.00s`
+- `speculative_vs_baseline_speedup_pct ~= -1688%`
+- `speculative_acceptance_rate_mean = 0.04`
+- `speculative_rebuild_count_mean = 74`
+- `speculative_rebuild_tokens_total_mean = 2877`
+- `exact_token_match = True`
+
+Interpretation:
+
+- the draft remains token-compatible enough for correctness
+- but it is not close enough to the teacher to function as a useful speculative draft
+- most rounds are zero-match rounds, so replay/rebuild work dominates runtime
+
+This means the first untrained layer-subset draft is a valid baseline experiment, but not a viable serving solution.
+
 ## Why This Candidate Exists
 
 We need a draft model that keeps:
@@ -101,12 +139,18 @@ This layer-subset draft should answer:
 - how much latency changes once the draft is genuinely cheaper than the verifier?
 - whether GPU behavior improves at all with a real draft
 
+The first experiment answered this negatively for the untrained layer-subset version.
+
 ## What It Does Not Solve Yet
 
 - it is not trained or distilled specifically as a draft model
 - acceptance rate may drop relative to self-draft
 - mismatch resync still needs to be watched carefully
 - it may still be too narrow to saturate GPU well at low concurrency
+
+Based on the first benchmark, the most important missing ingredient is now explicit:
+
+- the draft needs behavioral closeness to the teacher, not just interface compatibility
 
 ## Suggested First Test
 
@@ -132,15 +176,33 @@ PYTHONPATH=external/chatterbox/src python external/chatterbox/benchmark_t3_specu
 - `exact_token_match`
 - `first_mismatch_index`
 - `speculative_acceptance_rate_mean`
+- `speculative_rebuild_count_mean`
+- `speculative_rebuild_tokens_total_mean`
+- `speculative_match_len_hist_total`
 - `speculative_t3_s_mean`
 - `speculative_vs_baseline_speedup_pct`
 - peak allocated memory deltas
 - your observed GPU-util behavior during the run
+
+With the current layer-subset draft, these replay metrics are the clearest explanation for the extreme slowdown.
+
+## Updated Takeaway
+
+The compatible-draft question is now more specific:
+
+- interface compatibility alone is not enough
+- a useful draft must also be behaviorally close to the teacher
+
+That pushes the next step toward one of two directions:
+
+1. a trained/distilled compatible draft model
+2. a token-compatible planner re-architecture that is more parallel by design
 
 ## Short Summary
 
 The first real draft-model direction is now clear:
 
 - self-draft proved correctness
-- layer-subset multilingual `T3` is the first actual cheaper compatible draft candidate
-- now we can test whether compatibility and acceptance stay good enough to justify speculative decoding as a real performance path
+- layer-subset multilingual `T3` was the first actual cheaper compatible draft candidate
+- that candidate failed badly on acceptance and triggered massive replay churn
+- the next serious draft path is trained/distilled compatibility, not naive layer subsetting

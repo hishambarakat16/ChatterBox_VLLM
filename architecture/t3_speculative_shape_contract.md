@@ -47,6 +47,12 @@ A separate draft-model scaffold now also exists:
 - same embeddings and output heads
 - fewer transformer layers selected from the base multilingual `T3`
 
+Latest measured separate-draft result:
+
+- the first untrained `layer_subset` draft is mechanically valid
+- but it is not a viable draft from a performance standpoint
+- acceptance is far too low and replay churn dominates runtime
+
 ## External Boundary
 
 Inputs into the prototype:
@@ -209,6 +215,54 @@ Interpretation:
 - it does not yet prove concurrency improvement
 - it does not yet prove anything about a smaller external draft model
 
+## Layer-Subset Draft Outcome
+
+The first real separate draft benchmark was run with:
+
+- `draft_mode = layer_subset`
+- `draft_layers = 12`
+- `draft_layer_selection = even`
+- selected layer indices:
+  - `[0, 3, 5, 8, 11, 13, 16, 18, 21, 24, 26, 29]`
+
+Measured with:
+
+- `max_new_tokens = 128`
+- `warmup_runs = 2`
+- `runs = 6`
+- alternating order between baseline-first and speculative-first
+
+Observed:
+
+- `baseline_t3_s_mean ~= 1.73s`
+- `speculative_t3_s_mean ~= 31.00s`
+- `speculative_vs_baseline_speedup_pct ~= -1688%`
+- `baseline_tokens_per_s_mean ~= 49.61`
+- `speculative_tokens_per_s_mean ~= 2.77`
+- `speculative_peak_allocated_delta_mb_mean ~= 292.75`
+- `exact_token_match = True`
+
+Mismatch/replay diagnostics:
+
+- `speculative_rounds_mean = 75`
+- `speculative_proposed_tokens_total = 300`
+- `speculative_accepted_draft_tokens_total = 12`
+- `speculative_acceptance_rate_mean = 0.04`
+- `speculative_correction_tokens_total = 74`
+- `speculative_rebuild_count_mean = 74`
+- `speculative_rebuild_tokens_total_mean = 2877`
+- `speculative_full_accept_rounds = 1`
+- `speculative_zero_accept_rounds = 70`
+- `speculative_partial_accept_rounds = 4`
+- `speculative_match_len_hist_total = [420, 12, 0, 12, 6]`
+
+Interpretation:
+
+- the layer-subset draft is usually wrong on the very first proposed token
+- the system then falls into the rebuild/replay path almost every round
+- the speculative wrapper remains correct, but this specific draft construction is not usable
+- this is strong evidence that naive structural slimming without distillation is not enough
+
 Important updated caution:
 
 The fair repeated benchmark now shows that self-draft is slower and heavier than baseline.
@@ -260,8 +314,10 @@ Follow-up confirmation:
 1. Keep this prototype as the correctness reference path.
 2. Make latency measurement fair with warmup and alternating benchmark order.
 3. Use a real smaller compatible draft model instead of self-draft.
-4. Start with the layer-subset multilingual draft scaffold.
-5. Only then treat throughput or GPU-saturation numbers as architecture evidence.
+4. Treat the current layer-subset multilingual draft as a failed baseline, not a candidate solution.
+5. If staying on speculative decoding, move toward trained/distilled drafts instead of untrained layer subsets.
+6. In parallel, evaluate whether a more parallel planner architecture is a better long-term target than speculative decoding itself.
+7. Only then treat throughput or GPU-saturation numbers as architecture evidence.
 
 ## Short Summary
 
@@ -272,4 +328,7 @@ The speculative prototype is currently correct in the ways that matter most for 
 - verifier alignment lines up
 - emitted tokens match baseline exactly
 
-The remaining uncertainty is no longer shape correctness. The remaining uncertainty is whether a real draft model can improve GPU utilization and latency under realistic serving conditions.
+The remaining uncertainty is no longer shape correctness. The remaining uncertainty is which path is more credible:
+
+- a trained/distilled compatible draft model
+- or a token-compatible planner re-architecture that reduces strict one-token autoregressive dependence
