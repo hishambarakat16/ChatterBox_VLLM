@@ -298,6 +298,21 @@ Current measured stage read:
   - `T3` first-token latency is decent at `c2` and still near target at `c4`
   - but the current full-audio path is still far from low-latency streaming because audio is only ready seconds later
 
+Current alignment-guard read:
+
+- we briefly added analyzer benchmarking toggles and an alignment sweep to test whether the `T3` attention-based guardrail could be weakened or removed
+- the practical result was clear:
+  - `alignment off` produced long rambling tails, silence/noise, and garbled late speech
+  - `inspect every 2` also degraded quality
+  - disabling the `long_tail` force-EOS rule was clearly bad on the tested prompt
+- current conclusion:
+  - the scheduled alignment guard is doing real quality work
+  - the current safe production assumption is still:
+    - analyzer on
+    - inspect every step
+    - keep the existing EOS guard policies enabled
+- the temporary alignment experiment knobs were removed after this conclusion so the runtime stays focused on the validated path
+
 Important clarification:
 
 - if four separate requests arrive with the same batch key, the scheduler can batch those four requests together for `T3`
@@ -314,6 +329,7 @@ Important clarification:
 - next:
   - validate the hardened scheduler with staggered-arrival benchmarks
   - profile deeper inside `T3`, since `T3` still dominates total compute in the current timing split
+  - keep the alignment guardrail enabled while profiling, since the experiments showed it is necessary for output quality
   - add true first-audio-chunk measurement once partial audio emission exists
   - only then decide whether `S3` becomes the next real bottleneck
   - keep tracking GPU utilization and `VRAM`

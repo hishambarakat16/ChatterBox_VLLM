@@ -132,6 +132,16 @@ _Last updated: 2026-03-14_
   - `c8` still improves throughput, but only modestly over `c4`
   - `c8` is poor for latency-sensitive use
   - `c2/c4` remain the practical operating range depending on whether latency or throughput matters more
+- added temporary scheduled-alignment experiment controls and a sweep runner to test:
+  - analyzer on vs off
+  - inspection frequency
+  - selected EOS-policy toggles
+- learned from the alignment experiments that:
+  - turning the analyzer off causes bad long-tail / gibberish behavior
+  - inspecting every `2` steps is already too weak on the tested prompt
+  - disabling the `long_tail` force-EOS rule is clearly bad
+  - the current safe assumption is still full analyzer inspection every step
+- removed the temporary alignment sweep controls and runner after recording the conclusion, so the runtime stays on the validated scheduled path
 
 ## Current Focus
 
@@ -156,6 +166,7 @@ Status:
 - per-stage timing now exists and shows `T3` is still the larger current limiter
 - the new latency KPIs show `T3` first-token time is much better than full audio-ready time
 - next target is to validate staggered arrivals, profile `T3` further, and then add true first-audio-chunk measurement
+- the alignment guard stays enabled while this profiling continues, because the recent experiments showed it is necessary for quality
 
 ## Current Baseline Judgment
 

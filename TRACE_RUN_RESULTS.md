@@ -604,3 +604,33 @@ Current practical operating-point read:
 - `c2` is the best latency-first operating point
 - `c4` is the best throughput-first operating point
 - `c8` is not a good latency-sensitive operating point
+
+## Alignment Guardrail Experiments
+
+These were temporary scheduled-path experiments to answer one specific question:
+
+- can the attention-based `T3` alignment guard be weakened or removed without hurting output quality?
+
+Practical result:
+
+- no, not safely with the tested variants
+
+Most important observations from the sweep and follow-up listening:
+
+- `alignment off` caused long rambling clips, trailing silence/noise, and garbled late speech
+- `inspect every 2` also produced bad clips
+- disabling the `long_tail` force-EOS rule was clearly bad on the tested prompt
+- removing the guard can make raw throughput look better while actually making output quality and total request latency worse, because runaway decode continues for much longer
+
+Current conclusion:
+
+- the attention-based alignment guard is not optional in the current runtime
+- the safe current assumption is:
+  - analyzer on
+  - inspect every decode step
+  - keep the existing EOS guard policies enabled
+
+Repo note:
+
+- the temporary alignment sweep controls and helper script were removed after these experiments
+- the project is back on the simpler validated scheduled runtime path, while keeping the lesson from the sweep recorded here
