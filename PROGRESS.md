@@ -12,7 +12,7 @@ _Last updated: 2026-03-14_
 - reduced the project docs to a streaming-concurrency focus
 - defined the local Chatterbox fork strategy and minimal-file-duplication plan
 - added Layer 1 streaming-runtime scaffolding inside `external/chatterbox`
-- expanded [chatterbox_serving_shape_current_vs_target.html](/Users/hisham/Code/Bahraini_TTS/architecture/chatterbox_serving_shape_current_vs_target.html) into a self-contained engineering diagram with current end-to-end flow, trace shapes, concurrency hazards, target redesign, per-file rewrite map, and the validated `concurrent` checkpoint
+- expanded and later trimmed [chatterbox_serving_shape_current_vs_target.html](/Users/hisham/Code/Bahraini_TTS/architecture/chatterbox_serving_shape_current_vs_target.html) into a self-contained engineering diagram with current end-to-end flow, trace shapes, concurrency hazards, the current `scheduled` runtime checkpoint, and the target shared-vs-request-local boundary
 - created [patches/chatterbox_streaming_runtime.patch](/Users/hisham/Code/Bahraini_TTS/patches/chatterbox_streaming_runtime.patch) so the local Chatterbox runtime changes can be reproduced on a GPU box
 - created [CLOUD_GPU_QUICKSTART.md](/Users/hisham/Code/Bahraini_TTS/CLOUD_GPU_QUICKSTART.md) with the required-only cloud setup and run commands
 - confirmed on a `4060 Ti` that PyPI Perth was the real blocker because `perth.PerthImplicitWatermarker` resolved to `None`
@@ -59,6 +59,57 @@ _Last updated: 2026-03-14_
   - `c1` throughput: `0.8549 -> 1.0309` about `+20.6%`
   - `c2` traced throughput: `1.1257 -> 1.7764` about `+57.8%`
   - `c4` throughput: `1.2339 -> 1.8018` about `+46.0%`
+- hardened the `scheduled` runtime further:
+  - active cohorts are now kept by the scheduler
+  - cohorts are advanced step-by-step in round-robin order
+  - new requests can enter the scheduler while older cohorts are still decoding
+- added benchmark-side `VRAM` reporting:
+  - allocated/reserved start
+  - allocated/reserved end
+  - peak allocated/reserved
+  - peak deltas
+- captured the first post-hardening scheduled benchmark on the `4060 Ti`:
+  - `c1 audio_seconds_per_second = 1.0343`
+  - `c2 audio_seconds_per_second = 1.7437`
+  - `c4 audio_seconds_per_second = 1.7533`
+- captured the first measured `VRAM` growth on the scheduled path:
+  - `c1 peak allocated = 3512.7 MB`
+  - `c2 peak allocated = 3931.6 MB`
+  - `c4 peak allocated = 4499.3 MB`
+- observed a live `nvidia-smi` snapshot during the scheduled run showing:
+  - about `75%` GPU utilization
+  - about `107W` power draw
+  - about `4786 MiB` in use
+- updated the current operating-point judgment:
+  - `c1 -> c2` gives most of the throughput win
+  - `c2 -> c4` is nearly flat
+  - `concurrency=2` is currently the best operating point for this workload
+- added per-stage timing splits to the benchmark output:
+  - `stage_text_prep_s`
+  - `stage_t3_s`
+  - `stage_t3_active_s`
+  - `stage_t3_wait_s`
+  - `stage_s3_s`
+  - `stage_watermark_s`
+- captured the first timing-enabled scheduled benchmark on the `4060 Ti`:
+  - `c1 audio_seconds_per_second = 1.0346`
+  - `c2 audio_seconds_per_second = 1.8267`
+  - `c4 audio_seconds_per_second = 2.7884`
+- recorded the latest timing-enabled gains:
+  - `c1 -> c2` throughput: about `+76.6%`
+  - `c2 -> c4` throughput: about `+52.6%`
+  - `scheduled c4` vs old coarse-lock `concurrent c4`: about `+126.0%`
+- recorded the first timing-based bottleneck read:
+  - scheduler wait is tiny under simultaneous-arrival load
+  - active `T3` compute is still larger than `S3`
+  - `S3` is not the first measured bottleneck yet
+- recorded the latest measured `VRAM` peaks on the timed scheduled run:
+  - `c1 peak allocated = 3514.1 MB`
+  - `c2 peak allocated = 3917.5 MB`
+  - `c4 peak allocated = 4735.6 MB`
+- updated the current operating-point judgment again:
+  - the hardened scheduler now scales meaningfully through `concurrency=4`
+  - the next interpretation gap is deeper `T3` profiling plus staggered-arrival validation
 
 ## Current Focus
 
@@ -79,7 +130,9 @@ Status:
 - achieved in the `concurrent` A/B path first
 - improved further in the `scheduled` A/B path
 - correctness holds through `concurrency=4`
-- next target is to make the scheduler more dynamic and measure whether `S3` becomes the next bottleneck
+- the scheduler has now been hardened and `VRAM` is measured
+- per-stage timing now exists and shows `T3` is still the larger current limiter
+- next target is to validate staggered arrivals and profile `T3` further before shifting focus to `S3`
 
 ## Current Baseline Judgment
 
@@ -99,8 +152,10 @@ More precise current read:
   - shared `output_attentions` config mutation
 - the old coarse `T3` lock is no longer the best path
 - the new `scheduled` path now proves batched `T3` serving improves performance without retraining
-- `S3` is now a more plausible next performance hot path
-- but the current scheduler is still cohort-to-completion, so dynamic admission is still missing
+- the hardened `scheduled` path now pushes GPU utilization materially higher than before
+- stage timing says active `T3` is still the larger current hot path
+- `S3` is still a secondary cost worth tracking, but not the first measured limiter
+- but the current benchmark shape still launches requests together, so staggered-arrival validation is still missing
 - current research read:
   - closest open-source TTS answers already exist in `CosyVoice` and `Fish Audio S2`
   - but they mainly solve the problem by adopting `vLLM` / `SGLang` / `TensorRT-LLM` style serving, not by introducing a separate widely-used TTS-native scheduler layer
@@ -113,8 +168,8 @@ More precise current read:
 4. make `concurrency=2` correct on one shared worker
 5. verify correctness beyond `2`
 6. keep the new scheduler path as the main runtime branch
-7. make the scheduler more dynamic than same-shape cohort-to-completion
-8. optimize `S3` next if it is still the next bottleneck after `T3` scheduling improves
+7. validate the hardened scheduler under staggered arrivals
+8. profile deeper inside `T3`, then optimize `S3` only if it becomes the next bottleneck after that
 
 ## Current Execution Path
 
@@ -157,10 +212,10 @@ Interpretation:
 - the `concurrent` runtime also remains correct at `concurrency=4`
 - the new `scheduled` runtime proves multiple separate requests can be batched together for `T3`
 - the remaining issue is now efficiency:
-  - the scheduler still runs same-shape cohorts to completion
-  - throughput improved materially, but it is not yet the final serving shape
-  - `VRAM` increase was observed qualitatively and still needs formal measurement
-  - `S3` is now a more realistic next bottleneck candidate
+  - the scheduler now supports active-cohort rotation, but that still needs staggered-arrival validation
+  - throughput now improves materially through `concurrency=4`
+  - `VRAM` increase is now measured and not just guessed
+  - per-stage timing says active `T3` still dominates `S3`
 - current best systems direction:
   - adapt an LLM-serving style `prefill + step + scheduler` design for `T3`
   - do not treat the core scheduler idea itself as novel

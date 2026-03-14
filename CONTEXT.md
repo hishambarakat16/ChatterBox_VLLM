@@ -26,7 +26,9 @@ Status:
 - achieved first in the `concurrent` A/B runtime path using request-local `T3` decode state plus a coarse full-decode `T3` lock
 - improved further in the new `scheduled` A/B runtime path using batched `T3` cohorts
 - validated as correct through `concurrency=4`
-- next step is to make the `T3` scheduler more dynamic and measure where `S3` becomes the next bottleneck
+- the hardened scheduler now exists and VRAM is measured
+- stage timing now exists and points to active `T3` compute as the larger current limiter
+- current next step is to validate staggered arrivals and then profile `T3` further before blaming `S3`
 
 ## Current Baseline
 
@@ -115,14 +117,24 @@ Current read:
   - `run_cohort requests 2`
   - `prefill.batch inputs_embeds (4, 72, 1024)`
 - the scheduler keeps shared weights shared while keeping each request's mutable decode state separate
+- the hardened scheduler now also keeps active cohorts and round-robins them, so new requests can enter the scheduler while older cohorts are still decoding
+- current timing-enabled live benchmark read:
+  - `concurrency=2` materially improves over `1`
+  - `concurrency=4` also improves materially over `2`
+  - GPU usage is clearly higher than before
+  - scheduler wait is tiny under simultaneous arrivals, so the current limit is not simple queueing
 
-### 3. The current S3 path is likely the next hot spot
+### 3. T3 still looks like the current hot path
 
 - Chatterbox README says `speech-token -> mel` was the bottleneck
 - `S3` still does mel-space iterative decoding
 - the decoder works on the longer mel timeline, not the shorter token timeline
 
-But `S3` is not the first correctness blocker anymore.
+But the latest timing-enabled run changes the current read:
+
+- `T3` wait time is tiny under simultaneous arrivals
+- active `T3` compute is still larger than `S3`
+- so the current performance limit is still more `T3` than `S3`
 
 Current order:
 
@@ -135,11 +147,12 @@ Updated order:
 - `concurrency=4` correctness: also stable
 - coarse full-decode `T3` serialization: replaced by the new `scheduled` path for same-shape cohorts
 - next isolate where throughput is still being lost:
-  - dynamic `T3` scheduling limitations
-  - then `S3` cost under the less-serialized front half
+  - staggered-arrival / dynamic-admission behavior
+  - then deeper `T3` cost under the less-serialized front half
+  - then `S3` cost after that
 - note:
   - under the old `concurrent` path, `S3` was not being stress-tested cleanly because `T3` was still queued behind a coarse lock
-  - under the new `scheduled` path, `S3` is a much more plausible next limiter
+  - under the new timing-enabled `scheduled` path, `T3` still dominates `S3` in the current measurements
 
 ### 4. Chatterbox S3 comes from the CosyVoice family
 
@@ -229,27 +242,72 @@ The target runtime shape is:
 
 Current measured scheduler result:
 
-- `scheduled c1` throughput: `1.0309 audio_seconds_per_second`
-- `scheduled c4` throughput: `1.8018 audio_seconds_per_second`
+- `scheduled c1` throughput: `1.0346 audio_seconds_per_second`
+- `scheduled c2` throughput: `1.8267 audio_seconds_per_second`
+- `scheduled c4` throughput: `2.7884 audio_seconds_per_second`
 - compared with the coarse-lock `concurrent` path, that is:
-  - about `+20.6%` at `c1`
-  - about `+46.0%` at `c4`
+  - about `+21.0%` at `c1`
+  - about `+62.3%` at `c2`
+  - about `+126.0%` at `c4`
+
+Current operating-point read:
+
+- `c1 -> c2` gives the real win:
+  - about `+76.6%` throughput
+- `c2 -> c4` still improves strongly:
+  - about `+52.6%`
+- so the hardened scheduler now shows meaningful scaling through `concurrency=4` on this workload
+
+Current measured VRAM read:
+
+- `c1` peak allocated: `3514.1 MB`
+- `c2` peak allocated: `3917.5 MB`
+- `c4` peak allocated: `4735.6 MB`
+- memory is growing with active request state, as expected
+- but on this `16 GB` card, VRAM is not the current hard limit
+
+Current measured stage read:
+
+- `c1`:
+  - `T3 total = 3.4081s`
+  - `S3 = 0.6424s`
+- `c2`:
+  - `T3 total mean = 2.5362s`
+  - `S3 mean = 0.9802s`
+- `c4`:
+  - `T3 total mean = 3.9262s`
+  - `S3 mean = 1.3699s`
+- `T3` wait time is tiny:
+  - `c2 mean = 0.0106s`
+  - `c4 mean = 0.0127s`
+- so the remaining limit is not scheduler queueing under simultaneous arrivals
+- the latest throughput read is:
+  - `c1 = 1.0346`
+  - `c2 = 1.8267`
+  - `c4 = 2.7884`
+- which means:
+  - `c1 -> c2` is about `+76.6%`
+  - `c2 -> c4` is about `+52.6%`
+- so the hardened scheduler is now showing meaningful scaling through `concurrency=4`
 
 Important clarification:
 
 - if four separate requests arrive with the same batch key, the scheduler can batch those four requests together for `T3`
 - it is not "one request has four internal lanes"
 - it is "four separate requests progress together inside one shared `T3` batch"
-- the current scheduler still runs a same-shape cohort to completion rather than admitting new requests dynamically mid-cohort
+- the original first-pass scheduler ran a same-shape cohort to completion
+- the hardened scheduler now admits new requests while older cohorts are still active
+- but the current simultaneous-arrival benchmark does not fully prove how much that dynamic admission helps yet
 
 ### Phase 2: Improve streaming efficiency
 
 - done first-pass:
   - replace the coarse full-decode `T3` lock with a cohort-based `T3` scheduler
 - next:
-  - make the scheduler more dynamic
-  - measure peak `VRAM` for the scheduled path
-  - identify whether `S3` becomes the next real bottleneck
+  - validate the hardened scheduler with staggered-arrival benchmarks
+  - profile deeper inside `T3`, since `T3` still dominates `S3` in the current timing split
+  - only then decide whether `S3` becomes the next real bottleneck
+  - keep tracking GPU utilization and `VRAM`
 - step active requests through `T3` in a more concurrency-friendly way
 - only then isolate `S3` as the next decoder hot path
 

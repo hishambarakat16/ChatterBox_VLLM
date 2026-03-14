@@ -28,7 +28,8 @@ Gate status:
 - [ ] record first-chunk latency
 - [ ] record inter-chunk latency
 - [x] record full-response latency
-- [ ] record VRAM usage
+- [x] record VRAM usage for the scheduled path
+- [ ] record VRAM usage for baseline / concurrent side-by-side
 
 Current baseline smoke result:
 
@@ -61,7 +62,8 @@ Current traced single-request reference:
 - [ ] make conditionals explicit per request
 - [ ] keep model weights shared and read-only
 - [x] add a cohort-based `T3` scheduler path
-- [ ] make the scheduler admit new requests dynamically mid-cohort
+- [x] implement scheduler admission beyond same-shape cohort-to-completion
+- [ ] benchmark staggered arrivals to validate dynamic admission behavior
 
 ## Concurrency Safety
 
@@ -73,8 +75,9 @@ Current traced single-request reference:
 - [ ] isolate caches by session
 - [x] stop mutating shared `T3` inference state during active requests in the new `concurrent` path
 - [x] replace the coarse full-decode `T3` lock with a first-pass cohort scheduler
-- [ ] make `T3` scheduling fully dynamic instead of cohort-to-completion
+- [x] harden `T3` scheduling beyond cohort-to-completion
 - [ ] measure peak `VRAM` for `concurrent` vs `scheduled`
+- [ ] add a staggered-arrival benchmark to prove dynamic admission under live load
 
 Current note:
 
@@ -82,6 +85,10 @@ Current note:
 - the new `concurrent` A/B path restored correctness first
 - the new `scheduled` A/B path is now the best validated path for `concurrency=2` and `4`
 - the trace confirms it batches multiple separate requests together for `T3`
+- latest read:
+  - `concurrency=2` is the first strong scaling step
+  - `concurrency=4` also improves materially in the latest timing-enabled run
+  - scheduler wait is now tiny, so the current limit is active compute rather than queueing
 
 ## S3 Work
 
@@ -96,10 +103,14 @@ Current read:
 - current `concurrency=4` is also correct in both `concurrent` and `scheduled`
 - `T3` shared inference state was the first blocker, and the first-pass fix worked
 - traced single-request flow is sane end-to-end
+- latest timing split says:
+  - `T3` still dominates `S3`
+  - scheduler wait is tiny under simultaneous arrivals
+  - `S3` is still important, but it is not the first measured bottleneck yet
 - next question is efficiency:
-  - improve beyond same-shape cohort scheduling
-  - measure `VRAM`
-  - quantify whether `S3` is now the next bottleneck
+  - validate dynamic admission under staggered arrivals
+  - measure `VRAM` side-by-side across implementations
+  - profile deeper inside `T3` before shifting focus to `S3`
 
 ## Decision Rule
 
@@ -111,5 +122,14 @@ Current status:
 
 - that first gate is done
 - `concurrency=4` did not fail
-- the coarse `T3` lock has now been replaced by a first-pass cohort scheduler
-- the next decision point is how to make that scheduler more dynamic and how to measure `S3` under the less-serialized front half
+- the coarse `T3` lock has now been replaced and then hardened into a round-robin active-cohort scheduler
+- the latest benchmark shows:
+  - `c1=1.0346`
+  - `c2=1.8267`
+  - `c4=2.7884`
+- so the hardened scheduler now scales meaningfully through `concurrency=4`
+- per-stage timing says:
+  - `c4 T3 total mean = 3.9262s`
+  - `c4 S3 mean = 1.3699s`
+  - `c4 T3 wait mean = 0.0127s`
+- the next decision point is deeper `T3` profiling plus staggered-arrival validation, not jumping to `S3` first

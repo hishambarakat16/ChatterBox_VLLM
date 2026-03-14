@@ -379,3 +379,151 @@ Using the previously validated `concurrent` path as the comparison point:
 - `S3` now becomes a more plausible next bottleneck because `T3` is no longer fully serialized.
 - VRAM likely increased somewhat because each active request keeps its own mutable decode state and cache.
 - VRAM increase was observed qualitatively during testing, but has not been measured formally yet.
+
+## Timing-Enabled Scheduled Runtime Benchmark
+
+This is the latest authoritative scheduled run after adding per-stage timing output.
+
+Command shape:
+
+- `benchmark_multilingual_concurrency.py --impl scheduled --concurrency-levels 1 2 4 --output-dir benchmark_wavs`
+
+Snapshot during run:
+
+- `nvidia-smi` showed about `75%` GPU utilization
+- power draw reached about `107W`
+- memory snapshot was about `4786 MiB`
+
+Important caution:
+
+- that `nvidia-smi` line is a point-in-time snapshot, not a full utilization trace
+- it is still useful evidence that the hardened scheduler is driving the GPU harder than before
+
+### Concurrency = 1
+
+Result:
+
+- `load_s=20.5869`
+- `wall_s=4.1369`
+- `request_latencies_s=[4.1362]`
+- `mean_latency_s=4.1362`
+- `p95_latency_s=4.1362`
+- `num_samples=[102720]`
+- `audio_seconds_total=4.28`
+- `audio_seconds_per_second=1.0346`
+- `vram_allocated_start_mb=3074.8`
+- `vram_reserved_start_mb=3094.0`
+- `vram_allocated_end_mb=3302.7`
+- `vram_reserved_end_mb=3708.0`
+- `vram_peak_allocated_mb=3514.1`
+- `vram_peak_reserved_mb=3708.0`
+- `vram_peak_allocated_delta_mb=439.3`
+- `vram_peak_reserved_delta_mb=614.0`
+- `stage_s3_s_mean=0.6424`
+- `stage_t3_active_s_mean=3.304`
+- `stage_t3_s_mean=3.4081`
+- `stage_t3_wait_s_mean=0.1041`
+- `stage_text_prep_s_mean=0.0027`
+- `stage_watermark_s_mean=0.0685`
+- `saved_wavs=['benchmark_wavs/scheduled_c1_r0.wav']`
+- `errors=[]`
+
+### Concurrency = 2
+
+Result:
+
+- `wall_s=3.6349`
+- `request_latencies_s=[3.6324, 3.5381]`
+- `mean_latency_s=3.5852`
+- `p95_latency_s=3.6277`
+- `num_samples=[81600, 77760]`
+- `audio_seconds_total=6.64`
+- `audio_seconds_per_second=1.8267`
+- `vram_allocated_start_mb=3139.5`
+- `vram_reserved_start_mb=3708.0`
+- `vram_allocated_end_mb=3474.1`
+- `vram_reserved_end_mb=4028.0`
+- `vram_peak_allocated_mb=3917.5`
+- `vram_peak_reserved_mb=4028.0`
+- `vram_peak_allocated_delta_mb=778.0`
+- `vram_peak_reserved_delta_mb=320.0`
+- `stage_s3_s_mean=0.9802`
+- `stage_t3_active_s_mean=2.5256`
+- `stage_t3_s_mean=2.5362`
+- `stage_t3_wait_s_mean=0.0106`
+- `stage_text_prep_s_mean=0.0027`
+- `stage_watermark_s_mean=0.061`
+- `saved_wavs=['benchmark_wavs/scheduled_c2_r0.wav', 'benchmark_wavs/scheduled_c2_r1.wav']`
+- `errors=[]`
+
+### Concurrency = 4
+
+Result:
+
+- `wall_s=5.8816`
+- `request_latencies_s=[5.2273, 4.637, 5.739, 5.8696]`
+- `mean_latency_s=5.3682`
+- `p95_latency_s=5.85`
+- `num_samples=[96000, 90240, 102720, 104640]`
+- `audio_seconds_total=16.4`
+- `audio_seconds_per_second=2.7884`
+- `vram_allocated_start_mb=3147.6`
+- `vram_reserved_start_mb=4028.0`
+- `vram_allocated_end_mb=3815.0`
+- `vram_reserved_end_mb=5040.0`
+- `vram_peak_allocated_mb=4735.6`
+- `vram_peak_reserved_mb=5040.0`
+- `vram_peak_allocated_delta_mb=1588.0`
+- `vram_peak_reserved_delta_mb=1012.0`
+- `stage_s3_s_mean=1.3699`
+- `stage_t3_active_s_mean=3.9136`
+- `stage_t3_s_mean=3.9262`
+- `stage_t3_wait_s_mean=0.0127`
+- `stage_text_prep_s_mean=0.0063`
+- `stage_watermark_s_mean=0.0629`
+- `saved_wavs=['benchmark_wavs/scheduled_c4_r0.wav', 'benchmark_wavs/scheduled_c4_r1.wav', 'benchmark_wavs/scheduled_c4_r2.wav', 'benchmark_wavs/scheduled_c4_r3.wav']`
+- `errors=[]`
+
+### Updated Interpretation
+
+- correctness still holds at `1`, `2`, and `4`
+- the scheduler hardening plus timing work gives a clearer read than before
+- GPU usage is clearly higher than before, though the `nvidia-smi` evidence is still just a snapshot
+- VRAM growth with concurrency is now measured instead of guessed
+- peak allocated VRAM stayed well below the `16 GB` limit on this card
+
+Most important throughput result:
+
+- `c1`: `1.0346 audio_seconds_per_second`
+- `c2`: `1.8267 audio_seconds_per_second`
+- `c4`: `2.7884 audio_seconds_per_second`
+
+That means:
+
+- `c1 -> c2` gained about `+76.6%` throughput
+- `c2 -> c4` gained about `+52.6%` throughput
+
+Relative to the older coarse-lock `concurrent` path:
+
+- `c1` throughput improved from `0.8549` to `1.0346`
+  - about `+21.0%`
+- `c4` throughput improved from `1.2339` to `2.7884`
+  - about `+126.0%`
+- `c4` wall time improved from `12.7722s` to `5.8816s`
+  - about `53.9%` lower
+
+Most important stage-timing result:
+
+- `T3` wait time is tiny:
+  - `c2 mean = 0.0106s`
+  - `c4 mean = 0.0127s`
+- active `T3` compute is still larger than `S3`:
+  - `c2 T3 total mean = 2.5362s`, `S3 mean = 0.9802s`
+  - `c4 T3 total mean = 3.9262s`, `S3 mean = 1.3699s`
+
+Current read:
+
+- the remaining limit is not simple scheduler queueing under simultaneous arrivals
+- active `T3` compute is still the larger measured bottleneck
+- `S3` remains a real cost, but it is not the first measured limiter in this latest run
+- staggered-arrival validation is still useful, but it is no longer blocking the main interpretation of this benchmark

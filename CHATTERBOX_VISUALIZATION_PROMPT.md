@@ -39,6 +39,7 @@ The new story is:
 - it uses one scheduler per shared `T3` worker
 - it batches multiple separate requests together for `T3`
 - it improved throughput materially without retraining
+- it was then hardened further to keep active cohorts and rotate them step-by-step
 
 ## Important Clarification To Visualize
 
@@ -57,8 +58,9 @@ Depict it as:
 
 Current limitation to show:
 
-- current scheduler is still same-shape cohort-to-completion
-- it does not yet admit new requests dynamically mid-cohort
+- the hardened scheduler now admits new work while older cohorts are still active
+- but the current benchmark evidence is still strongest for same-time arrivals
+- staggered-arrival validation is the next clean test
 
 ## Concrete Evidence To Include
 
@@ -78,18 +80,19 @@ Interpretation:
 
 ## Benchmark Results To Include
 
-Use these exact scheduled numbers:
+Use these latest scheduled numbers:
 
 - `scheduled c1`
-  - `wall_s=3.8411`
-  - `audio_seconds_per_second=1.0309`
-- `scheduled c2 traced`
-  - `wall_s=4.2557`
-  - `p95_latency_s=4.2538`
-  - `audio_seconds_per_second=1.7764`
+  - `wall_s=4.1369`
+  - `audio_seconds_per_second=1.0346`
+- `scheduled c2`
+  - `wall_s=3.6349`
+  - `p95_latency_s=3.6277`
+  - `audio_seconds_per_second=1.8267`
 - `scheduled c4`
-  - `wall_s=10.0345`
-  - `audio_seconds_per_second=1.8018`
+  - `wall_s=5.8816`
+  - `p95_latency_s=5.85`
+  - `audio_seconds_per_second=2.7884`
 
 Compare against coarse-lock `concurrent`:
 
@@ -106,13 +109,15 @@ Compare against coarse-lock `concurrent`:
 
 Show these deltas explicitly:
 
-- `c1` throughput: about `+20.6%`
-- `c1` wall time: about `27.3%` lower
-- `c2` traced throughput: about `+57.8%`
-- `c2` traced wall time: about `38.3%` lower
-- `c2` traced `p95`: about `37.2%` lower
-- `c4` throughput: about `+46.0%`
-- `c4` wall time: about `21.4%` lower
+- `c1` throughput vs coarse-lock concurrent: about `+21.0%`
+- `c4` throughput vs coarse-lock concurrent: about `+126.0%`
+- `c1 -> c2` on the hardened scheduler: about `+76.6%`
+- `c2 -> c4` on the hardened scheduler: about `+52.6%`
+
+Also include:
+
+- `c2` is the first strong scaling step
+- `c4` also adds real throughput in the latest timing-enabled run
 
 ## What The Updated Diagram Should Say
 
@@ -125,20 +130,35 @@ Add a new "current bottleneck" note:
 
 - the shared-state corruption bug is no longer the main problem
 - the next problems are:
-  - dynamic scheduler admission
-  - `S3` throughput / concurrency cost
-  - peak `VRAM` measurement
+  - deeper `T3` profiling
+  - staggered-arrival / dynamic-admission validation
+  - then `S3` throughput / concurrency cost
+
+Add a small timing box:
+
+- scheduler wait is tiny in the latest run:
+  - `c2 T3 wait mean = 0.0106s`
+  - `c4 T3 wait mean = 0.0127s`
+- active `T3` is still larger than `S3`:
+  - `c2 T3 total mean = 2.5362s`, `S3 mean = 0.9802s`
+  - `c4 T3 total mean = 3.9262s`, `S3 mean = 1.3699s`
+- interpretation:
+  - the current remaining limit is not simple scheduler queueing
+  - active `T3` compute is still the larger measured bottleneck
 
 Add a small warning/note box:
 
-- `VRAM` appeared to increase somewhat with the scheduled path
-- that has not been measured formally yet
+- `VRAM` now has measured numbers:
+  - `c1 peak allocated = 3514.1 MB`
+  - `c2 peak allocated = 3917.5 MB`
+  - `c4 peak allocated = 4735.6 MB`
+- a live `nvidia-smi` snapshot also showed about `75%` utilization and about `107W` power draw
 
 Add a milestone box:
 
 - immediate concurrency correctness milestone: done
-- current serving milestone: first batched `T3` scheduler works
-- next milestone: dynamic `T3` scheduler + explicit `VRAM` and `S3` measurement
+- current serving milestone: hardened batched `T3` scheduler works
+- next milestone: staggered-arrival validation + deeper `T3` profiling
 
 ## Output Preference
 
