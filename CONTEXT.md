@@ -50,6 +50,7 @@ We are treating the current implementation as the reference system to beat.
 Serving-shape visual:
 
 - [chatterbox_serving_shape_current_vs_target.html](/Users/hisham/Code/Bahraini_TTS/architecture/chatterbox_serving_shape_current_vs_target.html)
+- [chatterbox_runtime_evolution.html](/Users/hisham/Code/Bahraini_TTS/architecture/chatterbox_runtime_evolution.html)
 - [CLOUD_GPU_QUICKSTART.md](/Users/hisham/Code/Bahraini_TTS/CLOUD_GPU_QUICKSTART.md)
 - [CHATTERBOX_STATE_FLOW.md](/Users/hisham/Code/Bahraini_TTS/CHATTERBOX_STATE_FLOW.md)
 - [TRACE_RUN_RESULTS.md](/Users/hisham/Code/Bahraini_TTS/TRACE_RUN_RESULTS.md)
@@ -242,53 +243,60 @@ The target runtime shape is:
 
 Current measured scheduler result:
 
-- `scheduled c1` throughput: `1.0346 audio_seconds_per_second`
-- `scheduled c2` throughput: `1.8267 audio_seconds_per_second`
-- `scheduled c4` throughput: `2.7884 audio_seconds_per_second`
+- `scheduled c1` throughput: `1.0369 audio_seconds_per_second`
+- `scheduled c2` throughput: `1.767 audio_seconds_per_second`
+- `scheduled c4` throughput: `2.8324 audio_seconds_per_second`
+- `scheduled c8` throughput: `3.2907 audio_seconds_per_second`
 - compared with the coarse-lock `concurrent` path, that is:
-  - about `+21.0%` at `c1`
-  - about `+62.3%` at `c2`
-  - about `+126.0%` at `c4`
+  - about `+21.3%` at `c1`
+  - about `+56.9%` at `c2`
+  - about `+129.5%` at `c4`
 
 Current operating-point read:
 
-- `c1 -> c2` gives the real win:
-  - about `+76.6%` throughput
-- `c2 -> c4` still improves strongly:
-  - about `+52.6%`
-- so the hardened scheduler now shows meaningful scaling through `concurrency=4` on this workload
+- `c1 -> c2` gives about `+70.4%` throughput
+- `c2 -> c4` gives about `+60.3%` throughput
+- `c4 -> c8` gives only about `+16.2%` throughput
+- so the scheduler still scales through `c8`, but the latency cost gets much steeper after `c4`
 
 Current measured VRAM read:
 
-- `c1` peak allocated: `3514.1 MB`
-- `c2` peak allocated: `3917.5 MB`
-- `c4` peak allocated: `4735.6 MB`
+- `c1` peak allocated: `3514.9 MB`
+- `c2` peak allocated: `3951.3 MB`
+- `c4` peak allocated: `4713.0 MB`
+- `c8` peak allocated: `6272.6 MB`
 - memory is growing with active request state, as expected
 - but on this `16 GB` card, VRAM is not the current hard limit
 
 Current measured stage read:
 
 - `c1`:
-  - `T3 total = 3.4081s`
-  - `S3 = 0.6424s`
+  - `T3 total = 3.5733s`
+  - `S3 = 0.606s`
 - `c2`:
-  - `T3 total mean = 2.5362s`
-  - `S3 mean = 0.9802s`
+  - `T3 total mean = 3.6417s`
+  - `S3 mean = 0.9104s`
 - `c4`:
-  - `T3 total mean = 3.9262s`
-  - `S3 mean = 1.3699s`
+  - `T3 total mean = 3.7658s`
+  - `S3 mean = 1.4759s`
+- `c8`:
+  - `T3 total mean = 6.3571s`
+  - `S3 mean = 2.2454s`
 - `T3` wait time is tiny:
-  - `c2 mean = 0.0106s`
-  - `c4 mean = 0.0127s`
+  - `c2 mean = 0.0112s`
+  - `c4 mean = 0.0123s`
+  - `c8 mean = 0.0276s`
 - so the remaining limit is not scheduler queueing under simultaneous arrivals
-- the latest throughput read is:
-  - `c1 = 1.0346`
-  - `c2 = 1.8267`
-  - `c4 = 2.7884`
-- which means:
-  - `c1 -> c2` is about `+76.6%`
-  - `c2 -> c4` is about `+52.6%`
-- so the hardened scheduler is now showing meaningful scaling through `concurrency=4`
+- the new latency-KPI read is:
+  - `c2 T3 first token mean = 56.5 ms`
+  - `c4 T3 first token mean = 105.0 ms`
+  - `c8 T3 first token mean = 368.0 ms`
+  - `c2 audio ready mean = 4.5553s`
+  - `c4 audio ready mean = 5.2462s`
+  - `c8 audio ready mean = 8.6152s`
+- so:
+  - `T3` first-token latency is decent at `c2` and still near target at `c4`
+  - but the current full-audio path is still far from low-latency streaming because audio is only ready seconds later
 
 Important clarification:
 
@@ -305,7 +313,8 @@ Important clarification:
   - replace the coarse full-decode `T3` lock with a cohort-based `T3` scheduler
 - next:
   - validate the hardened scheduler with staggered-arrival benchmarks
-  - profile deeper inside `T3`, since `T3` still dominates `S3` in the current timing split
+  - profile deeper inside `T3`, since `T3` still dominates total compute in the current timing split
+  - add true first-audio-chunk measurement once partial audio emission exists
   - only then decide whether `S3` becomes the next real bottleneck
   - keep tracking GPU utilization and `VRAM`
 - step active requests through `T3` in a more concurrency-friendly way

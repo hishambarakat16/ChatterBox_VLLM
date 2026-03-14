@@ -27,6 +27,8 @@ Gate status:
 - [x] run current Chatterbox once as baseline on GPU
 - [ ] record first-chunk latency
 - [ ] record inter-chunk latency
+- [x] record `T3` first-token latency on the scheduled path
+- [x] record current full-audio-ready latency on the scheduled path
 - [x] record full-response latency
 - [x] record VRAM usage for the scheduled path
 - [ ] record VRAM usage for baseline / concurrent side-by-side
@@ -88,6 +90,7 @@ Current note:
 - latest read:
   - `concurrency=2` is the first strong scaling step
   - `concurrency=4` also improves materially in the latest timing-enabled run
+  - `concurrency=8` still improves throughput, but is much worse for latency
   - scheduler wait is now tiny, so the current limit is active compute rather than queueing
 
 ## S3 Work
@@ -107,10 +110,14 @@ Current read:
   - `T3` still dominates `S3`
   - scheduler wait is tiny under simultaneous arrivals
   - `S3` is still important, but it is not the first measured bottleneck yet
+- latest latency-KPI read says:
+  - `c2/c4` first-token latency is much better than full-audio-ready latency
+  - the current product gap is early audio emission, not just more batching
 - next question is efficiency:
   - validate dynamic admission under staggered arrivals
   - measure `VRAM` side-by-side across implementations
-  - profile deeper inside `T3` before shifting focus to `S3`
+  - profile deeper inside `T3`
+  - add true first-audio-chunk measurement before shifting focus to `S3`
 
 ## Decision Rule
 
@@ -124,12 +131,18 @@ Current status:
 - `concurrency=4` did not fail
 - the coarse `T3` lock has now been replaced and then hardened into a round-robin active-cohort scheduler
 - the latest benchmark shows:
-  - `c1=1.0346`
-  - `c2=1.8267`
-  - `c4=2.7884`
-- so the hardened scheduler now scales meaningfully through `concurrency=4`
+  - `c1=1.0369`
+  - `c2=1.767`
+  - `c4=2.8324`
+  - `c8=3.2907`
+- so the hardened scheduler now scales through `c8`, but `c8` is not a good latency operating point
 - per-stage timing says:
-  - `c4 T3 total mean = 3.9262s`
-  - `c4 S3 mean = 1.3699s`
-  - `c4 T3 wait mean = 0.0127s`
-- the next decision point is deeper `T3` profiling plus staggered-arrival validation, not jumping to `S3` first
+  - `c8 T3 total mean = 6.3571s`
+  - `c8 S3 mean = 2.2454s`
+  - `c8 T3 wait mean = 0.0276s`
+- latency KPIs say:
+  - `c2 T3 first token mean = 56.5 ms`
+  - `c4 T3 first token mean = 105.0 ms`
+  - `c8 T3 first token mean = 368.0 ms`
+  - `c8 audio ready mean = 8.6152s`
+- the next decision point is deeper `T3` profiling plus true first-audio-chunk measurement, not jumping to `S3` first

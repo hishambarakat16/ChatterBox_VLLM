@@ -527,3 +527,80 @@ Current read:
 - active `T3` compute is still the larger measured bottleneck
 - `S3` remains a real cost, but it is not the first measured limiter in this latest run
 - staggered-arrival validation is still useful, but it is no longer blocking the main interpretation of this benchmark
+
+## Latency-KPI Extension With Concurrency = 8
+
+This run extended the scheduled benchmark to include:
+
+- `concurrency=8`
+- `stage_t3_first_token_s`
+- `stage_audio_ready_s`
+
+Command shape:
+
+- `benchmark_multilingual_concurrency.py --impl scheduled --concurrency-levels 1 2 4 8 --output-dir benchmark_wavs`
+
+### Key Results
+
+- throughput:
+  - `c1 = 1.0369`
+  - `c2 = 1.767`
+  - `c4 = 2.8324`
+  - `c8 = 3.2907`
+- peak allocated VRAM:
+  - `c1 = 3514.9 MB`
+  - `c2 = 3951.3 MB`
+  - `c4 = 4713.0 MB`
+  - `c8 = 6272.6 MB`
+- `T3` first token mean:
+  - `c1 = 195.6 ms`
+  - `c2 = 56.5 ms`
+  - `c4 = 105.0 ms`
+  - `c8 = 368.0 ms`
+- audio ready mean:
+  - `c1 = 4.1994s`
+  - `c2 = 4.5553s`
+  - `c4 = 5.2462s`
+  - `c8 = 8.6152s`
+
+### Concurrency = 8
+
+Result:
+
+- `wall_s=10.8185`
+- `request_latencies_s=[9.3455, 10.815, 4.8036, 6.6242, 7.7711, 10.0224, 10.1109, 10.0148]`
+- `mean_latency_s=8.6884`
+- `p95_latency_s=10.5686`
+- `audio_seconds_per_second=3.2907`
+- `vram_peak_allocated_mb=6272.6`
+- `vram_peak_reserved_mb=6360.0`
+- `stage_audio_ready_s_mean=8.6152`
+- `stage_s3_s_mean=2.2454`
+- `stage_t3_active_s_mean=6.3296`
+- `stage_t3_first_token_s_mean=0.368`
+- `stage_t3_s_mean=6.3571`
+- `stage_t3_wait_s_mean=0.0276`
+- `saved_wavs`: `8` files
+- `errors=[]`
+
+### Updated Interpretation
+
+- `c8` still improves throughput over `c4`, but only modestly:
+  - about `+16.2%`
+- the latency cost is much steeper:
+  - `p95` rises from `5.85s` to `10.5686s`
+  - `T3` first token rises from `105.0 ms` to `368.0 ms`
+- scheduler wait is still tiny at `c8`
+- so the new limiting behavior is still active compute, not queueing
+
+Most important latency read:
+
+- `T3` first-token latency is already fairly good at `c2`
+- it is still near target at `c4`
+- but audio is only ready seconds later because the current path still waits for full downstream decode
+
+Current practical operating-point read:
+
+- `c2` is the best latency-first operating point
+- `c4` is the best throughput-first operating point
+- `c8` is not a good latency-sensitive operating point

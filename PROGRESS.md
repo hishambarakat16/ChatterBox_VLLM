@@ -13,6 +13,7 @@ _Last updated: 2026-03-14_
 - defined the local Chatterbox fork strategy and minimal-file-duplication plan
 - added Layer 1 streaming-runtime scaffolding inside `external/chatterbox`
 - expanded and later trimmed [chatterbox_serving_shape_current_vs_target.html](/Users/hisham/Code/Bahraini_TTS/architecture/chatterbox_serving_shape_current_vs_target.html) into a self-contained engineering diagram with current end-to-end flow, trace shapes, concurrency hazards, the current `scheduled` runtime checkpoint, and the target shared-vs-request-local boundary
+- added [chatterbox_runtime_evolution.html](/Users/hisham/Code/Bahraini_TTS/architecture/chatterbox_runtime_evolution.html) as the chronological runtime change log showing each serving change, its code anchors, and the measured improvement it produced
 - created [patches/chatterbox_streaming_runtime.patch](/Users/hisham/Code/Bahraini_TTS/patches/chatterbox_streaming_runtime.patch) so the local Chatterbox runtime changes can be reproduced on a GPU box
 - created [CLOUD_GPU_QUICKSTART.md](/Users/hisham/Code/Bahraini_TTS/CLOUD_GPU_QUICKSTART.md) with the required-only cloud setup and run commands
 - confirmed on a `4060 Ti` that PyPI Perth was the real blocker because `perth.PerthImplicitWatermarker` resolved to `None`
@@ -110,6 +111,27 @@ _Last updated: 2026-03-14_
 - updated the current operating-point judgment again:
   - the hardened scheduler now scales meaningfully through `concurrency=4`
   - the next interpretation gap is deeper `T3` profiling plus staggered-arrival validation
+- extended the timing-enabled scheduled benchmark to `concurrency=8`
+- added latency-specific KPIs to the runtime path:
+  - `stage_t3_first_token_s`
+  - `stage_audio_ready_s`
+- captured the first `1/2/4/8` latency-KPI benchmark on the `4060 Ti`:
+  - `c1 throughput = 1.0369`
+  - `c2 throughput = 1.767`
+  - `c4 throughput = 2.8324`
+  - `c8 throughput = 3.2907`
+- captured the new first-token read:
+  - `c2 T3 first token = 56.5 ms`
+  - `c4 T3 first token = 105.0 ms`
+  - `c8 T3 first token = 368.0 ms`
+- captured the current audio-ready read:
+  - `c2 audio ready = 4.5553s`
+  - `c4 audio ready = 5.2462s`
+  - `c8 audio ready = 8.6152s`
+- updated the operating-point judgment again:
+  - `c8` still improves throughput, but only modestly over `c4`
+  - `c8` is poor for latency-sensitive use
+  - `c2/c4` remain the practical operating range depending on whether latency or throughput matters more
 
 ## Current Focus
 
@@ -132,7 +154,8 @@ Status:
 - correctness holds through `concurrency=4`
 - the scheduler has now been hardened and `VRAM` is measured
 - per-stage timing now exists and shows `T3` is still the larger current limiter
-- next target is to validate staggered arrivals and profile `T3` further before shifting focus to `S3`
+- the new latency KPIs show `T3` first-token time is much better than full audio-ready time
+- next target is to validate staggered arrivals, profile `T3` further, and then add true first-audio-chunk measurement
 
 ## Current Baseline Judgment
 
@@ -155,6 +178,9 @@ More precise current read:
 - the hardened `scheduled` path now pushes GPU utilization materially higher than before
 - stage timing says active `T3` is still the larger current hot path
 - `S3` is still a secondary cost worth tracking, but not the first measured limiter
+- the new latency-KPI read refines that:
+  - `T3` first token is already decent at `c2` and still near target at `c4`
+  - the bigger product gap is that audio is still only ready seconds later
 - but the current benchmark shape still launches requests together, so staggered-arrival validation is still missing
 - current research read:
   - closest open-source TTS answers already exist in `CosyVoice` and `Fish Audio S2`
@@ -169,7 +195,7 @@ More precise current read:
 5. verify correctness beyond `2`
 6. keep the new scheduler path as the main runtime branch
 7. validate the hardened scheduler under staggered arrivals
-8. profile deeper inside `T3`, then optimize `S3` only if it becomes the next bottleneck after that
+8. profile deeper inside `T3`, then add true first-audio-chunk measurement before shifting focus to `S3`
 
 ## Current Execution Path
 
@@ -216,6 +242,7 @@ Interpretation:
   - throughput now improves materially through `concurrency=4`
   - `VRAM` increase is now measured and not just guessed
   - per-stage timing says active `T3` still dominates `S3`
+  - the new latency KPIs say the first-token story is much better than the audio-ready story
 - current best systems direction:
   - adapt an LLM-serving style `prefill + step + scheduler` design for `T3`
   - do not treat the core scheduler idea itself as novel

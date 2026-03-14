@@ -213,7 +213,7 @@
 
       .checkpoint-grid {
         display: grid;
-        grid-template-columns: 1.15fr 1.1fr 1fr;
+        grid-template-columns: repeat(4, minmax(0, 1fr));
         gap: 12px;
       }
 
@@ -261,11 +261,6 @@
       .mark-warn {
         border-style: dashed;
         background: var(--hazard-bg);
-      }
-
-      .mark-future {
-        border-style: dotted;
-        background: #f8f8f8;
       }
 
       .flow-scroll {
@@ -637,24 +632,23 @@
     <div class="page">
       <div class="hero">
         <div class="hero-panel">
-          <h1 class="title">Chatterbox Multilingual Inference Flow</h1>
+          <h1 class="title">Chatterbox Serving Shape</h1>
           <div class="subtitle">
-            Current single-request inference path on the left-to-right pipeline, then the target concurrency-safe
-            serving shape that keeps shared weights but moves mutable decode state out of the shared model object.
+            Current left-to-right baseline flow, the current scheduled runtime checkpoint, and the target boundary
+            between shared weights, request-local decode state, and scheduler-owned state.
           </div>
           <ul class="source-list">
-            <li><code>CHATTERBOX_STATE_FLOW.md</code></li>
+            <li><code>CONTEXT.md</code></li>
             <li><code>TRACE_RUN_RESULTS.md</code></li>
-            <li><code>architecture/t3_concurrent_inference_findings.md</code></li>
-            <li><code>CHATTERBOX_SCALING_PLAN.md</code></li>
+            <li><code>IMPLEMENTATION_CHECKLIST.md</code></li>
+            <li><code>PROGRESS.md</code></li>
             <li><code>external/chatterbox/src/chatterbox/mtl_tts.py</code></li>
-            <li><code>external/chatterbox/src/chatterbox/mtl_tts_concurrent.py</code></li>
-            <li><code>external/chatterbox/src/chatterbox/runtime/worker.py</code></li>
-            <li><code>external/chatterbox/src/chatterbox/runtime/worker_concurrent.py</code></li>
+            <li><code>external/chatterbox/src/chatterbox/mtl_tts_scheduled.py</code></li>
+            <li><code>external/chatterbox/src/chatterbox/runtime/worker_scheduled.py</code></li>
+            <li><code>external/chatterbox/src/chatterbox/runtime/t3_scheduler.py</code></li>
             <li><code>external/chatterbox/src/chatterbox/models/t3/t3.py</code></li>
             <li><code>external/chatterbox/src/chatterbox/models/t3/inference/alignment_stream_analyzer.py</code></li>
-            <li><code>external/chatterbox/src/chatterbox/models/t3/inference/concurrent_decode.py</code></li>
-            <li><code>external/chatterbox/src/chatterbox/models/t3/inference/alignment_stream_analyzer_concurrent.py</code></li>
+            <li><code>external/chatterbox/src/chatterbox/models/t3/inference/scheduled_decode.py</code></li>
             <li><code>external/chatterbox/src/chatterbox/models/s3gen/s3gen.py</code></li>
           </ul>
         </div>
@@ -662,20 +656,20 @@
           <div class="meta-title">Current Read</div>
           <div class="meta-grid">
             <div class="metric">
-              <div class="metric-label">Validated Short-Term Fix</div>
-              <div class="metric-value">request-local T3 state plus coarse full-decode T3 lock</div>
+              <div class="metric-label">Best Validated Runtime</div>
+              <div class="metric-value">scheduled batched T3 cohorts with shared weights and request-local decode state</div>
             </div>
             <div class="metric">
               <div class="metric-label">Old Path Status</div>
               <div class="metric-value">baseline and streaming still unsafe at concurrency &gt;= 2</div>
             </div>
             <div class="metric">
-              <div class="metric-label">Milestone Status</div>
-              <div class="metric-value">concurrency = 2 correctness gate achieved in concurrent path</div>
+              <div class="metric-label">Current Operating Point</div>
+              <div class="metric-value">scheduled c2 is the current sweet spot; c4 stays correct but adds almost no throughput</div>
             </div>
             <div class="metric">
               <div class="metric-label">Next Bottlenecks</div>
-              <div class="metric-value">T3 lock and scheduling efficiency, then S3 token-to-mel throughput</div>
+              <div class="metric-value">staggered-arrival validation, then S3 throughput and broader GPU telemetry</div>
             </div>
           </div>
         </div>
@@ -706,22 +700,20 @@
         <div class="milestone-card">
           <div class="legend-title">Short Milestone Note</div>
           <div class="note">
-            Immediate engineering milestone:
+            <strong>Correctness through <code>concurrency=4</code>:</strong> done
             <br />
-            <strong>2 simultaneous correct requests on one shared model instance</strong>
-            <br />
-            status: <strong>achieved in the current <code>concurrent</code> A/B path</strong>
+            <strong>Current serving milestone:</strong> batched <code>T3</code> scheduling works on one shared model instance
           </div>
           <div class="footnote">
-            This is a short-term correctness fix, not the final scalable design. Shared weights stay shared, but T3 is still serialized by a coarse lock.
+            Next: staggered-arrival validation, an explicit <code>S3</code> timing split, and tighter <code>VRAM</code> accounting. Current best operating point is still <code>c2</code>.
           </div>
         </div>
       </div>
 
       <div class="block">
-        <div class="block-title">0. Validated Concurrent Checkpoint</div>
+        <div class="block-title">0. Scheduled Runtime Checkpoint</div>
         <div class="block-subtitle">
-          The new <code>concurrent</code> path is the first validated concurrency-safe bridge. It fixes the immediate correctness bug without claiming final scalability.
+          <code>scheduled</code> is now the current runtime story: one shared <code>T3</code> worker, request-local decode state, and real batched <code>T3</code> cohorts with measurable throughput gains.
         </div>
         <div class="checkpoint-grid">
           <div class="checkpoint-card">
@@ -737,41 +729,70 @@
               </div>
               <div class="status-line">
                 <div class="status-mark mark-ok">[x]</div>
-                <div><strong>concurrent</strong> now completes <code>concurrency=2</code> correctly on one shared model instance.</div>
+                <div><strong>scheduled</strong> is correct through <code>concurrency=4</code> and improves throughput on one shared <code>T3</code> weight copy.</div>
               </div>
             </div>
           </div>
           <div class="checkpoint-card">
-            <div class="panel-title">Validated Result</div>
+            <div class="panel-title">Trace Proof Scheduler Is Real</div>
+            <div class="status-list">
+              <div class="status-line">
+                <div class="status-mark mark-ok">[x]</div>
+                <div><code>[runtime/t3_scheduler.py] run_cohort</code> logged <code>requests 2</code> and <code>batch_key (36, 150)</code>.</div>
+              </div>
+              <div class="status-line">
+                <div class="status-mark mark-ok">[x]</div>
+                <div><code>[scheduled_decode.py] prefill.batch</code> logged <code>requests 2</code> and <code>inputs_embeds (4, 72, 1024)</code>.</div>
+              </div>
+              <div class="status-line">
+                <div class="status-mark mark-ok">cfg</div>
+                <div><code>2 requests x 2 CFG rows = 4</code>, so two separate requests were actually batched together for <code>T3</code>.</div>
+              </div>
+              <div class="status-line">
+                <div class="status-mark mark-ok">live</div>
+                <div>The hardened scheduler now rotates active cohorts; the next clean measurement is staggered-arrival behavior, not whether batching exists.</div>
+              </div>
+            </div>
+          </div>
+          <div class="checkpoint-card">
+            <div class="panel-title">Scheduled Benchmark</div>
             <div class="status-list">
               <div class="status-line">
                 <div class="status-mark mark-ok">c1</div>
-                <div><code>wall_s=4.9795</code>, <code>num_samples=[116160]</code>, <code>errors=[]</code></div>
+                <div><code>wall_s=3.9835</code>, <code>audio_seconds_per_second=1.0343</code></div>
               </div>
               <div class="status-line">
                 <div class="status-mark mark-ok">c2</div>
-                <div><code>wall_s=6.8933</code>, <code>request_latencies_s=[4.5455, 6.892]</code>, <code>num_samples=[107520, 78720]</code>, <code>errors=[]</code></div>
+                <div><code>wall_s=4.4275</code>, <code>p95_latency_s=4.4179</code>, <code>audio_seconds_per_second=1.7437</code></div>
+              </div>
+              <div class="status-line">
+                <div class="status-mark mark-ok">c4</div>
+                <div><code>wall_s=9.7415</code>, <code>p95_latency_s=9.7277</code>, <code>audio_seconds_per_second=1.7533</code></div>
               </div>
               <div class="status-line">
                 <div class="status-mark mark-ok">ear</div>
-                <div>manual listening: both concurrent outputs sounded correct.</div>
+                <div>Manual listening stayed clean; the remaining work is throughput and scheduling quality, not basic output correctness.</div>
               </div>
             </div>
           </div>
           <div class="checkpoint-card">
-            <div class="panel-title">What Changed / What Did Not</div>
+            <div class="panel-title">Comparison And Telemetry</div>
             <div class="status-list">
               <div class="status-line">
-                <div class="status-mark mark-ok">[x]</div>
-                <div>request-local T3 decode state in <code>concurrent_decode.py</code> and <code>worker_concurrent.py</code></div>
+                <div class="status-mark mark-ok">+21%</div>
+                <div><code>c1</code> throughput vs coarse-lock <code>concurrent</code>: <code>0.8549 -> 1.0343</code>; wall time about <code>27.3%</code> lower.</div>
               </div>
               <div class="status-line">
-                <div class="status-mark mark-ok">[x]</div>
-                <div>request-local alignment analyzer with removable hooks and config restore via <code>close()</code></div>
+                <div class="status-mark mark-ok">+42%</div>
+                <div><code>c4</code> throughput vs coarse-lock <code>concurrent</code>: <code>1.2339 -> 1.7533</code>.</div>
               </div>
               <div class="status-line">
-                <div class="status-mark mark-future">[ ]</div>
-                <div><code>S3</code> is not redesigned yet; next likely bottlenecks are T3 lock efficiency, then S3 throughput cost.</div>
+                <div class="status-mark mark-ok">sweet</div>
+                <div>Scheduled <code>c1 -> c2</code> gains about <code>+68.6%</code>, but <code>c2 -> c4</code> adds only about <code>+0.6%</code>. Current sweet spot is <code>c2</code>.</div>
+              </div>
+              <div class="status-line">
+                <div class="status-mark mark-ok">vram</div>
+                <div><code>c1=3512.7 MB</code>, <code>c2=3931.6 MB</code>, <code>c4=4499.3 MB</code> peak allocated; live snapshot showed about <code>75%</code> GPU util and about <code>107W</code>.</div>
               </div>
             </div>
           </div>
@@ -1166,22 +1187,23 @@
             <div class="priority">1</div>
             <h3 class="triage-title">Baseline and streaming still fail the concurrency-safety test.</h3>
             <div class="note">
-              The original shared-state bug is still real in the old paths. The new <code>concurrent</code> path works because it moves T3 backend/analyzer state out of shared <code>self</code> and wraps decode in a coarse lock.
+              The original shared-state bug is still real in the old paths. That is no longer the main problem in the validated runtime branch.
             </div>
           </div>
           <div class="triage-card">
             <div class="priority">2</div>
-            <h3 class="triage-title">The current concurrent fix is a correctness bridge, not the final scalable design.</h3>
+            <h3 class="triage-title">The scheduled path is the first real batched T3 serving step.</h3>
             <div class="note">
-              Shared weights remain shared, but <code>T3</code> is serialized behind <code>worker_concurrent.py:67</code>.
-              That is acceptable for the first milestone and still likely to limit density or tail latency at higher concurrency.
+              It keeps one shared <code>T3</code> weight copy, keeps per-request mutable decode state separate, and batches multiple requests together for <code>T3</code> prefill and decode. The hardest evidence is still strongest for same-time arrivals.
             </div>
           </div>
           <div class="triage-card">
             <div class="priority">3</div>
-            <h3 class="triage-title">Next likely bottlenecks are T3 lock efficiency first, then S3 throughput cost.</h3>
+            <h3 class="triage-title">The next problems are staggered-arrival validation, then S3 throughput and broader telemetry.</h3>
             <div class="note">
-              The first correctness gate is done. The next question is whether higher concurrency is held back mostly by coarse T3 scheduling or by unchanged S3 token-to-mel plus vocoder cost.
+              The shared-state corruption bug is no longer the main blocker. Current read:
+              <br />
+              <code>c2</code> is the sweet spot, <code>c4</code> stays correct but adds almost no throughput, and <code>S3</code> is now a more plausible next hot path.
               <br /><br />
               <code>forcing EOS</code> is still not automatically an error by itself.
             </div>
@@ -1190,10 +1212,10 @@
       </div>
 
       <div class="block">
-        <div class="block-title">4. Target Concurrent Redesign</div>
+        <div class="block-title">4. Current Scheduled Runtime And Target Boundary</div>
         <div class="block-subtitle">
           Shared weights stay shared. Mutable decode state moves into request-local contexts. Scheduler state sits outside the model objects.
-          The currently validated bridge is the parallel <code>concurrent</code> path, which proves correctness at <code>concurrency=2</code> but still uses a coarse full-decode T3 lock.
+          The currently validated runtime is the <code>scheduled</code> path: compatible requests are grouped into one <code>T3</code> cohort, prefilled together, then stepped together while each request keeps separate decode state and output.
         </div>
         <div class="flow-scroll">
           <div class="pipeline target-pipeline">
@@ -1224,11 +1246,11 @@
               <div class="stage-head">
                 <div class="stage-badges">
                   <div class="stage-badge">request-local</div>
-                  <div class="stage-badge">runtime/worker.py</div>
-                  <div class="stage-badge">[x] concurrent</div>
+                  <div class="stage-badge">worker_scheduled.py</div>
+                  <div class="stage-badge">[x] scheduled</div>
                 </div>
                 <h3 class="stage-title">Request context created</h3>
-                <div class="stage-path"><code>runtime/worker.py:create_session()</code> and <code>mtl_tts_concurrent.py</code> session entry</div>
+                <div class="stage-path"><code>mtl_tts_scheduled.py</code> and <code>worker_scheduled.py:create_session()</code></div>
               </div>
               <div class="stage-body">
                 <div class="cell">
@@ -1252,7 +1274,7 @@
                   <div class="stage-badge">[x] done</div>
                 </div>
                 <h3 class="stage-title">Request-local mutable decode state</h3>
-                <div class="stage-path"><code>concurrent_decode.py</code> local backend/analyzer state per request</div>
+                <div class="stage-path"><code>scheduled_decode.py</code> keeps per-request generated ids, KV cache, alignment state, and next-step embeds</div>
               </div>
               <div class="stage-body">
                 <div class="cell">
@@ -1269,8 +1291,8 @@
                   <div class="note">Same tensor interface, but no request-local state stored on shared <code>T3</code> or <code>ChatterboxMultilingualTTS</code>.</div>
                 </div>
                 <div class="cell">
-                  <div class="cell-title">Validated In Current Path</div>
-                  <div class="note"><code>run_concurrent_t3_inference()</code> builds local analyzer/backend at <code>concurrent_decode.py:72-82</code> and closes analyzer at <code>180</code>.</div>
+                  <div class="cell-title">Current State</div>
+                  <div class="note"><code>scheduled_decode.py</code> now keeps one <code>_ActiveDecodeState</code> per request, including separate <code>past_key_values</code>, generated tokens, alignment state, and next inputs.</div>
                 </div>
               </div>
             </div>
@@ -1281,29 +1303,30 @@
               <div class="stage-head">
                 <div class="stage-badges">
                   <div class="stage-badge">shared synchronized</div>
-                  <div class="stage-badge">runtime/worker.py</div>
-                  <div class="stage-badge">[ ] future</div>
+                  <div class="stage-badge">runtime/t3_scheduler.py</div>
+                  <div class="stage-badge">[x] live</div>
                 </div>
-                <h3 class="stage-title">Scheduler / active request queue</h3>
-                <div class="stage-path"><code>future shared scheduler state</code></div>
+                <h3 class="stage-title">Scheduler / active cohort queue</h3>
+                <div class="stage-path"><code>T3DecodeScheduler</code> groups compatible requests by <code>batch_key</code>, keeps active cohorts, and rotates them step-by-step</div>
               </div>
               <div class="stage-body">
                 <div class="cell">
                   <div class="cell-title">Owns</div>
                   <ul class="tight-list">
                     <li>pending request queue</li>
-                    <li>active request map</li>
-                    <li>decode step scheduling or coarse lock</li>
+                    <li>active cohort deque</li>
+                    <li>cohort admission by <code>batch_key</code></li>
+                    <li>decode step scheduling</li>
                     <li>completion handles and metrics</li>
                   </ul>
                 </div>
                 <div class="cell">
-                  <div class="cell-title">Goal</div>
-                  <div class="note">Central place for synchronization instead of implicit synchronization through model object mutation.</div>
+                  <div class="cell-title">Current State</div>
+                  <div class="note"><code>t3_scheduler.py:107-125</code> batches requests by <code>batch_key</code> and logs <code>run_cohort requests 2</code>; <code>t3_scheduler.py:127-171</code> advances one cohort step at a time and rotates active cohorts.</div>
                 </div>
                 <div class="cell">
-                  <div class="cell-title">Current Bridge</div>
-                  <div class="note">Today this is just a coarse full-decode <code>T3</code> lock at <code>worker_concurrent.py:67</code>, not a real decode scheduler yet.</div>
+                  <div class="cell-title">Next Check</div>
+                  <div class="note">Dynamic admission exists; the next clean benchmark is staggered-arrival behavior plus the resulting latency and <code>VRAM</code> cost.</div>
                 </div>
               </div>
             </div>
@@ -1315,10 +1338,10 @@
                 <div class="stage-badges">
                   <div class="stage-badge">shared worker</div>
                   <div class="stage-badge">t3.py</div>
-                  <div class="stage-badge">[x] c2 safe</div>
+                  <div class="stage-badge">[x] scheduled</div>
                 </div>
                 <h3 class="stage-title">Shared T3 worker with immutable weights</h3>
-                <div class="stage-path"><code>t3.py</code> owns weights; <code>concurrent_decode.py</code> owns request-local backend and analyzer</div>
+                <div class="stage-path"><code>t3.py</code> owns weights; <code>scheduled_decode.py</code> and <code>t3_scheduler.py</code> own cohort batching and per-request decode state</div>
               </div>
               <div class="stage-body">
                 <div class="cell">
@@ -1327,11 +1350,11 @@
                 </div>
                 <div class="cell">
                   <div class="cell-title">No Longer Shared</div>
-                  <div class="note"><code>self.patched_model</code>, <code>self.compiled</code>, analyzer instance, request-local decode progress.</div>
+                  <div class="note"><code>self.patched_model</code>, <code>self.compiled</code>, analyzer instance, request-local decode progress, and per-request KV cache.</div>
                 </div>
                 <div class="cell">
-                  <div class="cell-title">Validated In Current Path</div>
-                  <div class="note"><code>worker_concurrent.py:67-79</code> acquires the T3 lock; <code>concurrent_decode.py:82</code> creates a local backend instead of writing to shared <code>self</code>.</div>
+                  <div class="cell-title">Current State</div>
+                  <div class="note"><code>scheduled_decode.py:202-229</code> batches prefill and decode inputs across requests; the trace shows <code>prefill.batch inputs_embeds (4, 72, 1024)</code> for two separate requests.</div>
                 </div>
               </div>
             </div>
@@ -1358,8 +1381,8 @@
                   <div class="note">Input remains <code>speech_tokens + ref_dict</code>; output remains <code>mel / wav</code>.</div>
                 </div>
                 <div class="cell">
-                  <div class="cell-title">Not Done Yet</div>
-                  <div class="note"><code>S3</code> is still the old implementation. It did not fail at <code>concurrency=2</code>, but it is still a likely throughput bottleneck.</div>
+                  <div class="cell-title">Current Read</div>
+                  <div class="note"><code>S3</code> is still unchanged. Now that <code>T3</code> batching works, <code>S3</code> is the cleaner next throughput target.</div>
                 </div>
               </div>
             </div>
@@ -1396,11 +1419,11 @@
           </div>
           <div class="summary-card state-request">
             <div class="panel-title">What Becomes Request-Local</div>
-            <div class="note"><code>conds</code>, <code>past_key_values</code>, generated token history, analyzer state, decode progress, completion flags. This part is now validated for the <code>concurrent</code> path.</div>
+            <div class="note"><code>conds</code>, <code>past_key_values</code>, generated token history, analyzer state, decode progress, completion flags. The current scheduled path already keeps these outside the shared <code>T3</code> object.</div>
           </div>
           <div class="summary-card state-scheduler">
             <div class="panel-title">What Belongs To The Scheduler</div>
-            <div class="note">Pending queue, active request map, batching window, decode lock or step scheduler, cancellation and completion bookkeeping. Today only the coarse T3 lock is implemented.</div>
+            <div class="note">Pending queue, active cohorts, batching window, step scheduler, cancellation and completion bookkeeping. This now exists concretely in <code>T3DecodeScheduler</code>; the next question is how well it behaves under staggered arrivals.</div>
           </div>
         </div>
       </div>
@@ -1426,31 +1449,31 @@
               <td>Inputs: raw request fields. Outputs: request context or final waveform. No persistent request state on the shared object.</td>
             </tr>
             <tr>
-              <td><code>runtime/worker.py</code></td>
-              <td>Current Layer 1 wrapper that clones conditionals and exposes session-based generation.</td>
-              <td>Helps with prompt-state isolation but does not yet own full scheduler logic or fix shared <code>T3</code> internals.</td>
-              <td>Own request/session creation, scheduler state, active request tracking, and safe invocation of shared workers.</td>
-              <td>Inputs: request context + text/options. Outputs: safe shared execution and final request result.</td>
+              <td><code>runtime/worker.py</code><br /><code>runtime/worker_scheduled.py</code></td>
+              <td>Build request-local conditionals, create sessions, and hand requests to the scheduled shared-worker path.</td>
+              <td>The runtime boundary is now split across base worker helpers and the scheduled worker, so ownership has to stay explicit.</td>
+              <td>Keep request/session creation in the worker layer and keep scheduler-owned batching out of model modules.</td>
+              <td>Inputs: request fields plus shared weights. Outputs: isolated request context, queued decode work, and final request result.</td>
             </tr>
             <tr>
               <td><code>t3.py</code></td>
-              <td>Shared weights plus backend creation, analyzer creation, and decode loop.</td>
-              <td>Request-local mutable inference state is stored on shared <code>self</code>.</td>
-              <td>Keep weights on <code>self</code>; move backend, analyzer, caches, and decode progress into request-local inference context.</td>
+              <td>Core shared <code>T3</code> weights and embedding interface for the multilingual speech-token LM.</td>
+              <td>The old path stored request-local inference state on shared <code>self</code>; the remaining gap is a cleaner native prefill/step boundary.</td>
+              <td>Keep weights on <code>self</code>; keep backend state, analyzer state, caches, and decode progress in request-local scheduled decode objects.</td>
               <td>Inputs: <code>t3_cond</code>, <code>text_tokens</code>, request-local decode state. Outputs: speech tokens plus updated request-local state.</td>
             </tr>
             <tr>
               <td><code>alignment_stream_analyzer.py</code></td>
-              <td>Request-level alignment heuristics implemented through hooks on shared transformer layers.</td>
-              <td>Hooks and config mutation are global side effects on shared layers.</td>
-              <td>Make analyzer fully request-local and detachable, or remove shared hooks in concurrent mode until a safe replacement exists.</td>
+              <td>Baseline alignment heuristics implemented through hooks on shared transformer layers.</td>
+              <td>In the old path, hooks and config mutation are global side effects on shared layers.</td>
+              <td>Keep analyzer behavior request-local inside scheduled decode state and remove reliance on shared lingering hooks.</td>
               <td>Inputs: request-local attention/logit stream. Outputs: request-local alignment state and optionally sanitized logits. No lingering global hooks.</td>
             </tr>
             <tr>
               <td><code>s3gen.py</code></td>
               <td>Speech-token filtering, token-to-mel flow decode, HiFT waveform synthesis.</td>
-              <td>Still batch-size-1 oriented and still the first likely performance hot path once correctness is fixed.</td>
-              <td>Keep interface stable first; treat as shared worker with request-local inputs, then profile and optimize after T3 correctness.</td>
+              <td>Still batch-size-1 oriented and now the clearest likely performance hot path after the scheduled <code>T3</code> work.</td>
+              <td>Keep interface stable first; treat as shared worker with request-local inputs, then profile and optimize it after the <code>T3</code> scheduler work.</td>
               <td>Inputs stay <code>speech_tokens + ref_dict</code>. Outputs stay <code>output_mels</code> and <code>output_wavs</code>.</td>
             </tr>
           </tbody>
@@ -1483,8 +1506,7 @@
           <code>baseline output_mels (1, 80, 170)</code>, <code>baseline output_wavs (1, 81600)</code>,
           <code>streaming predicted_tokens (1, 106)</code>, <code>streaming filtered speech_tokens (105,)</code>,
           <code>streaming output_mels (1, 80, 210)</code>, <code>streaming output_wavs (1, 100800)</code>,
-          <code>concurrent-c1 predicted_tokens (1, 122)</code>, <code>concurrent-c1 filtered speech_tokens (121,)</code>,
-          <code>concurrent-c1 output_mels (1, 80, 242)</code>, and <code>concurrent-c1 output_wavs (1, 116160)</code>.
+          and scheduled cohort proof: <code>run_cohort requests 2 batch_key (36, 150)</code> plus <code>prefill.batch inputs_embeds (4, 72, 1024)</code>.
         </div>
       </div>
     </div>

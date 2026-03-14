@@ -1,0 +1,827 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>Chatterbox Runtime Evolution</title>
+    <style>
+      :root {
+        --bg: #ececec;
+        --paper: #fbfbfb;
+        --panel: #ffffff;
+        --ink: #171717;
+        --muted: #5f5f5f;
+        --line: #d2d2d2;
+        --line-strong: #8e8e8e;
+        --ok: #232323;
+        --ok-bg: #f3f3f3;
+        --warn: #6f6f6f;
+        --warn-bg: #f6f6f6;
+        --hot: #111111;
+        --hot-bg: repeating-linear-gradient(
+          -45deg,
+          #fbfbfb 0,
+          #fbfbfb 10px,
+          #f0f0f0 10px,
+          #f0f0f0 20px
+        );
+      }
+
+      * {
+        box-sizing: border-box;
+      }
+
+      body {
+        margin: 0;
+        background: var(--bg);
+        color: var(--ink);
+        font-family: ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+      }
+
+      code,
+      .mono,
+      table {
+        font-family: ui-monospace, "SFMono-Regular", Menlo, Consolas, monospace;
+      }
+
+      .page {
+        width: 100%;
+        max-width: 2100px;
+        margin: 0 auto;
+        padding: 20px 20px 28px;
+      }
+
+      .hero {
+        background: var(--panel);
+        border: 1px solid var(--line);
+        padding: 18px 20px;
+        box-shadow: 0 1px 0 rgba(0, 0, 0, 0.04);
+        margin-bottom: 14px;
+      }
+
+      .title {
+        margin: 0;
+        font-size: 31px;
+        line-height: 1.08;
+        letter-spacing: -0.02em;
+      }
+
+      .subtitle {
+        margin: 8px 0 0;
+        font-size: 13px;
+        line-height: 1.5;
+        color: var(--muted);
+        max-width: 1180px;
+      }
+
+      .source-list {
+        margin: 12px 0 0;
+        padding: 0;
+        list-style: none;
+        display: grid;
+        grid-template-columns: repeat(2, minmax(0, 1fr));
+        gap: 6px 12px;
+        font-size: 11px;
+        color: var(--muted);
+      }
+
+      .summary-grid,
+      .bottom-grid {
+        display: grid;
+        grid-template-columns: repeat(4, minmax(0, 1fr));
+        gap: 12px;
+        margin-bottom: 14px;
+      }
+
+      .bottom-grid {
+        grid-template-columns: 1.3fr 1fr 1fr;
+      }
+
+      .summary-card,
+      .panel {
+        background: var(--panel);
+        border: 1px solid var(--line);
+        padding: 14px 15px;
+        box-shadow: 0 1px 0 rgba(0, 0, 0, 0.04);
+      }
+
+      .summary-label,
+      .panel-title,
+      .section-title,
+      .mini-title {
+        font-size: 11px;
+        text-transform: uppercase;
+        letter-spacing: 0.08em;
+        color: var(--muted);
+      }
+
+      .summary-value {
+        margin-top: 6px;
+        font-size: 18px;
+        line-height: 1.25;
+        font-weight: 700;
+      }
+
+      .summary-note,
+      .note,
+      li,
+      td,
+      th {
+        font-size: 12px;
+        line-height: 1.45;
+      }
+
+      .summary-note {
+        margin-top: 8px;
+        color: var(--muted);
+      }
+
+      .section {
+        background: var(--panel);
+        border: 1px solid var(--line);
+        padding: 16px 18px 18px;
+        box-shadow: 0 1px 0 rgba(0, 0, 0, 0.04);
+        margin-bottom: 14px;
+      }
+
+      .section-title {
+        margin-bottom: 10px;
+        font-weight: 700;
+      }
+
+      .section-subtitle {
+        margin: -2px 0 12px;
+        color: var(--muted);
+        font-size: 12px;
+        line-height: 1.45;
+      }
+
+      .legend {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 8px;
+        margin-bottom: 12px;
+      }
+
+      .chip {
+        padding: 5px 8px;
+        border: 1px solid var(--line-strong);
+        font-size: 10px;
+        text-transform: uppercase;
+        letter-spacing: 0.08em;
+        background: #fff;
+      }
+
+      .chip.ok {
+        background: var(--ok-bg);
+        border-color: var(--ok);
+      }
+
+      .chip.warn {
+        background: var(--warn-bg);
+        border-style: dashed;
+      }
+
+      .chip.hot {
+        background: var(--hot-bg);
+        border-style: dotted;
+      }
+
+      .scroll {
+        overflow-x: auto;
+        overflow-y: hidden;
+        padding-bottom: 4px;
+      }
+
+      .timeline {
+        min-width: 2320px;
+        display: flex;
+        align-items: stretch;
+        gap: 10px;
+      }
+
+      .change-card {
+        width: 430px;
+        min-width: 430px;
+        border: 1px solid var(--line);
+        background: var(--paper);
+        display: grid;
+        grid-template-rows: auto 1fr;
+      }
+
+      .change-card.hot {
+        background: var(--hot-bg);
+      }
+
+      .card-head {
+        padding: 13px 14px 11px;
+        border-bottom: 1px solid var(--line);
+        background: rgba(255, 255, 255, 0.7);
+      }
+
+      .step-row {
+        display: flex;
+        gap: 10px;
+        align-items: flex-start;
+      }
+
+      .step-num {
+        min-width: 34px;
+        height: 34px;
+        border: 1px solid var(--line-strong);
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+        font-size: 15px;
+        font-weight: 700;
+        background: #fff;
+      }
+
+      .step-kicker {
+        font-size: 10px;
+        text-transform: uppercase;
+        letter-spacing: 0.08em;
+        color: var(--muted);
+        margin-bottom: 3px;
+      }
+
+      .step-title {
+        margin: 0;
+        font-size: 18px;
+        line-height: 1.22;
+      }
+
+      .tag-row {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 6px;
+        margin-top: 9px;
+      }
+
+      .tag {
+        padding: 3px 6px;
+        font-size: 10px;
+        text-transform: uppercase;
+        letter-spacing: 0.08em;
+        border: 1px solid var(--line-strong);
+        background: #fff;
+      }
+
+      .tag.ok {
+        background: var(--ok-bg);
+        border-color: var(--ok);
+      }
+
+      .tag.warn {
+        border-style: dashed;
+      }
+
+      .tag.hot {
+        border-style: dotted;
+        background: var(--hot-bg);
+      }
+
+      .card-body {
+        padding: 11px 14px 14px;
+        display: grid;
+        gap: 9px;
+      }
+
+      .box {
+        border: 1px solid var(--line);
+        background: rgba(255, 255, 255, 0.72);
+        padding: 9px 10px;
+      }
+
+      .box ul {
+        margin: 7px 0 0;
+        padding-left: 16px;
+      }
+
+      .code-ref {
+        display: block;
+        margin-top: 5px;
+        font-size: 11px;
+        line-height: 1.45;
+      }
+
+      .metric-table {
+        width: 100%;
+        border-collapse: collapse;
+        margin-top: 6px;
+      }
+
+      .metric-table td,
+      .metric-table th {
+        border: 1px solid var(--line);
+        padding: 6px 7px;
+        vertical-align: top;
+        text-align: left;
+      }
+
+      .metric-table th {
+        background: #efefef;
+        font-size: 10px;
+        text-transform: uppercase;
+        letter-spacing: 0.08em;
+      }
+
+      .arrow {
+        width: 54px;
+        min-width: 54px;
+        position: relative;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+      }
+
+      .arrow::before {
+        content: "";
+        position: absolute;
+        left: 6px;
+        right: 6px;
+        top: 50%;
+        border-top: 1px solid var(--line-strong);
+      }
+
+      .arrow::after {
+        content: "";
+        position: absolute;
+        right: 6px;
+        top: calc(50% - 4px);
+        border-top: 5px solid transparent;
+        border-bottom: 5px solid transparent;
+        border-left: 8px solid var(--line-strong);
+      }
+
+      .arrow-label {
+        position: relative;
+        z-index: 1;
+        padding: 5px 6px;
+        background: var(--bg);
+        font-size: 10px;
+        text-transform: uppercase;
+        letter-spacing: 0.08em;
+        color: var(--muted);
+        writing-mode: vertical-rl;
+        transform: rotate(180deg);
+      }
+
+      .tight-list {
+        margin: 0;
+        padding-left: 16px;
+      }
+
+      .tight-list li + li {
+        margin-top: 4px;
+      }
+
+      .footnote {
+        margin-top: 8px;
+        font-size: 11px;
+        color: var(--muted);
+        line-height: 1.45;
+      }
+
+      @media (max-width: 1440px) {
+        .summary-grid,
+        .bottom-grid,
+        .source-list {
+          grid-template-columns: 1fr;
+        }
+      }
+    </style>
+  </head>
+  <body>
+    <div class="page">
+      <div class="hero">
+        <h1 class="title">Chatterbox Runtime Evolution</h1>
+        <div class="subtitle">
+          A chronological board of what changed in the serving stack, what code carried each change, and what each
+          step actually bought us. This is separate from the current-vs-target architecture board: this one is for
+          tracking the engineering sequence from broken shared-state inference to the current scheduled runtime.
+        </div>
+        <ul class="source-list">
+          <li><code>PROGRESS.md</code></li>
+          <li><code>TRACE_RUN_RESULTS.md</code></li>
+          <li><code>IMPLEMENTATION_CHECKLIST.md</code></li>
+          <li><code>CHATTERBOX_SCALING_PLAN.md</code></li>
+          <li><code>external/chatterbox/src/chatterbox/mtl_tts.py</code></li>
+          <li><code>external/chatterbox/src/chatterbox/runtime/worker.py</code></li>
+          <li><code>external/chatterbox/src/chatterbox/runtime/worker_concurrent.py</code></li>
+          <li><code>external/chatterbox/src/chatterbox/runtime/worker_scheduled.py</code></li>
+          <li><code>external/chatterbox/src/chatterbox/runtime/t3_scheduler.py</code></li>
+          <li><code>external/chatterbox/src/chatterbox/models/t3/inference/concurrent_decode.py</code></li>
+          <li><code>external/chatterbox/src/chatterbox/models/t3/inference/scheduled_decode.py</code></li>
+          <li><code>external/chatterbox/benchmark_multilingual_concurrency.py</code></li>
+        </ul>
+      </div>
+
+      <div class="summary-grid">
+        <div class="summary-card">
+          <div class="summary-label">Original Failure</div>
+          <div class="summary-value">old baseline and streaming paths broke at <code>concurrency &gt;= 2</code></div>
+          <div class="summary-note">
+            Baseline hit tensor-size mismatch. Streaming could avoid a Python exception but still collapsed one request to
+            a tiny output.
+          </div>
+        </div>
+        <div class="summary-card">
+          <div class="summary-label">First Correctness Win</div>
+          <div class="summary-value"><code>concurrent</code> restored correctness through <code>concurrency=4</code></div>
+          <div class="summary-note">
+            The fix was request-local <code>T3</code> backend/analyzer state plus a coarse full-decode lock.
+          </div>
+        </div>
+        <div class="summary-card">
+          <div class="summary-label">First Real Scaling Win</div>
+          <div class="summary-value"><code>scheduled</code> replaced the coarse lock with batched <code>T3</code> cohorts</div>
+          <div class="summary-note">
+            First measured batch proof: <code>run_cohort requests 2</code> and <code>prefill.batch (4, 72, 1024)</code>.
+          </div>
+        </div>
+        <div class="summary-card">
+          <div class="summary-label">Current Measured Read</div>
+          <div class="summary-value">active <code>T3</code> compute is still larger than <code>S3</code></div>
+          <div class="summary-note">
+            In the latest timed scheduled run, scheduler wait is tiny and <code>T3</code> remains the larger hot path.
+          </div>
+        </div>
+      </div>
+
+      <div class="section">
+        <div class="section-title">Legend</div>
+        <div class="legend">
+          <div class="chip warn">problem discovery</div>
+          <div class="chip ok">correctness gain</div>
+          <div class="chip ok">throughput gain</div>
+          <div class="chip hot">observability / telemetry gain</div>
+          <div class="chip warn">still open</div>
+        </div>
+        <div class="section-subtitle">
+          Read left to right. Each column is one engineering step: what changed, where it lives, what it improved, and
+          what it still did not solve.
+        </div>
+        <div class="scroll">
+          <div class="timeline">
+            <div class="change-card hot">
+              <div class="card-head">
+                <div class="step-row">
+                  <div class="step-num">0</div>
+                  <div>
+                    <div class="step-kicker">Problem Map</div>
+                    <h2 class="step-title">Prove The Breakage And Protect The Known-Good Path</h2>
+                  </div>
+                </div>
+                <div class="tag-row">
+                  <div class="tag warn">hazard found</div>
+                  <div class="tag hot">trace baseline</div>
+                </div>
+              </div>
+              <div class="card-body">
+                <div class="box">
+                  <div class="mini-title">What We Learned</div>
+                  <ul class="tight-list">
+                    <li>Single-request tensor flow was healthy in both baseline and streaming wrappers.</li>
+                    <li>The real problem was concurrent shared-state mutation, not broken end-to-end tensor plumbing.</li>
+                    <li>The first blockers were <code>self.conds</code>, <code>self.patched_model</code>, <code>self.compiled</code>, and shared analyzer hooks.</li>
+                  </ul>
+                </div>
+                <div class="box">
+                  <div class="mini-title">Code Anchors</div>
+                  <span class="code-ref"><code>mtl_tts.py:258</code> <code>self.conds = Conditionals(...)</code></span>
+                  <span class="code-ref"><code>t3.py:288</code> <code>self.compiled = False</code></span>
+                  <span class="code-ref"><code>t3.py:312</code> <code>self.patched_model = patched_model</code></span>
+                  <span class="code-ref"><code>alignment_stream_analyzer.py:84</code> <code>register_forward_hook(...)</code></span>
+                </div>
+                <div class="box">
+                  <div class="mini-title">Measured Result</div>
+                  <table class="metric-table">
+                    <tr>
+                      <th>Observation</th>
+                      <th>Evidence</th>
+                    </tr>
+                    <tr>
+                      <td>single-request baseline</td>
+                      <td><code>latency_s=[4.3412]</code>, <code>output_wavs (1, 81600)</code></td>
+                    </tr>
+                    <tr>
+                      <td>single-request streaming</td>
+                      <td><code>latency_s=[4.46]</code>, <code>output_wavs (1, 100800)</code></td>
+                    </tr>
+                    <tr>
+                      <td>old multi-request failure</td>
+                      <td>baseline tensor-size mismatch; streaming could collapse to <code>1920</code> samples</td>
+                    </tr>
+                  </table>
+                </div>
+                <div class="box">
+                  <div class="mini-title">Why This Step Mattered</div>
+                  <div class="note">
+                    It prevented us from blaming <code>S3</code> or the tokenizer too early. The known-good single-request
+                    trace gave us a stable baseline before touching concurrency.
+                  </div>
+                </div>
+              </div>
+            </div>
+
+            <div class="arrow"><div class="arrow-label">make request state explicit</div></div>
+
+            <div class="change-card">
+              <div class="card-head">
+                <div class="step-row">
+                  <div class="step-num">1</div>
+                  <div>
+                    <div class="step-kicker">Session Scaffold</div>
+                    <h2 class="step-title">Move Prompt State Into Sessions And Workers</h2>
+                  </div>
+                </div>
+                <div class="tag-row">
+                  <div class="tag ok">request isolation</div>
+                  <div class="tag hot">debuggable</div>
+                </div>
+              </div>
+              <div class="card-body">
+                <div class="box">
+                  <div class="mini-title">What Changed</div>
+                  <ul class="tight-list">
+                    <li>Added explicit session creation and conditionals cloning.</li>
+                    <li>Stopped relying on the caller to mutate one shared model object in-place for every request.</li>
+                    <li>Preserved the original tensor interface while making prompt state reproducible per request.</li>
+                  </ul>
+                </div>
+                <div class="box">
+                  <div class="mini-title">Code Anchors</div>
+                  <span class="code-ref"><code>runtime/worker.py:92</code> <code>create_session(...)</code></span>
+                  <span class="code-ref"><code>runtime/worker.py:106-107</code> clone default conditionals and apply exaggeration</span>
+                  <span class="code-ref"><code>runtime/worker.py:141-142</code> clone request conditionals at generate time</span>
+                  <span class="code-ref"><code>mtl_tts_streaming.py:98</code> <code>create_session(...)</code></span>
+                </div>
+                <div class="box">
+                  <div class="mini-title">Improvement Result</div>
+                  <table class="metric-table">
+                    <tr>
+                      <th>Gain</th>
+                      <th>Read</th>
+                    </tr>
+                    <tr>
+                      <td>state hygiene</td>
+                      <td>Prompt state became request-local and reproducible instead of living only on shared <code>self</code>.</td>
+                    </tr>
+                    <tr>
+                      <td>known-safe behavior</td>
+                      <td>Single-request traces stayed healthy while we changed runtime shape.</td>
+                    </tr>
+                    <tr>
+                      <td>limitation</td>
+                      <td>It still did not isolate shared <code>T3</code> inference internals, so concurrency was not fixed yet.</td>
+                    </tr>
+                  </table>
+                </div>
+                <div class="box">
+                  <div class="mini-title">What It Bought Us</div>
+                  <div class="note">
+                    This was the runtime foundation. It made later fixes possible because request-local conditionals,
+                    prompt state, and options already had an explicit home.
+                  </div>
+                </div>
+              </div>
+            </div>
+
+            <div class="arrow"><div class="arrow-label">fix correctness first</div></div>
+
+            <div class="change-card">
+              <div class="card-head">
+                <div class="step-row">
+                  <div class="step-num">2</div>
+                  <div>
+                    <div class="step-kicker">Concurrent Runtime</div>
+                    <h2 class="step-title">Make <code>T3</code> Safe With Request-Local Decode State</h2>
+                  </div>
+                </div>
+                <div class="tag-row">
+                  <div class="tag ok">correctness gain</div>
+                  <div class="tag warn">coarse lock</div>
+                </div>
+              </div>
+              <div class="card-body">
+                <div class="box">
+                  <div class="mini-title">What Changed</div>
+                  <ul class="tight-list">
+                    <li>Built a request-local <code>T3</code> backend instead of reusing one shared backend object.</li>
+                    <li>Made the alignment analyzer request-local and removable on close.</li>
+                    <li>Wrapped the full <code>T3</code> decode in one coarse lock so two requests could not corrupt each other.</li>
+                  </ul>
+                </div>
+                <div class="box">
+                  <div class="mini-title">Code Anchors</div>
+                  <span class="code-ref"><code>worker_concurrent.py:30</code> <code>self.t3_decode_lock = threading.Lock()</code></span>
+                  <span class="code-ref"><code>worker_concurrent.py:84</code> <code>run_concurrent_t3_inference(...)</code></span>
+                  <span class="code-ref"><code>concurrent_decode.py:74</code> create <code>ConcurrentAlignmentStreamAnalyzer(...)</code></span>
+                  <span class="code-ref"><code>concurrent_decode.py:82</code> create local <code>T3HuggingfaceBackend(...)</code></span>
+                  <span class="code-ref"><code>alignment_stream_analyzer_concurrent.py:75</code> <code>handle.remove()</code></span>
+                </div>
+                <div class="box">
+                  <div class="mini-title">Improvement Result</div>
+                  <table class="metric-table">
+                    <tr>
+                      <th>Metric</th>
+                      <th>Value</th>
+                    </tr>
+                    <tr>
+                      <td><code>concurrent c2</code></td>
+                      <td><code>wall_s=6.8933</code>, <code>p95=6.7747</code>, <code>audio_seconds_per_second=1.1257</code>, <code>errors=[]</code></td>
+                    </tr>
+                    <tr>
+                      <td><code>concurrent c4</code></td>
+                      <td><code>wall_s=12.7722</code>, <code>audio_seconds_per_second=1.2339</code>, <code>errors=[]</code></td>
+                    </tr>
+                    <tr>
+                      <td>quality check</td>
+                      <td>Manual listening on saved outputs sounded correct.</td>
+                    </tr>
+                  </table>
+                </div>
+                <div class="box">
+                  <div class="mini-title">What It Bought Us</div>
+                  <div class="note">
+                    Correctness first. This step proved the shared-state bug was real and fixable. It also proved that
+                    the next limiter was the coarse lock itself, not immediate corruption anymore.
+                  </div>
+                </div>
+              </div>
+            </div>
+
+            <div class="arrow"><div class="arrow-label">replace lock with batching</div></div>
+
+            <div class="change-card">
+              <div class="card-head">
+                <div class="step-row">
+                  <div class="step-num">3</div>
+                  <div>
+                    <div class="step-kicker">First Scheduled Runtime</div>
+                    <h2 class="step-title">Batch Compatible Requests Into Real <code>T3</code> Cohorts</h2>
+                  </div>
+                </div>
+                <div class="tag-row">
+                  <div class="tag ok">throughput gain</div>
+                  <div class="tag ok">shared weights</div>
+                  <div class="tag warn">same-shape cohorts</div>
+                </div>
+              </div>
+              <div class="card-body">
+                <div class="box">
+                  <div class="mini-title">What Changed</div>
+                  <ul class="tight-list">
+                    <li>Introduced a shared <code>T3</code> worker plus one scheduler per shared weight copy.</li>
+                    <li>Added one per-request mutable decode-state object inside batched cohort execution.</li>
+                    <li>Grouped compatible requests by <code>batch_key</code> and ran batched prefill plus batched decode.</li>
+                  </ul>
+                </div>
+                <div class="box">
+                  <div class="mini-title">Code Anchors</div>
+                  <span class="code-ref"><code>worker_scheduled.py:31</code> <code>T3DecodeScheduler(self.t3, ...)</code></span>
+                  <span class="code-ref"><code>worker_scheduled.py:91</code> submit request into scheduler</span>
+                  <span class="code-ref"><code>scheduled_decode.py:36</code> <code>batch_key()</code></span>
+                  <span class="code-ref"><code>scheduled_decode.py:149</code> <code>prepare_scheduled_cohort(...)</code></span>
+                  <span class="code-ref"><code>scheduled_decode.py:190</code> <code>advance_scheduled_cohort(...)</code></span>
+                </div>
+                <div class="box">
+                  <div class="mini-title">Improvement Result</div>
+                  <table class="metric-table">
+                    <tr>
+                      <th>Metric</th>
+                      <th>Value</th>
+                    </tr>
+                    <tr>
+                      <td>trace proof</td>
+                      <td><code>run_cohort requests 2</code>, <code>batch_key (36, 150)</code>, <code>prefill.batch (4, 72, 1024)</code></td>
+                    </tr>
+                    <tr>
+                      <td>throughput vs coarse-lock</td>
+                      <td><code>c1 +20.6%</code>, <code>c2 +57.8%</code>, <code>c4 +46.0%</code></td>
+                    </tr>
+                    <tr>
+                      <td>scheduled results</td>
+                      <td><code>c1=1.0309</code>, <code>c2=1.7764</code>, <code>c4=1.8018</code> audio-seconds per second</td>
+                    </tr>
+                  </table>
+                </div>
+                <div class="box">
+                  <div class="mini-title">What It Bought Us</div>
+                  <div class="note">
+                    This was the first real scaling win. The system no longer depended on coarse full-decode serialization
+                    just to stay correct.
+                  </div>
+                </div>
+              </div>
+            </div>
+
+            <div class="arrow"><div class="arrow-label">keep cohorts active</div></div>
+
+            <div class="change-card">
+              <div class="card-head">
+                <div class="step-row">
+                  <div class="step-num">4</div>
+                  <div>
+                    <div class="step-kicker">Hardened Scheduler</div>
+                    <h2 class="step-title">Round-Robin Active Cohorts, Mid-Cohort Admission, Timing, <code>VRAM</code></h2>
+                  </div>
+                </div>
+                <div class="tag-row">
+                  <div class="tag ok">throughput gain</div>
+                  <div class="tag hot">telemetry gain</div>
+                  <div class="tag warn">t3 still hottest</div>
+                </div>
+              </div>
+              <div class="card-body">
+                <div class="box">
+                  <div class="mini-title">What Changed</div>
+                  <ul class="tight-list">
+                    <li>Kept active cohorts in the scheduler and advanced them one decode step at a time.</li>
+                    <li>Allowed new requests to enter while older cohorts were still decoding.</li>
+                    <li>Added per-stage timing and explicit <code>VRAM</code> measurement to the benchmark path.</li>
+                  </ul>
+                </div>
+                <div class="box">
+                  <div class="mini-title">Code Anchors</div>
+                  <span class="code-ref"><code>t3_scheduler.py:53</code> keep <code>active_cohorts</code></span>
+                  <span class="code-ref"><code>t3_scheduler.py:63</code> <code>submit(...)</code> returns result plus timing metrics</span>
+                  <span class="code-ref"><code>t3_scheduler.py:143</code> <code>advance_scheduled_cohort(...)</code></span>
+                  <span class="code-ref"><code>t3_scheduler.py:162</code> requeue unfinished cohort</span>
+                  <span class="code-ref"><code>benchmark_multilingual_concurrency.py:59</code> <code>begin_vram_measurement(...)</code></span>
+                  <span class="code-ref"><code>benchmark_multilingual_concurrency.py:122</code> <code>get_last_profile(...)</code></span>
+                </div>
+                <div class="box">
+                  <div class="mini-title">Improvement Result</div>
+                  <table class="metric-table">
+                    <tr>
+                      <th>Metric</th>
+                      <th>Value</th>
+                    </tr>
+                    <tr>
+                      <td>latest throughput</td>
+                      <td><code>c1=1.0346</code>, <code>c2=1.8267</code>, <code>c4=2.7884</code></td>
+                    </tr>
+                    <tr>
+                      <td>latest deltas</td>
+                      <td><code>c1-&gt;c2 +76.6%</code>, <code>c2-&gt;c4 +52.6%</code>, <code>scheduled c4 vs concurrent c4 +126.0%</code></td>
+                    </tr>
+                    <tr>
+                      <td><code>VRAM</code> peaks</td>
+                      <td><code>3514.1 MB</code>, <code>3917.5 MB</code>, <code>4735.6 MB</code> for <code>c1/c2/c4</code></td>
+                    </tr>
+                    <tr>
+                      <td>timing read</td>
+                      <td><code>c4 T3=3.9262s</code>, <code>S3=1.3699s</code>, <code>T3 wait=0.0127s</code></td>
+                    </tr>
+                  </table>
+                </div>
+                <div class="box">
+                  <div class="mini-title">What It Bought Us</div>
+                  <div class="note">
+                    We no longer need to guess where the time is going. Under simultaneous-arrival load, the measured
+                    bottleneck is active <code>T3</code> compute, not queue wait and not yet <code>S3</code>.
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+        <div class="footnote">
+          Latest interpretation: request-local runtime state is no longer the main unresolved issue, coarse full-decode
+          locking is gone, real batched <code>T3</code> scheduling exists, and the next technical question is deeper
+          <code>T3</code> profiling plus staggered-arrival validation.
+        </div>
+      </div>
+
+      <div class="bottom-grid">
+        <div class="panel">
+          <div class="panel-title">Current Plain-English Read</div>
+          <ul class="tight-list">
+            <li>The first fixes were about state ownership, not speed.</li>
+            <li>The first big correctness win came from making <code>T3</code> decode state request-local.</li>
+            <li>The first big scaling win came from replacing the coarse lock with batched <code>T3</code> cohorts.</li>
+            <li>The latest visibility win came from stage timing and <code>VRAM</code> measurement, which now point back to active <code>T3</code> compute.</li>
+          </ul>
+        </div>
+        <div class="panel">
+          <div class="panel-title">Still Open</div>
+          <ul class="tight-list">
+            <li>validate staggered-arrival behavior under live load, not just simultaneous starts</li>
+            <li>profile deeper inside <code>T3</code> prefill and decode compute</li>
+            <li>revisit <code>S3</code> only after the deeper <code>T3</code> read is clear</li>
+          </ul>
+        </div>
+        <div class="panel">
+          <div class="panel-title">Best One-Line Summary</div>
+          <div class="note">
+            The runtime evolved from “shared mutable inference state breaks concurrency” to “batched <code>T3</code>
+            scheduling scales meaningfully through <code>concurrency=4</code>, and the next measured bottleneck is still
+            <code>T3</code>, not <code>S3</code>.”
+          </div>
+        </div>
+      </div>
+    </div>
+  </body>
+</html>
