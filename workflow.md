@@ -65,6 +65,7 @@ When discussing project state:
 
 1. [PROGRESS.md](/Users/hisham/Code/Bahraini_TTS/PROGRESS.md)
 2. [understand.md](/Users/hisham/Code/Bahraini_TTS/understand.md)
+3. [CLOUD_GPU_QUICKSTART.md](/Users/hisham/Code/Bahraini_TTS/CLOUD_GPU_QUICKSTART.md) when the discussion is about the GPU box or reproducible run steps
 
 When discussing upstream sources:
 
@@ -75,8 +76,8 @@ When discussing upstream sources:
 For this thesis, use this order unless HM redirects:
 
 1. Benchmark Chatterbox.
-2. Refactor runtime around explicit session state.
-3. Rerun concurrency measurements.
+2. Validate the local Layer 1 runtime on the GPU box with the patch + quickstart path.
+3. Rerun baseline vs streaming-runtime measurements.
 4. Focus on `S3 token -> mel` scalability work only if runtime cleanup is still not enough.
 5. Revisit `T3` only after that.
 

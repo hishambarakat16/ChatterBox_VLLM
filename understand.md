@@ -28,6 +28,7 @@ Only log items that are clearly confirmed in discussion.
 - HM understands the current Chatterbox serving issue is `runtime architecture + serial model architecture`, not one slow line.
 - HM understands the current fix is `runtime/session isolation first`, then `S3` redesign only if concurrency is still poor.
 - HM understands the target runtime shape is `shared worker + explicit session state`, not immediate model replacement.
+- HM understands the current portable execution path is `CLOUD_GPU_QUICKSTART.md` plus `patches/chatterbox_streaming_runtime.patch`, not a published Chatterbox fork commit yet.
 
 ### Project State
 
@@ -35,6 +36,7 @@ Only log items that are clearly confirmed in discussion.
 - HM understands the current repo mostly contains design docs, diagrams, and reference repos.
 - HM understands the current project direction has pivoted from Stage 1 pronunciation review toward Chatterbox scalability analysis.
 - HM understands the active KPI is `max concurrent streaming sessions per GPU at target latency`.
+- HM understands the current next step is GPU validation of `baseline` vs `streaming` runtime, not `S3` redesign yet.
 
 ### Working Process
 

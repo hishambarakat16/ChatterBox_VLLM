@@ -36,6 +36,7 @@ We are treating the current implementation as the reference system to beat.
 Serving-shape visual:
 
 - [chatterbox_serving_shape_current_vs_target.html](/Users/hisham/Code/Bahraini_TTS/architecture/chatterbox_serving_shape_current_vs_target.html)
+- [CLOUD_GPU_QUICKSTART.md](/Users/hisham/Code/Bahraini_TTS/CLOUD_GPU_QUICKSTART.md)
 
 ## What We Know
 
@@ -112,6 +113,22 @@ Concrete fork plan:
 - define a streaming session abstraction
 - make the runtime concurrency-safe
 
+Current Layer 1 artifacts already exist locally:
+
+- [mtl_tts_streaming.py](/Users/hisham/Code/Bahraini_TTS/external/chatterbox/src/chatterbox/mtl_tts_streaming.py)
+- [runtime/session.py](/Users/hisham/Code/Bahraini_TTS/external/chatterbox/src/chatterbox/runtime/session.py)
+- [runtime/types.py](/Users/hisham/Code/Bahraini_TTS/external/chatterbox/src/chatterbox/runtime/types.py)
+- [runtime/worker.py](/Users/hisham/Code/Bahraini_TTS/external/chatterbox/src/chatterbox/runtime/worker.py)
+- [compare_multilingual_runtime.py](/Users/hisham/Code/Bahraini_TTS/external/chatterbox/compare_multilingual_runtime.py)
+
+Important current repo fact:
+
+- these runtime changes live inside the local `external/chatterbox` submodule worktree
+- the portable execution path is the patch file plus quickstart, not a published Chatterbox submodule fork yet
+- portable artifacts:
+  - [patches/chatterbox_streaming_runtime.patch](/Users/hisham/Code/Bahraini_TTS/patches/chatterbox_streaming_runtime.patch)
+  - [CLOUD_GPU_QUICKSTART.md](/Users/hisham/Code/Bahraini_TTS/CLOUD_GPU_QUICKSTART.md)
+
 The target runtime shape is:
 
 - shared worker owns read-only model weights and helpers
@@ -135,8 +152,8 @@ If the runtime is request-safe but concurrency is still poor:
 The shortest path is:
 
 1. treat current Chatterbox as baseline
-2. make the runtime concurrency-safe
-3. attack `S3` first
-4. compare against baseline
+2. validate the new Layer 1 runtime path on GPU using the patch + quickstart flow
+3. compare baseline vs new runtime path
+4. only then decide whether `S3` must change first
 
 Anything outside that path is context bloat for now.

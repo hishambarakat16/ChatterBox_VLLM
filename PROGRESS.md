@@ -13,6 +13,8 @@ _Last updated: 2026-03-14_
 - defined the local Chatterbox fork strategy and minimal-file-duplication plan
 - added Layer 1 streaming-runtime scaffolding inside `external/chatterbox`
 - created [chatterbox_serving_shape_current_vs_target.html](/Users/hisham/Code/Bahraini_TTS/architecture/chatterbox_serving_shape_current_vs_target.html) to show current vs target serving architecture with code anchors
+- created [patches/chatterbox_streaming_runtime.patch](/Users/hisham/Code/Bahraini_TTS/patches/chatterbox_streaming_runtime.patch) so the local Chatterbox runtime changes can be reproduced on a GPU box
+- created [CLOUD_GPU_QUICKSTART.md](/Users/hisham/Code/Bahraini_TTS/CLOUD_GPU_QUICKSTART.md) with the required-only cloud setup and run commands
 
 ## Current Focus
 
@@ -36,10 +38,17 @@ Current `Chatterbox` is not concurrency-friendly as written because:
 ## Current Plan
 
 1. keep current Chatterbox as baseline
-2. make runtime request-safe
-3. introduce explicit session state
-4. compare baseline vs new runtime path
+2. validate the Layer 1 runtime path on a GPU box
+3. compare baseline vs new runtime path
+4. confirm the runtime path is stable enough to use as a real baseline fork
 5. optimize `S3` next
+
+## Current Execution Path
+
+- use [CLOUD_GPU_QUICKSTART.md](/Users/hisham/Code/Bahraini_TTS/CLOUD_GPU_QUICKSTART.md)
+- initialize only `external/chatterbox`
+- apply [patches/chatterbox_streaming_runtime.patch](/Users/hisham/Code/Bahraini_TTS/patches/chatterbox_streaming_runtime.patch)
+- run [compare_multilingual_runtime.py](/Users/hisham/Code/Bahraini_TTS/external/chatterbox/compare_multilingual_runtime.py) for `baseline` and `streaming`
 
 ## Not Current Work
 

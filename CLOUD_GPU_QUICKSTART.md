@@ -47,7 +47,7 @@ python -c "from chatterbox import ChatterboxMultilingualTTS, ChatterboxMultiling
 ## 6. Pick A Prompt File
 
 ```bash
-export PROMPT_AUDIO=/absolute/path/to/reference.wav
+export PROMPT_AUDIO=$PWD/SPK_17_000003.wav
 ```
 
 ## 7. Run Baseline

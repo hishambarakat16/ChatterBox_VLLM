@@ -30,6 +30,7 @@ See:
 
 - [CHATTERBOX_FORK_IMPLEMENTATION_PLAN.md](/Users/hisham/Code/Bahraini_TTS/CHATTERBOX_FORK_IMPLEMENTATION_PLAN.md)
 - [chatterbox_serving_shape_current_vs_target.html](/Users/hisham/Code/Bahraini_TTS/architecture/chatterbox_serving_shape_current_vs_target.html)
+- [CLOUD_GPU_QUICKSTART.md](/Users/hisham/Code/Bahraini_TTS/CLOUD_GPU_QUICKSTART.md)
 
 ## What Must Be Fixed First
 
@@ -52,6 +53,13 @@ Target:
 - one explicit streaming session object per active request
 - session owns its prompt state, caches, and decode progress
 - shared model weights stay read-only
+
+Current Layer 1 status:
+
+- this path is implemented locally in a parallel runtime wrapper
+- the baseline [mtl_tts.py](/Users/hisham/Code/Bahraini_TTS/external/chatterbox/src/chatterbox/mtl_tts.py) is still untouched
+- the portable GPU path is the quickstart plus:
+  - [patches/chatterbox_streaming_runtime.patch](/Users/hisham/Code/Bahraini_TTS/patches/chatterbox_streaming_runtime.patch)
 
 ### 3. Concurrency safety
 
@@ -103,11 +111,11 @@ If S3 is improved and concurrency is still poor:
 
 ## Immediate Work Order
 
-1. capture baseline numbers from current Chatterbox
-2. refactor runtime around explicit session state
-3. remove request-unsafe shared state
-4. rerun baseline
-5. then attack `S3`
+1. use [CLOUD_GPU_QUICKSTART.md](/Users/hisham/Code/Bahraini_TTS/CLOUD_GPU_QUICKSTART.md) on the GPU box
+2. apply [patches/chatterbox_streaming_runtime.patch](/Users/hisham/Code/Bahraini_TTS/patches/chatterbox_streaming_runtime.patch)
+3. capture baseline vs streaming-runtime numbers with [compare_multilingual_runtime.py](/Users/hisham/Code/Bahraini_TTS/external/chatterbox/compare_multilingual_runtime.py)
+4. confirm the new runtime path is functionally valid on GPU
+5. only then attack `S3`
 
 ## Reference Scope
 

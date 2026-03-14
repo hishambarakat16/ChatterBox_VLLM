@@ -79,7 +79,7 @@ Then:
 ## Current Project Summary
 
 - Goal: improve the Chatterbox serving shape for streaming concurrency per GPU.
-- Current focus: remove shared mutable request state, introduce explicit session state, and measure clean concurrency baselines.
+- Current focus: validate the local Layer 1 streaming runtime on a GPU box and compare it against the untouched baseline.
 - Next architectural step: only redesign `S3` if the runtime cleanup is still not enough.
 - Main risks: mistaking runtime cleanup for a full model fix, skipping baseline measurement, or changing the speech-token path too early.
 
@@ -89,6 +89,7 @@ Then:
 - [PROGRESS.md](/Users/hisham/Code/Bahraini_TTS/PROGRESS.md): status and open questions
 - [CHATTERBOX_SCALING_PLAN.md](/Users/hisham/Code/Bahraini_TTS/CHATTERBOX_SCALING_PLAN.md): current execution direction for scaling work
 - [chatterbox_serving_shape_current_vs_target.html](/Users/hisham/Code/Bahraini_TTS/architecture/chatterbox_serving_shape_current_vs_target.html): current vs target serving architecture with code anchors
+- [CLOUD_GPU_QUICKSTART.md](/Users/hisham/Code/Bahraini_TTS/CLOUD_GPU_QUICKSTART.md): required-only GPU setup and baseline-vs-streaming run commands
 - [cosyvoice_v1_linear_parallel_breakdown.md](/Users/hisham/Code/Bahraini_TTS/architecture/cosyvoice_v1_linear_parallel_breakdown.md): focused CozyVoice step-by-step and parallelism analysis
 - [s3_origin_story.html](/Users/hisham/Code/Bahraini_TTS/architecture/s3_origin_story.html): lightweight visual explainer for the S3 lineage and current architecture
 - [REFERENCE_REPOS.md](/Users/hisham/Code/Bahraini_TTS/REFERENCE_REPOS.md): upstream references and clone strategy

@@ -6,7 +6,7 @@
 
 ## Baseline
 
-- [ ] run current Chatterbox once as baseline
+- [ ] run current Chatterbox once as baseline on GPU
 - [ ] record first-chunk latency
 - [ ] record inter-chunk latency
 - [ ] record full-response latency
@@ -16,9 +16,12 @@
 
 - [x] create `mtl_tts_streaming.py` beside the original runtime wrapper
 - [x] create explicit streaming session state files under `external/chatterbox/src/chatterbox/runtime/`
+- [x] define a streaming session object
+- [x] add a baseline-vs-streaming compare script
+- [x] create a portable patch for the local Chatterbox runtime changes
+- [x] create a cloud GPU runbook for baseline-vs-streaming validation
 - [ ] remove shared mutable request state from the model object
 - [ ] make conditionals explicit per request
-- [ ] define a streaming session object
 - [ ] keep model weights shared and read-only
 
 ## Concurrency Safety
