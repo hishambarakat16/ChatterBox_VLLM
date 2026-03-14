@@ -159,11 +159,10 @@ Current Layer 1 artifacts already exist locally:
 Important current repo fact:
 
 - these runtime changes live inside the local `external/chatterbox` submodule worktree
-- the portable execution path is the patch file plus quickstart, not a published Chatterbox submodule fork yet
-- portable artifacts:
-  - [patches/chatterbox_streaming_runtime.patch](/Users/hisham/Code/Bahraini_TTS/patches/chatterbox_streaming_runtime.patch)
+- the preferred execution path is now the forked `external/chatterbox` submodule plus quickstart
+- primary artifact:
   - [CLOUD_GPU_QUICKSTART.md](/Users/hisham/Code/Bahraini_TTS/CLOUD_GPU_QUICKSTART.md)
-- the current portable patch also carries a safe Perth fallback so benchmarking is not blocked by the watermark dependency
+- the patch file remains only as a fallback transport artifact
 
 Current validated baseline smoke result:
 

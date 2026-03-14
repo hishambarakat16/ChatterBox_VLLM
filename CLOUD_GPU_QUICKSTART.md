@@ -6,16 +6,32 @@ Reference for the current tensor/state flow:
 
 - [CHATTERBOX_STATE_FLOW.md](/Users/hisham/Code/Bahraini_TTS/CHATTERBOX_STATE_FLOW.md)
 
-## 1. Clone The Repo
+## 1. If You Already Have An Old Cloud Checkout
+
+Clean the existing `external/chatterbox` checkout first so it does not keep stale local patch state or the old upstream submodule URL.
+
+```bash
+git submodule deinit -f external/chatterbox
+rm -rf .git/modules/external/chatterbox
+rm -rf external/chatterbox
+git pull
+git submodule sync -- external/chatterbox
+git submodule update --init external/chatterbox
+```
+
+## 2. Clone The Repo
+
+If this is a fresh cloud box, use this instead:
 
 ```bash
 export GITHUB_TOKEN=YOUR_GITHUB_TOKEN
 git clone https://$GITHUB_TOKEN@github.com/hishambarakat16/ChatterBox_S3_Concurrency.git
 cd ChatterBox_S3_Concurrency
+git submodule sync -- external/chatterbox
 git submodule update --init external/chatterbox
 ```
 
-## 2. Create The Python Environment
+## 3. Create The Python Environment
 
 Use Python `3.11`.
 
@@ -24,16 +40,6 @@ conda create -y -n chatterbox-s3 python=3.11
 conda activate chatterbox-s3
 python -m pip install --upgrade pip wheel
 python -m pip install "setuptools<81"
-```
-
-## 3. Apply The Local Chatterbox Runtime Patch
-
-The new runtime files live as a patch because `external/chatterbox` is still tracked as a submodule.
-
-Run this from the repo root:
-
-```bash
-git -C external/chatterbox apply ../../patches/chatterbox_streaming_runtime.patch
 ```
 
 ## 4. Install Chatterbox And Perth From Source

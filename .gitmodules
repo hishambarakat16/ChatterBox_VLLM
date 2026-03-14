@@ -15,7 +15,7 @@
 	url = https://github.com/CAMeL-Lab/camel_tools.git
 [submodule "external/chatterbox"]
 	path = external/chatterbox
-	url = https://github.com/resemble-ai/chatterbox.git
+	url = https://github.com/hishambarakat16/chatterbox.git
 [submodule "external/hifi-gan"]
 	path = external/hifi-gan
 	url = https://github.com/jik876/hifi-gan.git

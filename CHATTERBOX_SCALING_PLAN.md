@@ -76,8 +76,9 @@ Current Layer 1 status:
 
 - this path is implemented locally in a parallel runtime wrapper
 - the baseline [mtl_tts.py](/Users/hisham/Code/Bahraini_TTS/external/chatterbox/src/chatterbox/mtl_tts.py) is still untouched
-- the portable GPU path is the quickstart plus:
-  - [patches/chatterbox_streaming_runtime.patch](/Users/hisham/Code/Bahraini_TTS/patches/chatterbox_streaming_runtime.patch)
+- the preferred GPU path is now the forked `external/chatterbox` submodule plus:
+  - [CLOUD_GPU_QUICKSTART.md](/Users/hisham/Code/Bahraini_TTS/CLOUD_GPU_QUICKSTART.md)
+- the patch file is now fallback-only
 
 ### 3. Concurrency safety
 
@@ -144,7 +145,7 @@ If S3 is improved and concurrency is still poor:
 
 1. use [CLOUD_GPU_QUICKSTART.md](/Users/hisham/Code/Bahraini_TTS/CLOUD_GPU_QUICKSTART.md) on the GPU box
 2. install Perth from source in that env
-3. apply [patches/chatterbox_streaming_runtime.patch](/Users/hisham/Code/Bahraini_TTS/patches/chatterbox_streaming_runtime.patch)
+3. initialize the forked `external/chatterbox` submodule cleanly
 4. validate `concurrency=1` and `concurrency=2`
 5. patch shared `T3` inference state until `concurrency=2` is correct
 6. use [t3_concurrent_inference_findings.md](/Users/hisham/Code/Bahraini_TTS/architecture/t3_concurrent_inference_findings.md) as the implementation guide for `T3` correctness work
