@@ -6,6 +6,13 @@ Optimize for:
 
 - `max concurrent streaming sessions per GPU at target latency`
 
+Near-term success gate:
+
+- `2` simultaneous requests on one shared model instance
+- both requests must return plausible full audio
+- no Python exception
+- no obvious collapsed output like `1920` samples
+
 Not for:
 
 - Bahraini quality
@@ -18,7 +25,11 @@ Use the current `Chatterbox` implementation as the baseline.
 
 We do not need a long research phase before acting.
 
-We need one baseline measurement set, then we fix the runtime and compare against it.
+We already have the first baseline measurement set.
+
+The next job is narrower:
+
+- make `concurrency=2` correct before caring about `4+`
 
 Current validated baseline env note:
 
@@ -35,6 +46,7 @@ Repo strategy:
 See:
 
 - [CHATTERBOX_FORK_IMPLEMENTATION_PLAN.md](/Users/hisham/Code/Bahraini_TTS/CHATTERBOX_FORK_IMPLEMENTATION_PLAN.md)
+- [CHATTERBOX_STATE_FLOW.md](/Users/hisham/Code/Bahraini_TTS/CHATTERBOX_STATE_FLOW.md)
 - [chatterbox_serving_shape_current_vs_target.html](/Users/hisham/Code/Bahraini_TTS/architecture/chatterbox_serving_shape_current_vs_target.html)
 - [CLOUD_GPU_QUICKSTART.md](/Users/hisham/Code/Bahraini_TTS/CLOUD_GPU_QUICKSTART.md)
 
@@ -75,12 +87,25 @@ Target:
 - no hidden cross-request mutation
 - no global prompt state
 
+Current read:
+
+- session data is now more isolated
+- but `T3` inference internals are still shared and mutable
+- that is why `concurrency=2` still corrupts outputs
+- the exact hazard breakdown is recorded in [t3_concurrent_inference_findings.md](/Users/hisham/Code/Bahraini_TTS/architecture/t3_concurrent_inference_findings.md)
+- the most direct blockers are shared `self.patched_model` / `self.compiled` mutation plus persistent forward hooks on shared transformer layers
+
 ### 4. S3 serving cost
 
 After the runtime is safe:
 
 - profile `S3` as the first hot path
 - reduce per-stream decoder cost there first
+
+This ordering matters:
+
+- `T3` is the first correctness blocker
+- `S3` is still the first likely performance hot path after correctness is restored
 
 ## Current Architecture Judgment
 
@@ -120,8 +145,21 @@ If S3 is improved and concurrency is still poor:
 1. use [CLOUD_GPU_QUICKSTART.md](/Users/hisham/Code/Bahraini_TTS/CLOUD_GPU_QUICKSTART.md) on the GPU box
 2. install Perth from source in that env
 3. apply [patches/chatterbox_streaming_runtime.patch](/Users/hisham/Code/Bahraini_TTS/patches/chatterbox_streaming_runtime.patch)
-4. capture baseline vs streaming-runtime numbers with [benchmark_multilingual_concurrency.py](/Users/hisham/Code/Bahraini_TTS/external/chatterbox/benchmark_multilingual_concurrency.py)
-5. only then attack `S3`
+4. validate `concurrency=1` and `concurrency=2`
+5. patch shared `T3` inference state until `concurrency=2` is correct
+6. use [t3_concurrent_inference_findings.md](/Users/hisham/Code/Bahraini_TTS/architecture/t3_concurrent_inference_findings.md) as the implementation guide for `T3` correctness work
+7. only then attack `S3`
+
+## Multiprocessing Note
+
+Process isolation is a deployment fallback, not the core fix.
+
+Why:
+
+- it sidesteps thread-unsafety by duplicating the model into separate processes
+- that increases VRAM pressure and lowers sessions-per-GPU density
+- it avoids the bug, but does not make one shared worker efficient
+- it can still be useful later for production isolation, but it is not the architectural win we are trying to prove first
 
 ## Reference Scope
 

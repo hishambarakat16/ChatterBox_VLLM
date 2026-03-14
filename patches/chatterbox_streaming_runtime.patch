@@ -1,761 +1,439 @@
 diff --git a/benchmark_multilingual_concurrency.py b/benchmark_multilingual_concurrency.py
-new file mode 100644
-index 0000000..1af8c4c
---- /dev/null
+index 1af8c4c..3b53381 100644
+--- a/benchmark_multilingual_concurrency.py
 +++ b/benchmark_multilingual_concurrency.py
-@@ -0,0 +1,159 @@
-+import argparse
-+import statistics
-+import threading
-+import time
-+from concurrent.futures import ThreadPoolExecutor
-+
-+import torch
-+
-+from chatterbox.mtl_tts import ChatterboxMultilingualTTS
-+from chatterbox.mtl_tts_streaming import ChatterboxMultilingualStreamingTTS
-+
-+
-+def maybe_sync(device: str):
-+    if device.startswith("cuda") and torch.cuda.is_available():
-+        torch.cuda.synchronize()
-+
-+
-+def load_model(impl: str, device: str, checkpoint_dir: str | None):
-+    model_cls = ChatterboxMultilingualTTS if impl == "baseline" else ChatterboxMultilingualStreamingTTS
-+    if checkpoint_dir:
-+        return model_cls.from_local(checkpoint_dir, device)
-+    return model_cls.from_pretrained(device)
-+
-+
-+def percentile(values: list[float], q: float) -> float:
-+    if not values:
-+        return 0.0
-+    if len(values) == 1:
-+        return values[0]
-+    ordered = sorted(values)
-+    index = (len(ordered) - 1) * q
-+    lower = int(index)
-+    upper = min(lower + 1, len(ordered) - 1)
-+    weight = index - lower
-+    return ordered[lower] * (1.0 - weight) + ordered[upper] * weight
-+
-+
-+def build_request(session_or_none, model, impl: str, text: str, language_id: str, audio_prompt_path: str | None):
-+    if impl == "streaming":
-+        return lambda: model.generate_with_session(session_or_none, text)
-+    return lambda: model.generate(
-+        text=text,
-+        language_id=language_id,
-+        audio_prompt_path=audio_prompt_path,
-+    )
-+
-+
-+def run_concurrency_level(
-+    *,
-+    model,
-+    impl: str,
-+    concurrency: int,
-+    text: str,
-+    language_id: str,
-+    audio_prompt_path: str | None,
-+    device: str,
-+):
-+    sessions = []
-+    if impl == "streaming":
-+        for _ in range(concurrency):
-+            sessions.append(
-+                model.create_session(
-+                    audio_prompt_path=audio_prompt_path,
-+                    language_id=language_id,
-+                )
-+            )
-+    else:
-+        sessions = [None] * concurrency
-+
-+    barrier = threading.Barrier(concurrency)
-+    results = [None] * concurrency
-+
-+    def worker(index: int):
-+        fn = build_request(sessions[index], model, impl, text, language_id, audio_prompt_path)
-+        barrier.wait()
-+        started = time.perf_counter()
-+        error = None
-+        wav = None
-+        try:
-+            wav = fn()
-+            maybe_sync(device)
-+        except Exception as exc:  # noqa: BLE001
-+            error = repr(exc)
-+            maybe_sync(device)
-+        ended = time.perf_counter()
-+        results[index] = {
-+            "latency_s": ended - started,
-+            "num_samples": None if wav is None else int(wav.shape[-1]),
-+            "error": error,
-+        }
-+
-+    wall_start = time.perf_counter()
-+    with ThreadPoolExecutor(max_workers=concurrency) as executor:
-+        futures = [executor.submit(worker, idx) for idx in range(concurrency)]
-+        for future in futures:
-+            future.result()
-+    maybe_sync(device)
-+    wall_s = time.perf_counter() - wall_start
-+
-+    latencies = [item["latency_s"] for item in results if item["error"] is None]
-+    sample_counts = [item["num_samples"] for item in results if item["num_samples"] is not None]
-+    total_audio_s = sum(sample_counts) / 24000.0 if sample_counts else 0.0
-+
-+    return {
-+        "concurrency": concurrency,
-+        "wall_s": wall_s,
-+        "request_latencies_s": [round(item["latency_s"], 4) for item in results],
-+        "mean_latency_s": round(statistics.mean(latencies), 4) if latencies else None,
-+        "p95_latency_s": round(percentile(latencies, 0.95), 4) if latencies else None,
-+        "num_samples": sample_counts,
-+        "audio_seconds_total": round(total_audio_s, 4),
-+        "audio_seconds_per_second": round(total_audio_s / wall_s, 4) if wall_s > 0 else None,
-+        "errors": [item["error"] for item in results if item["error"] is not None],
-+    }
-+
-+
-+def main():
-+    parser = argparse.ArgumentParser(description="Benchmark baseline vs streaming-safe multilingual Chatterbox under simultaneous requests.")
-+    parser.add_argument("--impl", choices=["baseline", "streaming"], required=True)
-+    parser.add_argument("--text", required=True)
-+    parser.add_argument("--language-id", required=True)
-+    parser.add_argument("--audio-prompt-path")
-+    parser.add_argument("--device", default="cuda")
-+    parser.add_argument("--checkpoint-dir")
-+    parser.add_argument("--concurrency-levels", type=int, nargs="+", required=True)
-+    args = parser.parse_args()
-+
-+    load_start = time.perf_counter()
-+    model = load_model(args.impl, args.device, args.checkpoint_dir)
-+    maybe_sync(args.device)
-+    load_s = time.perf_counter() - load_start
-+
-+    print(f"impl={args.impl}")
-+    print(f"device={args.device}")
-+    print(f"load_s={load_s:.4f}")
-+
-+    for concurrency in args.concurrency_levels:
-+        summary = run_concurrency_level(
-+            model=model,
-+            impl=args.impl,
-+            concurrency=concurrency,
-+            text=args.text,
-+            language_id=args.language_id,
-+            audio_prompt_path=args.audio_prompt_path,
-+            device=args.device,
-+        )
-+        print(f"concurrency={summary['concurrency']}")
-+        print(f"wall_s={summary['wall_s']:.4f}")
-+        print(f"request_latencies_s={summary['request_latencies_s']}")
-+        print(f"mean_latency_s={summary['mean_latency_s']}")
-+        print(f"p95_latency_s={summary['p95_latency_s']}")
-+        print(f"num_samples={summary['num_samples']}")
-+        print(f"audio_seconds_total={summary['audio_seconds_total']}")
-+        print(f"audio_seconds_per_second={summary['audio_seconds_per_second']}")
-+        print(f"errors={summary['errors']}")
-+
-+
-+if __name__ == "__main__":
-+    main()
-diff --git a/compare_multilingual_runtime.py b/compare_multilingual_runtime.py
-new file mode 100644
-index 0000000..bcfdd1b
---- /dev/null
-+++ b/compare_multilingual_runtime.py
-@@ -0,0 +1,74 @@
-+import argparse
-+import time
-+
-+import torch
-+
-+from chatterbox.mtl_tts import ChatterboxMultilingualTTS
-+from chatterbox.mtl_tts_streaming import ChatterboxMultilingualStreamingTTS
-+
-+
-+def maybe_sync(device: str):
-+    if device.startswith("cuda") and torch.cuda.is_available():
-+        torch.cuda.synchronize()
-+
-+
-+def load_model(impl: str, device: str, checkpoint_dir: str | None):
-+    model_cls = ChatterboxMultilingualTTS if impl == "baseline" else ChatterboxMultilingualStreamingTTS
-+    if checkpoint_dir:
-+        return model_cls.from_local(checkpoint_dir, device)
-+    return model_cls.from_pretrained(device)
-+
-+
-+def main():
-+    parser = argparse.ArgumentParser(description="Compare baseline and streaming-safe multilingual Chatterbox runtimes.")
-+    parser.add_argument("--impl", choices=["baseline", "streaming"], required=True)
-+    parser.add_argument("--text", required=True)
-+    parser.add_argument("--language-id", required=True)
-+    parser.add_argument("--audio-prompt-path")
-+    parser.add_argument("--device", default="cuda")
-+    parser.add_argument("--checkpoint-dir")
-+    parser.add_argument("--warmup-runs", type=int, default=0)
-+    parser.add_argument("--runs", type=int, default=1)
-+    args = parser.parse_args()
-+
-+    load_start = time.perf_counter()
-+    model = load_model(args.impl, args.device, args.checkpoint_dir)
-+    maybe_sync(args.device)
-+    load_s = time.perf_counter() - load_start
-+
-+    if args.impl == "streaming":
-+        session = model.create_session(
-+            audio_prompt_path=args.audio_prompt_path,
-+            language_id=args.language_id,
-+        )
-+        generate_fn = lambda: model.generate_with_session(session, args.text)
-+    else:
-+        generate_fn = lambda: model.generate(
-+            text=args.text,
-+            language_id=args.language_id,
-+            audio_prompt_path=args.audio_prompt_path,
-+        )
-+
-+    for _ in range(args.warmup_runs):
-+        _ = generate_fn()
-+        maybe_sync(args.device)
-+
-+    latencies = []
-+    wav = None
-+    for _ in range(args.runs):
-+        start = time.perf_counter()
-+        wav = generate_fn()
-+        maybe_sync(args.device)
-+        latencies.append(time.perf_counter() - start)
-+
-+    print(f"impl={args.impl}")
-+    print(f"device={args.device}")
-+    print(f"load_s={load_s:.4f}")
-+    print(f"runs={args.runs}")
-+    print(f"latency_s={[round(x, 4) for x in latencies]}")
-+    if wav is not None:
-+        print(f"num_samples={wav.shape[-1]}")
-+
-+
-+if __name__ == "__main__":
-+    main()
-diff --git a/src/chatterbox/__init__.py b/src/chatterbox/__init__.py
-index 190cfbf..a27baa9 100644
---- a/src/chatterbox/__init__.py
-+++ b/src/chatterbox/__init__.py
-@@ -8,4 +8,5 @@ __version__ = version("chatterbox-tts")
+@@ -1,4 +1,6 @@
+ import argparse
++import logging
++import os
+ import statistics
+ import threading
+ import time
+@@ -22,6 +24,21 @@ def load_model(impl: str, device: str, checkpoint_dir: str | None):
+     return model_cls.from_pretrained(device)
  
- from .tts import ChatterboxTTS
- from .vc import ChatterboxVC
--from .mtl_tts import ChatterboxMultilingualTTS, SUPPORTED_LANGUAGES
-\ No newline at end of file
-+from .mtl_tts import ChatterboxMultilingualTTS, SUPPORTED_LANGUAGES
-+from .mtl_tts_streaming import ChatterboxMultilingualStreamingTTS
+ 
++def configure_shape_logging(enabled: bool):
++    if not enabled:
++        os.environ.pop("CHATTERBOX_TRACE_SHAPES", None)
++        return
++
++    os.environ["CHATTERBOX_TRACE_SHAPES"] = "1"
++    logger = logging.getLogger("chatterbox.shape")
++    logger.setLevel(logging.INFO)
++    logger.propagate = False
++    if not logger.handlers:
++        handler = logging.StreamHandler()
++        handler.setFormatter(logging.Formatter("%(message)s"))
++        logger.addHandler(handler)
++
++
+ def percentile(values: list[float], q: float) -> float:
+     if not values:
+         return 0.0
+@@ -123,8 +140,11 @@ def main():
+     parser.add_argument("--device", default="cuda")
+     parser.add_argument("--checkpoint-dir")
+     parser.add_argument("--concurrency-levels", type=int, nargs="+", required=True)
++    parser.add_argument("--trace-shapes", action="store_true")
+     args = parser.parse_args()
+ 
++    configure_shape_logging(args.trace_shapes)
++
+     load_start = time.perf_counter()
+     model = load_model(args.impl, args.device, args.checkpoint_dir)
+     maybe_sync(args.device)
+diff --git a/compare_multilingual_runtime.py b/compare_multilingual_runtime.py
+index bcfdd1b..fb65698 100644
+--- a/compare_multilingual_runtime.py
++++ b/compare_multilingual_runtime.py
+@@ -1,7 +1,10 @@
+ import argparse
++import logging
++import os
+ import time
+ 
+ import torch
++import torchaudio as ta
+ 
+ from chatterbox.mtl_tts import ChatterboxMultilingualTTS
+ from chatterbox.mtl_tts_streaming import ChatterboxMultilingualStreamingTTS
+@@ -19,6 +22,21 @@ def load_model(impl: str, device: str, checkpoint_dir: str | None):
+     return model_cls.from_pretrained(device)
+ 
+ 
++def configure_shape_logging(enabled: bool):
++    if not enabled:
++        os.environ.pop("CHATTERBOX_TRACE_SHAPES", None)
++        return
++
++    os.environ["CHATTERBOX_TRACE_SHAPES"] = "1"
++    logger = logging.getLogger("chatterbox.shape")
++    logger.setLevel(logging.INFO)
++    logger.propagate = False
++    if not logger.handlers:
++        handler = logging.StreamHandler()
++        handler.setFormatter(logging.Formatter("%(message)s"))
++        logger.addHandler(handler)
++
++
+ def main():
+     parser = argparse.ArgumentParser(description="Compare baseline and streaming-safe multilingual Chatterbox runtimes.")
+     parser.add_argument("--impl", choices=["baseline", "streaming"], required=True)
+@@ -29,8 +47,12 @@ def main():
+     parser.add_argument("--checkpoint-dir")
+     parser.add_argument("--warmup-runs", type=int, default=0)
+     parser.add_argument("--runs", type=int, default=1)
++    parser.add_argument("--output-wav")
++    parser.add_argument("--trace-shapes", action="store_true")
+     args = parser.parse_args()
+ 
++    configure_shape_logging(args.trace_shapes)
++
+     load_start = time.perf_counter()
+     model = load_model(args.impl, args.device, args.checkpoint_dir)
+     maybe_sync(args.device)
+@@ -68,6 +90,9 @@ def main():
+     print(f"latency_s={[round(x, 4) for x in latencies]}")
+     if wav is not None:
+         print(f"num_samples={wav.shape[-1]}")
++        if args.output_wav:
++            ta.save(args.output_wav, wav, model.sr)
++            print(f"saved_wav={args.output_wav}")
+ 
+ 
+ if __name__ == "__main__":
+diff --git a/src/chatterbox/models/s3gen/s3gen.py b/src/chatterbox/models/s3gen/s3gen.py
+index 1207616..c929939 100644
+--- a/src/chatterbox/models/s3gen/s3gen.py
++++ b/src/chatterbox/models/s3gen/s3gen.py
+@@ -12,6 +12,7 @@
+ # See the License for the specific language governing permissions and
+ # limitations under the License.
+ 
++import os
+ import logging
+ 
+ import numpy as np
+@@ -32,6 +33,8 @@ from .flow_matching import CausalConditionalCFM
+ from .decoder import ConditionalDecoder
+ from .configs import CFM_PARAMS
+ 
++shape_logger = logging.getLogger("chatterbox.shape")
++
+ 
+ def drop_invalid_tokens(x):
+     assert len(x.shape) <= 2 and x.shape[0] == 1, "only batch size of one allowed for now"
+@@ -162,13 +165,22 @@ class S3Token2Mel(torch.nn.Module):
+             ref_speech_tokens = ref_speech_tokens[:, :ref_mels_24.shape[1] // 2]
+             ref_speech_token_lens[0] = ref_speech_tokens.shape[1]
+ 
+-        return dict(
++        ref_dict = dict(
+             prompt_token=ref_speech_tokens.to(device),
+             prompt_token_len=ref_speech_token_lens,
+             prompt_feat=ref_mels_24,
+             prompt_feat_len=ref_mels_24_len,
+             embedding=ref_x_vector,
+         )
++        if os.getenv("CHATTERBOX_TRACE_SHAPES"):
++            shape_logger.info("[models/s3gen/s3gen.py] embed_ref")
++            shape_logger.info("  prompt_token %s %s %s", tuple(ref_dict["prompt_token"].shape), ref_dict["prompt_token"].dtype, ref_dict["prompt_token"].device)
++            shape_logger.info("  prompt_token_len %s %s %s", tuple(ref_dict["prompt_token_len"].shape), ref_dict["prompt_token_len"].dtype, ref_dict["prompt_token_len"].device)
++            shape_logger.info("  prompt_feat %s %s %s", tuple(ref_dict["prompt_feat"].shape), ref_dict["prompt_feat"].dtype, ref_dict["prompt_feat"].device)
++            if ref_dict["prompt_feat_len"] is not None:
++                shape_logger.info("  prompt_feat_len %s %s %s", tuple(ref_dict["prompt_feat_len"].shape), ref_dict["prompt_feat_len"].dtype, ref_dict["prompt_feat_len"].device)
++            shape_logger.info("  embedding %s %s %s", tuple(ref_dict["embedding"].shape), ref_dict["embedding"].dtype, ref_dict["embedding"].device)
++        return ref_dict
+ 
+     def forward(
+         self,
+@@ -217,6 +229,15 @@ class S3Token2Mel(torch.nn.Module):
+         if speech_token_lens is None:
+             speech_token_lens = torch.LongTensor([st.size(-1) for st in speech_tokens]).to(self.device)
+ 
++        if os.getenv("CHATTERBOX_TRACE_SHAPES"):
++            shape_logger.info("[models/s3gen/s3gen.py] token2mel.input")
++            shape_logger.info("  speech_tokens %s %s %s", tuple(speech_tokens.shape), speech_tokens.dtype, speech_tokens.device)
++            shape_logger.info("  speech_token_lens %s %s %s", tuple(speech_token_lens.shape), speech_token_lens.dtype, speech_token_lens.device)
++            shape_logger.info("  finalize %s", finalize)
++            shape_logger.info("  n_cfm_timesteps %s", n_cfm_timesteps)
++            shape_logger.info("  ref.prompt_token %s %s %s", tuple(ref_dict["prompt_token"].shape), ref_dict["prompt_token"].dtype, ref_dict["prompt_token"].device)
++            shape_logger.info("  ref.prompt_feat %s %s %s", tuple(ref_dict["prompt_feat"].shape), ref_dict["prompt_feat"].dtype, ref_dict["prompt_feat"].device)
++            shape_logger.info("  ref.embedding %s %s %s", tuple(ref_dict["embedding"].shape), ref_dict["embedding"].dtype, ref_dict["embedding"].device)
+         output_mels, _ = self.flow.inference(
+             token=speech_tokens,
+             token_len=speech_token_lens,
+@@ -226,6 +247,9 @@ class S3Token2Mel(torch.nn.Module):
+             meanflow=self.meanflow,
+             **ref_dict,
+         )
++        if os.getenv("CHATTERBOX_TRACE_SHAPES"):
++            shape_logger.info("[models/s3gen/s3gen.py] token2mel.output")
++            shape_logger.info("  output_mels %s %s %s", tuple(output_mels.shape), output_mels.dtype, output_mels.device)
+         return output_mels
+ 
+ 
+@@ -359,4 +383,8 @@ class S3Token2Wav(S3Token2Mel):
+         # NOTE: ad-hoc method to reduce "spillover" from the reference clip.
+         output_wavs[:, :len(self.trim_fade)] *= self.trim_fade
+ 
++        if os.getenv("CHATTERBOX_TRACE_SHAPES"):
++            shape_logger.info("[models/s3gen/s3gen.py] inference.output")
++            shape_logger.info("  output_mels %s %s %s", tuple(output_mels.shape), output_mels.dtype, output_mels.device)
++            shape_logger.info("  output_wavs %s %s %s", tuple(output_wavs.shape), output_wavs.dtype, output_wavs.device)
+         return output_wavs, output_sources
+diff --git a/src/chatterbox/models/t3/t3.py b/src/chatterbox/models/t3/t3.py
+index 6253028..feca35d 100644
+--- a/src/chatterbox/models/t3/t3.py
++++ b/src/chatterbox/models/t3/t3.py
+@@ -1,9 +1,11 @@
+ # Copyright (c) 2025 Resemble AI
+ # MIT License
+ import logging
++import os
+ from typing import Union, Optional, List
+ 
+ logger = logging.getLogger(__name__)
++shape_logger = logging.getLogger("chatterbox.shape")
+ 
+ from tqdm import tqdm
+ import torch
+@@ -128,6 +130,13 @@ class T3(nn.Module):
+             torch.cat((ce, te, se))
+             for ce, te, se in zip(cond_emb, text_emb, speech_emb)
+         ])  # (B, length, dim)
++        if os.getenv("CHATTERBOX_TRACE_SHAPES"):
++            shape_logger.info("[models/t3/t3.py] prepare_input_embeds")
++            shape_logger.info("  cond_emb %s %s %s", tuple(cond_emb.shape), cond_emb.dtype, cond_emb.device)
++            shape_logger.info("  text_emb %s %s %s", tuple(text_emb.shape), text_emb.dtype, text_emb.device)
++            shape_logger.info("  speech_emb %s %s %s", tuple(speech_emb.shape), speech_emb.dtype, speech_emb.device)
++            shape_logger.info("  embeds %s %s %s", tuple(embeds.shape), embeds.dtype, embeds.device)
++            shape_logger.info("  len_cond %s", len_cond)
+         return embeds, len_cond
+ 
+     def forward(
+@@ -266,6 +275,12 @@ class T3(nn.Module):
+             speech_tokens=initial_speech_tokens,
+             cfg_weight=cfg_weight,
+         )
++        if os.getenv("CHATTERBOX_TRACE_SHAPES"):
++            shape_logger.info("[models/t3/t3.py] inference.input")
++            shape_logger.info("  text_tokens %s %s %s", tuple(text_tokens.shape), text_tokens.dtype, text_tokens.device)
++            shape_logger.info("  initial_speech_tokens %s %s %s", tuple(initial_speech_tokens.shape), initial_speech_tokens.dtype, initial_speech_tokens.device)
++            shape_logger.info("  embeds %s %s %s", tuple(embeds.shape), embeds.dtype, embeds.device)
++            shape_logger.info("  len_cond %s", len_cond)
+ 
+         # In order to use the standard HF generate method, we need to extend some methods to inject our custom logic
+         # Note the llama-specific logic. Other tfmr types can be added later.
+@@ -296,6 +311,10 @@ class T3(nn.Module):
+             )
+             self.patched_model = patched_model
+             self.compiled = True
++        if os.getenv("CHATTERBOX_TRACE_SHAPES"):
++            shape_logger.info("[models/t3/t3.py] inference.runtime_state")
++            shape_logger.info("  compiled %s", self.compiled)
++            shape_logger.info("  has_alignment_stream_analyzer %s", self.patched_model.alignment_stream_analyzer is not None)
+ 
+         # # Run normal generate method, which calls our custom extended methods
+         # return self.patched_model.generate(
+@@ -409,6 +428,9 @@ class T3(nn.Module):
+ 
+         # Concatenate all predicted tokens along the sequence dimension.
+         predicted_tokens = torch.cat(predicted, dim=1)  # shape: (B, num_tokens)
++        if os.getenv("CHATTERBOX_TRACE_SHAPES"):
++            shape_logger.info("[models/t3/t3.py] inference.output")
++            shape_logger.info("  predicted_tokens %s %s %s", tuple(predicted_tokens.shape), predicted_tokens.dtype, predicted_tokens.device)
+         return predicted_tokens
+ 
+     @torch.inference_mode()
 diff --git a/src/chatterbox/mtl_tts.py b/src/chatterbox/mtl_tts.py
-index 68eac11..48a3037 100644
+index 48a3037..4661e7a 100644
 --- a/src/chatterbox/mtl_tts.py
 +++ b/src/chatterbox/mtl_tts.py
-@@ -4,7 +4,6 @@ import os
- 
- import librosa
- import torch
--import perth
- import torch.nn.functional as F
- from safetensors.torch import load_file as load_safetensors
- from huggingface_hub import snapshot_download
-@@ -16,6 +15,7 @@ from .models.s3gen import S3GEN_SR, S3Gen
- from .models.tokenizers import MTLTokenizer
- from .models.voice_encoder import VoiceEncoder
- from .models.t3.modules.cond_enc import T3Cond
-+from .watermarking import create_watermarker
+@@ -1,3 +1,4 @@
++import logging
+ from dataclasses import dataclass
+ from pathlib import Path
+ import os
+@@ -19,6 +20,7 @@ from .watermarking import create_watermarker
  
  
  REPO_ID = "ResembleAI/chatterbox"
-@@ -152,7 +152,7 @@ class ChatterboxMultilingualTTS:
-         self.tokenizer = tokenizer
-         self.device = device
-         self.conds = conds
--        self.watermarker = perth.PerthImplicitWatermarker()
-+        self.watermarker = create_watermarker()
++shape_logger = logging.getLogger("chatterbox.shape")
  
-     @classmethod
-     def get_supported_languages(cls):
-diff --git a/src/chatterbox/mtl_tts_streaming.py b/src/chatterbox/mtl_tts_streaming.py
-new file mode 100644
-index 0000000..d99b19d
---- /dev/null
-+++ b/src/chatterbox/mtl_tts_streaming.py
-@@ -0,0 +1,192 @@
-+from pathlib import Path
-+import os
-+
-+import torch
-+from huggingface_hub import snapshot_download
-+from safetensors.torch import load_file as load_safetensors
-+
-+from .models.s3gen import S3Gen
-+from .models.t3 import T3
-+from .models.t3.modules.t3_config import T3Config
-+from .models.tokenizers import MTLTokenizer
-+from .models.voice_encoder import VoiceEncoder
-+from .mtl_tts import Conditionals, REPO_ID, SUPPORTED_LANGUAGES
-+from .runtime import ChatterboxMultilingualStreamingWorker, GenerationOptions, StreamingSession
-+
-+
-+class ChatterboxMultilingualStreamingTTS:
-+    def __init__(self, worker: ChatterboxMultilingualStreamingWorker):
-+        self.sr = worker.sr
-+        self.worker = worker
-+        self.device = worker.device
-+
-+    @classmethod
-+    def get_supported_languages(cls):
-+        return SUPPORTED_LANGUAGES.copy()
-+
-+    @classmethod
-+    def from_local(cls, ckpt_dir, device) -> "ChatterboxMultilingualStreamingTTS":
-+        ckpt_dir = Path(ckpt_dir)
-+
-+        if device in ["cpu", "mps"]:
-+            map_location = torch.device("cpu")
-+        else:
-+            map_location = None
-+
-+        ve = VoiceEncoder()
-+        ve.load_state_dict(
-+            torch.load(ckpt_dir / "ve.pt", map_location=map_location, weights_only=True)
-+        )
-+        ve.to(device).eval()
-+
-+        t3 = T3(T3Config.multilingual())
-+        t3_state = load_safetensors(ckpt_dir / "t3_mtl23ls_v2.safetensors")
-+        if "model" in t3_state.keys():
-+            t3_state = t3_state["model"][0]
-+        t3.load_state_dict(t3_state)
-+        t3.to(device).eval()
-+
-+        s3gen = S3Gen()
-+        s3gen.load_state_dict(
-+            torch.load(ckpt_dir / "s3gen.pt", map_location=map_location, weights_only=True)
-+        )
-+        s3gen.to(device).eval()
-+
-+        tokenizer = MTLTokenizer(str(ckpt_dir / "grapheme_mtl_merged_expanded_v1.json"))
-+
-+        default_conds = None
-+        if (builtin_voice := ckpt_dir / "conds.pt").exists():
-+            default_conds = Conditionals.load(builtin_voice, map_location=map_location).to(device)
-+
-+        worker = ChatterboxMultilingualStreamingWorker(
-+            t3=t3,
-+            s3gen=s3gen,
-+            ve=ve,
-+            tokenizer=tokenizer,
-+            device=device,
-+            default_conds=default_conds,
-+        )
-+        return cls(worker)
-+
-+    @classmethod
-+    def from_pretrained(cls, device: torch.device) -> "ChatterboxMultilingualStreamingTTS":
-+        if device == "mps" and not torch.backends.mps.is_available():
-+            if not torch.backends.mps.is_built():
-+                print("MPS not available because the current PyTorch install was not built with MPS enabled.")
-+            else:
-+                print("MPS not available because the current MacOS version is not 12.3+ and/or you do not have an MPS-enabled device on this machine.")
-+            device = "cpu"
-+
-+        ckpt_dir = Path(
-+            snapshot_download(
-+                repo_id=REPO_ID,
-+                repo_type="model",
-+                revision="main",
-+                allow_patterns=[
-+                    "ve.pt",
-+                    "t3_mtl23ls_v2.safetensors",
-+                    "s3gen.pt",
-+                    "grapheme_mtl_merged_expanded_v1.json",
-+                    "conds.pt",
-+                    "Cangjie5_TC.json",
-+                ],
-+                token=os.getenv("HF_TOKEN"),
-+            )
-+        )
-+        return cls.from_local(ckpt_dir, device)
-+
-+    def create_session(
-+        self,
-+        *,
-+        audio_prompt_path=None,
-+        language_id=None,
-+        exaggeration=0.5,
-+        cfg_weight=0.5,
-+        temperature=0.8,
-+        repetition_penalty=2.0,
-+        min_p=0.05,
-+        top_p=1.0,
-+        max_new_tokens=1000,
-+        session_id=None,
-+    ) -> StreamingSession:
-+        options = GenerationOptions(
-+            language_id=language_id,
-+            exaggeration=exaggeration,
-+            cfg_weight=cfg_weight,
-+            temperature=temperature,
-+            repetition_penalty=repetition_penalty,
-+            min_p=min_p,
-+            top_p=top_p,
-+            max_new_tokens=max_new_tokens,
-+        )
-+        return self.worker.create_session(
-+            audio_prompt_path=audio_prompt_path,
-+            options=options,
-+            session_id=session_id,
-+        )
-+
-+    def generate_with_session(
-+        self,
-+        session: StreamingSession,
-+        text: str,
-+        *,
-+        language_id=None,
-+        exaggeration=None,
-+        cfg_weight=None,
-+        temperature=None,
-+        repetition_penalty=None,
-+        min_p=None,
-+        top_p=None,
-+        max_new_tokens=None,
-+    ) -> torch.Tensor:
-+        options = session.options.merged(
-+            language_id=language_id,
-+            exaggeration=exaggeration,
-+            cfg_weight=cfg_weight,
-+            temperature=temperature,
-+            repetition_penalty=repetition_penalty,
-+            min_p=min_p,
-+            top_p=top_p,
-+            max_new_tokens=max_new_tokens,
-+        )
-+        return self.worker.generate(session=session, text=text, options=options)
-+
-+    def generate(
-+        self,
-+        text,
-+        language_id,
-+        audio_prompt_path=None,
-+        exaggeration=0.5,
-+        cfg_weight=0.5,
-+        temperature=0.8,
-+        repetition_penalty=2.0,
-+        min_p=0.05,
-+        top_p=1.0,
-+        max_new_tokens=1000,
-+        session: StreamingSession | None = None,
-+    ) -> torch.Tensor:
-+        if session is None:
-+            session = self.create_session(
-+                audio_prompt_path=audio_prompt_path,
-+                language_id=language_id,
-+                exaggeration=exaggeration,
-+                cfg_weight=cfg_weight,
-+                temperature=temperature,
-+                repetition_penalty=repetition_penalty,
-+                min_p=min_p,
-+                top_p=top_p,
-+                max_new_tokens=max_new_tokens,
-+            )
-+
-+        return self.generate_with_session(
-+            session,
-+            text,
-+            language_id=language_id,
-+            exaggeration=exaggeration,
-+            cfg_weight=cfg_weight,
-+            temperature=temperature,
-+            repetition_penalty=repetition_penalty,
-+            min_p=min_p,
-+            top_p=top_p,
-+            max_new_tokens=max_new_tokens,
-+        )
-diff --git a/src/chatterbox/runtime/__init__.py b/src/chatterbox/runtime/__init__.py
-new file mode 100644
-index 0000000..86a6d60
---- /dev/null
-+++ b/src/chatterbox/runtime/__init__.py
-@@ -0,0 +1,12 @@
-+from .session import StreamingSession, apply_exaggeration, clone_conditionals
-+from .types import GenerationOptions, StreamingCaches
-+from .worker import ChatterboxMultilingualStreamingWorker
-+
-+__all__ = [
-+    "ChatterboxMultilingualStreamingWorker",
-+    "GenerationOptions",
-+    "StreamingCaches",
-+    "StreamingSession",
-+    "apply_exaggeration",
-+    "clone_conditionals",
-+]
-diff --git a/src/chatterbox/runtime/session.py b/src/chatterbox/runtime/session.py
-new file mode 100644
-index 0000000..7555628
---- /dev/null
-+++ b/src/chatterbox/runtime/session.py
-@@ -0,0 +1,50 @@
-+from copy import deepcopy
-+from dataclasses import dataclass, field
-+from uuid import uuid4
-+
-+import torch
-+
-+from ..models.t3.modules.cond_enc import T3Cond
-+from ..mtl_tts import Conditionals
-+from .types import GenerationOptions, StreamingCaches
-+
-+
-+def _clone_value(value):
-+    if torch.is_tensor(value):
-+        return value.clone()
-+    if isinstance(value, dict):
-+        return {key: _clone_value(inner) for key, inner in value.items()}
-+    return deepcopy(value)
-+
-+
-+def clone_t3_cond(t3_cond: T3Cond) -> T3Cond:
-+    return T3Cond(**{key: _clone_value(value) for key, value in t3_cond.__dict__.items()})
-+
-+
-+def clone_conditionals(conds: Conditionals) -> Conditionals:
-+    return Conditionals(
-+        t3=clone_t3_cond(conds.t3),
-+        gen={key: _clone_value(value) for key, value in conds.gen.items()},
-+    )
-+
-+
-+def apply_exaggeration(conds: Conditionals, exaggeration: float, device: str) -> Conditionals:
-+    current = conds.t3.emotion_adv
-+    if current is not None and float(exaggeration) == float(current.view(-1)[0].item()):
-+        return conds
-+
-+    updated = clone_t3_cond(conds.t3)
-+    updated.emotion_adv = exaggeration * torch.ones(1, 1, 1)
-+    conds.t3 = updated.to(device=device)
-+    return conds
-+
-+
-+@dataclass
-+class StreamingSession:
-+    conditionals: Conditionals
-+    options: GenerationOptions = field(default_factory=GenerationOptions)
-+    session_id: str = field(default_factory=lambda: uuid4().hex)
-+    caches: StreamingCaches = field(default_factory=StreamingCaches)
-+
-+    def clone_conditionals(self) -> Conditionals:
-+        return clone_conditionals(self.conditionals)
-diff --git a/src/chatterbox/runtime/types.py b/src/chatterbox/runtime/types.py
-new file mode 100644
-index 0000000..9b6b071
---- /dev/null
-+++ b/src/chatterbox/runtime/types.py
-@@ -0,0 +1,28 @@
-+from dataclasses import dataclass, field
-+from typing import Any, Optional
-+
-+
-+@dataclass
-+class GenerationOptions:
-+    language_id: Optional[str] = None
-+    exaggeration: float = 0.5
-+    cfg_weight: float = 0.5
-+    temperature: float = 0.8
-+    repetition_penalty: float = 2.0
-+    min_p: float = 0.05
-+    top_p: float = 1.0
-+    max_new_tokens: int = 1000
-+
-+    def merged(self, **overrides) -> "GenerationOptions":
-+        data = self.__dict__.copy()
-+        for key, value in overrides.items():
-+            if value is not None:
-+                data[key] = value
-+        return GenerationOptions(**data)
-+
-+
-+@dataclass
-+class StreamingCaches:
-+    t3: dict[str, Any] = field(default_factory=dict)
-+    s3: dict[str, Any] = field(default_factory=dict)
-+    vocoder: dict[str, Any] = field(default_factory=dict)
+ # Supported languages for the multilingual model
+ SUPPORTED_LANGUAGES = {
+@@ -245,6 +247,22 @@ class ChatterboxMultilingualTTS:
+             emotion_adv=exaggeration * torch.ones(1, 1, 1),
+         ).to(device=self.device)
+         self.conds = Conditionals(t3_cond, s3gen_ref_dict)
++        # Debug-only shape prints for state tracing; remove later if no longer needed.
++        if os.getenv("CHATTERBOX_TRACE_SHAPES"):
++            shape_logger.info("[mtl_tts.py] prepare_conditionals")
++            shape_logger.info("  wav_fpath %s", wav_fpath)
++            shape_logger.info("  speaker_emb %s %s %s", tuple(t3_cond.speaker_emb.shape), t3_cond.speaker_emb.dtype, t3_cond.speaker_emb.device)
++            if t3_cond.cond_prompt_speech_tokens is not None:
++                shape_logger.info(
++                    "  cond_prompt_speech_tokens %s %s %s",
++                    tuple(t3_cond.cond_prompt_speech_tokens.shape),
++                    t3_cond.cond_prompt_speech_tokens.dtype,
++                    t3_cond.cond_prompt_speech_tokens.device,
++                )
++            shape_logger.info("  emotion_adv %s %s %s", tuple(t3_cond.emotion_adv.shape), t3_cond.emotion_adv.dtype, t3_cond.emotion_adv.device)
++            shape_logger.info("  s3_ref.prompt_token %s %s %s", tuple(s3gen_ref_dict["prompt_token"].shape), s3gen_ref_dict["prompt_token"].dtype, s3gen_ref_dict["prompt_token"].device)
++            shape_logger.info("  s3_ref.prompt_feat %s %s %s", tuple(s3gen_ref_dict["prompt_feat"].shape), s3gen_ref_dict["prompt_feat"].dtype, s3gen_ref_dict["prompt_feat"].device)
++            shape_logger.info("  s3_ref.embedding %s %s %s", tuple(s3gen_ref_dict["embedding"].shape), s3gen_ref_dict["embedding"].dtype, s3gen_ref_dict["embedding"].device)
+ 
+     def generate(
+         self,
+@@ -258,6 +276,11 @@ class ChatterboxMultilingualTTS:
+         min_p=0.05,
+         top_p=1.0,
+     ):
++        if os.getenv("CHATTERBOX_TRACE_SHAPES"):
++            shape_logger.info("[mtl_tts.py] generate.input")
++            shape_logger.info("  text %r", text)
++            shape_logger.info("  language_id %s", language_id)
++            shape_logger.info("  audio_prompt_path %s", audio_prompt_path)
+         # Validate language_id
+         if language_id and language_id.lower() not in SUPPORTED_LANGUAGES:
+             supported_langs = ", ".join(SUPPORTED_LANGUAGES.keys())
+@@ -289,6 +312,9 @@ class ChatterboxMultilingualTTS:
+         eot = self.t3.hp.stop_text_token
+         text_tokens = F.pad(text_tokens, (1, 0), value=sot)
+         text_tokens = F.pad(text_tokens, (0, 1), value=eot)
++        if os.getenv("CHATTERBOX_TRACE_SHAPES"):
++            shape_logger.info("[mtl_tts.py] generate.text_tokens")
++            shape_logger.info("  text_tokens %s %s %s", tuple(text_tokens.shape), text_tokens.dtype, text_tokens.device)
+ 
+         with torch.inference_mode():
+             speech_tokens = self.t3.inference(
+@@ -303,10 +329,16 @@ class ChatterboxMultilingualTTS:
+             )
+             # Extract only the conditional batch.
+             speech_tokens = speech_tokens[0]
++            if os.getenv("CHATTERBOX_TRACE_SHAPES"):
++                shape_logger.info("[mtl_tts.py] generate.speech_tokens.raw")
++                shape_logger.info("  speech_tokens %s %s %s", tuple(speech_tokens.shape), speech_tokens.dtype, speech_tokens.device)
+ 
+             # TODO: output becomes 1D
+             speech_tokens = drop_invalid_tokens(speech_tokens)
+             speech_tokens = speech_tokens.to(self.device)
++            if os.getenv("CHATTERBOX_TRACE_SHAPES"):
++                shape_logger.info("[mtl_tts.py] generate.speech_tokens.filtered")
++                shape_logger.info("  speech_tokens %s %s %s", tuple(speech_tokens.shape), speech_tokens.dtype, speech_tokens.device)
+ 
+             wav, _ = self.s3gen.inference(
+                 speech_tokens=speech_tokens,
+@@ -314,4 +346,7 @@ class ChatterboxMultilingualTTS:
+             )
+             wav = wav.squeeze(0).detach().cpu().numpy()
+             watermarked_wav = self.watermarker.apply_watermark(wav, sample_rate=self.sr)
++        if os.getenv("CHATTERBOX_TRACE_SHAPES"):
++            shape_logger.info("[mtl_tts.py] generate.output")
++            shape_logger.info("  wav %s %s", watermarked_wav.shape, watermarked_wav.dtype)
+         return torch.from_numpy(watermarked_wav).unsqueeze(0)
 diff --git a/src/chatterbox/runtime/worker.py b/src/chatterbox/runtime/worker.py
-new file mode 100644
-index 0000000..018afab
---- /dev/null
+index 018afab..5cb8a5d 100644
+--- a/src/chatterbox/runtime/worker.py
 +++ b/src/chatterbox/runtime/worker.py
-@@ -0,0 +1,130 @@
-+import librosa
-+import torch
-+import torch.nn.functional as F
+@@ -1,3 +1,6 @@
++import os
++import logging
 +
-+from ..models.s3gen import S3GEN_SR, S3Gen
-+from ..models.s3tokenizer import S3_SR, drop_invalid_tokens
-+from ..models.t3 import T3
-+from ..models.t3.modules.cond_enc import T3Cond
-+from ..models.tokenizers import MTLTokenizer
-+from ..models.voice_encoder import VoiceEncoder
-+from ..mtl_tts import Conditionals, SUPPORTED_LANGUAGES, punc_norm
-+from ..watermarking import create_watermarker
-+from .session import StreamingSession, apply_exaggeration, clone_conditionals
-+from .types import GenerationOptions
+ import librosa
+ import torch
+ import torch.nn.functional as F
+@@ -13,6 +16,8 @@ from ..watermarking import create_watermarker
+ from .session import StreamingSession, apply_exaggeration, clone_conditionals
+ from .types import GenerationOptions
+ 
++shape_logger = logging.getLogger("chatterbox.shape")
 +
-+
-+class ChatterboxMultilingualStreamingWorker:
-+    ENC_COND_LEN = 6 * S3_SR
-+    DEC_COND_LEN = 10 * S3GEN_SR
-+
-+    def __init__(
-+        self,
-+        t3: T3,
-+        s3gen: S3Gen,
-+        ve: VoiceEncoder,
-+        tokenizer: MTLTokenizer,
-+        device: str,
-+        default_conds: Conditionals | None = None,
-+    ):
-+        self.sr = S3GEN_SR
-+        self.t3 = t3
-+        self.s3gen = s3gen
-+        self.ve = ve
-+        self.tokenizer = tokenizer
-+        self.device = device
-+        self.default_conds = default_conds
-+        self.watermarker = create_watermarker()
-+
-+    def build_conditionals_from_wav(self, wav_fpath: str, exaggeration: float) -> Conditionals:
-+        s3gen_ref_wav, _sr = librosa.load(wav_fpath, sr=S3GEN_SR)
-+        ref_16k_wav = librosa.resample(s3gen_ref_wav, orig_sr=S3GEN_SR, target_sr=S3_SR)
-+
-+        s3gen_ref_wav = s3gen_ref_wav[:self.DEC_COND_LEN]
-+        s3gen_ref_dict = self.s3gen.embed_ref(s3gen_ref_wav, S3GEN_SR, device=self.device)
-+
-+        t3_cond_prompt_tokens = None
-+        if plen := self.t3.hp.speech_cond_prompt_len:
-+            s3_tokzr = self.s3gen.tokenizer
-+            t3_cond_prompt_tokens, _ = s3_tokzr.forward([ref_16k_wav[:self.ENC_COND_LEN]], max_len=plen)
-+            t3_cond_prompt_tokens = torch.atleast_2d(t3_cond_prompt_tokens).to(self.device)
-+
-+        ve_embed = torch.from_numpy(self.ve.embeds_from_wavs([ref_16k_wav], sample_rate=S3_SR))
-+        ve_embed = ve_embed.mean(axis=0, keepdim=True).to(self.device)
-+
-+        t3_cond = T3Cond(
-+            speaker_emb=ve_embed,
-+            cond_prompt_speech_tokens=t3_cond_prompt_tokens,
-+            emotion_adv=exaggeration * torch.ones(1, 1, 1),
-+        ).to(device=self.device)
-+        return Conditionals(t3_cond, s3gen_ref_dict)
-+
-+    def create_session(
-+        self,
-+        *,
-+        audio_prompt_path: str | None = None,
-+        options: GenerationOptions | None = None,
-+        session_id: str | None = None,
-+    ) -> StreamingSession:
-+        options = options or GenerationOptions()
-+
-+        if audio_prompt_path:
-+            conds = self.build_conditionals_from_wav(audio_prompt_path, options.exaggeration)
-+        else:
-+            if self.default_conds is None:
-+                raise AssertionError("Please provide `audio_prompt_path` or load a checkpoint with builtin conds.")
-+            conds = clone_conditionals(self.default_conds)
-+            conds = apply_exaggeration(conds, options.exaggeration, self.device)
-+
-+        session = StreamingSession(conditionals=conds, options=options)
-+        if session_id is not None:
-+            session.session_id = session_id
-+        return session
-+
-+    def generate(self, *, session: StreamingSession, text: str, options: GenerationOptions | None = None) -> torch.Tensor:
-+        active_options = session.options if options is None else session.options.merged(**options.__dict__)
-+        language_id = active_options.language_id
-+
-+        if language_id and language_id.lower() not in SUPPORTED_LANGUAGES:
-+            supported_langs = ", ".join(SUPPORTED_LANGUAGES.keys())
-+            raise ValueError(
-+                f"Unsupported language_id '{language_id}'. "
-+                f"Supported languages: {supported_langs}"
-+            )
-+
-+        active_conds = clone_conditionals(session.conditionals)
-+        active_conds = apply_exaggeration(active_conds, active_options.exaggeration, self.device)
-+
-+        text = punc_norm(text)
-+        text_tokens = self.tokenizer.text_to_tokens(
-+            text, language_id=language_id.lower() if language_id else None
-+        ).to(self.device)
-+        text_tokens = torch.cat([text_tokens, text_tokens], dim=0)
-+
-+        sot = self.t3.hp.start_text_token
-+        eot = self.t3.hp.stop_text_token
-+        text_tokens = F.pad(text_tokens, (1, 0), value=sot)
-+        text_tokens = F.pad(text_tokens, (0, 1), value=eot)
-+
-+        with torch.inference_mode():
-+            speech_tokens = self.t3.inference(
-+                t3_cond=active_conds.t3,
-+                text_tokens=text_tokens,
-+                max_new_tokens=active_options.max_new_tokens,
-+                temperature=active_options.temperature,
-+                cfg_weight=active_options.cfg_weight,
-+                repetition_penalty=active_options.repetition_penalty,
-+                min_p=active_options.min_p,
-+                top_p=active_options.top_p,
-+            )
-+            speech_tokens = speech_tokens[0]
-+            speech_tokens = drop_invalid_tokens(speech_tokens)
-+            speech_tokens = speech_tokens.to(self.device)
-+
-+            wav, _ = self.s3gen.inference(
-+                speech_tokens=speech_tokens,
-+                ref_dict=active_conds.gen,
-+            )
-+            wav = wav.squeeze(0).detach().cpu().numpy()
-+            watermarked_wav = self.watermarker.apply_watermark(wav, sample_rate=self.sr)
-+        return torch.from_numpy(watermarked_wav).unsqueeze(0)
-diff --git a/src/chatterbox/watermarking.py b/src/chatterbox/watermarking.py
-new file mode 100644
-index 0000000..3c99003
---- /dev/null
-+++ b/src/chatterbox/watermarking.py
-@@ -0,0 +1,27 @@
-+import perth
-+
-+
-+class PassthroughWatermarker:
-+    def apply_watermark(self, wav, sample_rate=None, watermark=None):
-+        return wav
-+
-+    def get_watermark(self, wav, sample_rate=None):
-+        return 0.0
-+
-+
-+def create_watermarker():
-+    implicit_cls = getattr(perth, "PerthImplicitWatermarker", None)
-+    if callable(implicit_cls):
-+        try:
-+            return implicit_cls()
-+        except Exception:
-+            pass
-+
-+    dummy_cls = getattr(perth, "DummyWatermarker", None)
-+    if callable(dummy_cls):
-+        try:
-+            return dummy_cls()
-+        except Exception:
-+            pass
-+
-+    return PassthroughWatermarker()
+ 
+ class ChatterboxMultilingualStreamingWorker:
+     ENC_COND_LEN = 6 * S3_SR
+@@ -57,7 +62,23 @@ class ChatterboxMultilingualStreamingWorker:
+             cond_prompt_speech_tokens=t3_cond_prompt_tokens,
+             emotion_adv=exaggeration * torch.ones(1, 1, 1),
+         ).to(device=self.device)
+-        return Conditionals(t3_cond, s3gen_ref_dict)
++        conds = Conditionals(t3_cond, s3gen_ref_dict)
++        if os.getenv("CHATTERBOX_TRACE_SHAPES"):
++            shape_logger.info("[runtime/worker.py] build_conditionals_from_wav")
++            shape_logger.info("  wav_fpath %s", wav_fpath)
++            shape_logger.info("  speaker_emb %s %s %s", tuple(t3_cond.speaker_emb.shape), t3_cond.speaker_emb.dtype, t3_cond.speaker_emb.device)
++            if t3_cond.cond_prompt_speech_tokens is not None:
++                shape_logger.info(
++                    "  cond_prompt_speech_tokens %s %s %s",
++                    tuple(t3_cond.cond_prompt_speech_tokens.shape),
++                    t3_cond.cond_prompt_speech_tokens.dtype,
++                    t3_cond.cond_prompt_speech_tokens.device,
++                )
++            shape_logger.info("  emotion_adv %s %s %s", tuple(t3_cond.emotion_adv.shape), t3_cond.emotion_adv.dtype, t3_cond.emotion_adv.device)
++            shape_logger.info("  s3_ref.prompt_token %s %s %s", tuple(s3gen_ref_dict["prompt_token"].shape), s3gen_ref_dict["prompt_token"].dtype, s3gen_ref_dict["prompt_token"].device)
++            shape_logger.info("  s3_ref.prompt_feat %s %s %s", tuple(s3gen_ref_dict["prompt_feat"].shape), s3gen_ref_dict["prompt_feat"].dtype, s3gen_ref_dict["prompt_feat"].device)
++            shape_logger.info("  s3_ref.embedding %s %s %s", tuple(s3gen_ref_dict["embedding"].shape), s3gen_ref_dict["embedding"].dtype, s3gen_ref_dict["embedding"].device)
++        return conds
+ 
+     def create_session(
+         self,
+@@ -79,11 +100,20 @@ class ChatterboxMultilingualStreamingWorker:
+         session = StreamingSession(conditionals=conds, options=options)
+         if session_id is not None:
+             session.session_id = session_id
++        if os.getenv("CHATTERBOX_TRACE_SHAPES"):
++            shape_logger.info("[runtime/worker.py] create_session")
++            shape_logger.info("  session_id %s", session.session_id)
++            shape_logger.info("  options %s", options.__dict__)
+         return session
+ 
+     def generate(self, *, session: StreamingSession, text: str, options: GenerationOptions | None = None) -> torch.Tensor:
+         active_options = session.options if options is None else session.options.merged(**options.__dict__)
+         language_id = active_options.language_id
++        if os.getenv("CHATTERBOX_TRACE_SHAPES"):
++            shape_logger.info("[runtime/worker.py] generate.input")
++            shape_logger.info("  session_id %s", session.session_id)
++            shape_logger.info("  text %r", text)
++            shape_logger.info("  options %s", active_options.__dict__)
+ 
+         if language_id and language_id.lower() not in SUPPORTED_LANGUAGES:
+             supported_langs = ", ".join(SUPPORTED_LANGUAGES.keys())
+@@ -105,6 +135,10 @@ class ChatterboxMultilingualStreamingWorker:
+         eot = self.t3.hp.stop_text_token
+         text_tokens = F.pad(text_tokens, (1, 0), value=sot)
+         text_tokens = F.pad(text_tokens, (0, 1), value=eot)
++        if os.getenv("CHATTERBOX_TRACE_SHAPES"):
++            shape_logger.info("[runtime/worker.py] generate.text_tokens")
++            shape_logger.info("  session_id %s", session.session_id)
++            shape_logger.info("  text_tokens %s %s %s", tuple(text_tokens.shape), text_tokens.dtype, text_tokens.device)
+ 
+         with torch.inference_mode():
+             speech_tokens = self.t3.inference(
+@@ -118,8 +152,16 @@ class ChatterboxMultilingualStreamingWorker:
+                 top_p=active_options.top_p,
+             )
+             speech_tokens = speech_tokens[0]
++            if os.getenv("CHATTERBOX_TRACE_SHAPES"):
++                shape_logger.info("[runtime/worker.py] generate.speech_tokens.raw")
++                shape_logger.info("  session_id %s", session.session_id)
++                shape_logger.info("  speech_tokens %s %s %s", tuple(speech_tokens.shape), speech_tokens.dtype, speech_tokens.device)
+             speech_tokens = drop_invalid_tokens(speech_tokens)
+             speech_tokens = speech_tokens.to(self.device)
++            if os.getenv("CHATTERBOX_TRACE_SHAPES"):
++                shape_logger.info("[runtime/worker.py] generate.speech_tokens.filtered")
++                shape_logger.info("  session_id %s", session.session_id)
++                shape_logger.info("  speech_tokens %s %s %s", tuple(speech_tokens.shape), speech_tokens.dtype, speech_tokens.device)
+ 
+             wav, _ = self.s3gen.inference(
+                 speech_tokens=speech_tokens,
+@@ -127,4 +169,8 @@ class ChatterboxMultilingualStreamingWorker:
+             )
+             wav = wav.squeeze(0).detach().cpu().numpy()
+             watermarked_wav = self.watermarker.apply_watermark(wav, sample_rate=self.sr)
++        if os.getenv("CHATTERBOX_TRACE_SHAPES"):
++            shape_logger.info("[runtime/worker.py] generate.output")
++            shape_logger.info("  session_id %s", session.session_id)
++            shape_logger.info("  wav %s %s", watermarked_wav.shape, watermarked_wav.dtype)
+         return torch.from_numpy(watermarked_wav).unsqueeze(0)

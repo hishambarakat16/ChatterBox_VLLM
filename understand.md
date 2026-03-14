@@ -30,6 +30,10 @@ Only log items that are clearly confirmed in discussion.
 - HM understands the target runtime shape is `shared worker + explicit session state`, not immediate model replacement.
 - HM understands the current portable execution path is `CLOUD_GPU_QUICKSTART.md` plus `patches/chatterbox_streaming_runtime.patch`, not a published Chatterbox fork commit yet.
 - HM understands the first successful baseline run on `4060 Ti` required replacing PyPI Perth with Perth from source.
+- HM understands `forcing EOS` in multilingual `T3` is an alignment-integrity heuristic, not automatically a hard error.
+- HM understands the current immediate milestone is `2` simultaneous correct requests, not higher concurrency yet.
+- HM understands multiprocessing can isolate failures operationally, but it is not the core architectural fix because it duplicates model state and reduces density per GPU.
+- HM understands the repo now has a concrete file-by-file tensor/state reference in [CHATTERBOX_STATE_FLOW.md](/Users/hisham/Code/Bahraini_TTS/CHATTERBOX_STATE_FLOW.md).
 
 ### Project State
 

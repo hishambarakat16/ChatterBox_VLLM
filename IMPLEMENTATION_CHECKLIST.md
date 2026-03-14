@@ -4,6 +4,13 @@
 
 - `max concurrent streaming sessions per GPU at target latency`
 
+## Immediate Gate
+
+- [ ] one shared model instance handles `2` simultaneous requests correctly
+- [ ] both outputs are plausible full utterances
+- [ ] no truncated output like `1920` samples
+- [ ] no tensor-shape or kernel-size runtime error
+
 ## Baseline
 
 - [x] run current Chatterbox once as baseline on GPU
@@ -41,10 +48,11 @@ Current streaming-runtime smoke result:
 
 ## Concurrency Safety
 
-- [ ] make one model instance safe for multiple active sessions
+- [ ] make one model instance safe for `2` active sessions first
 - [ ] remove hidden cross-request mutation
 - [ ] identify batch-size-1 assumptions on the serving path
 - [ ] isolate caches by session
+- [ ] stop mutating shared `T3` inference state during active requests
 
 ## S3 Work
 
@@ -55,9 +63,11 @@ Current streaming-runtime smoke result:
 Current read:
 
 - Layer 1 runtime works, but it is slower than baseline on the first single-request smoke test
+- current `concurrency=2` is still not correct
+- `T3` shared inference state is the first suspect
 
 ## Decision Rule
 
 - if runtime cleanup is enough, keep the current architecture longer
 - if concurrency is still poor, replace or redesign `S3`
-- only revisit `T3` after that
+- but first make `T3` safe enough for `concurrency=2`

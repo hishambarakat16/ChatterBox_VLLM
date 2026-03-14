@@ -16,6 +16,11 @@ Support metrics:
 - `p95 inter-chunk latency`
 - `VRAM per active stream`
 
+Immediate milestone:
+
+- make `2` simultaneous requests complete correctly on one shared model instance
+- treat truncated outputs and silent early-stop outputs as failures, even if Python does not raise
+
 ## Current Baseline
 
 The baseline is the current open-source `Chatterbox` multilingual stack.
@@ -37,6 +42,7 @@ Serving-shape visual:
 
 - [chatterbox_serving_shape_current_vs_target.html](/Users/hisham/Code/Bahraini_TTS/architecture/chatterbox_serving_shape_current_vs_target.html)
 - [CLOUD_GPU_QUICKSTART.md](/Users/hisham/Code/Bahraini_TTS/CLOUD_GPU_QUICKSTART.md)
+- [CHATTERBOX_STATE_FLOW.md](/Users/hisham/Code/Bahraini_TTS/CHATTERBOX_STATE_FLOW.md)
 
 ## What We Know
 
@@ -66,11 +72,33 @@ There was also a separate baseline environment issue:
 - reinstalling Perth from source fixed that
 - that was a dependency/runtime issue, not evidence against the streaming runtime work
 
+New benchmark result:
+
+- both `baseline` and the current `streaming` wrapper break logically or structurally at `concurrency >= 2`
+- the wrapper improved session-state isolation, but did not make the shared `T3` inference path safe
+- the first concrete milestone is therefore not "scale hard", but "make `2` simultaneous requests correct"
+
+The strongest current suspect is `T3.inference()`:
+
+- it resets `self.compiled = False` per call
+- rebuilds `AlignmentStreamAnalyzer`
+- rebuilds `self.patched_model`
+- stores those objects back on the shared `T3` instance
+
+That means concurrent requests can still stomp on shared inference state even after the new session wrapper.
+
 ### 3. The current S3 path is likely the first hot spot
 
 - Chatterbox README says `speech-token -> mel` was the bottleneck
 - `S3` still does mel-space iterative decoding
 - the decoder works on the longer mel timeline, not the shorter token timeline
+
+But `S3` is not the first correctness blocker anymore.
+
+Current order:
+
+- first fix `T3` concurrency correctness for `2` simultaneous requests
+- then profile and reduce `S3` serving cost
 
 ### 4. Chatterbox S3 comes from the CosyVoice family
 
@@ -182,6 +210,7 @@ The shortest path is:
 1. treat current Chatterbox as baseline
 2. validate the new Layer 1 runtime path on GPU using the patch + quickstart flow
 3. compare baseline vs new runtime path under simultaneous requests
-4. only then decide whether `S3` must change first
+4. make `2` simultaneous requests work correctly on one shared model instance
+5. only then decide whether `S3` must change first
 
 Anything outside that path is context bloat for now.

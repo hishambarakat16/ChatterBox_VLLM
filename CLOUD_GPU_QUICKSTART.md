@@ -2,6 +2,10 @@
 
 This is the shortest path to run the current Chatterbox baseline and the new streaming-safe runtime on a GPU box.
 
+Reference for the current tensor/state flow:
+
+- [CHATTERBOX_STATE_FLOW.md](/Users/hisham/Code/Bahraini_TTS/CHATTERBOX_STATE_FLOW.md)
+
 ## 1. Clone The Repo
 
 ```bash
@@ -63,7 +67,8 @@ PYTHONPATH=external/chatterbox/src python external/chatterbox/benchmark_multilin
   --language-id ar \
   --audio-prompt-path "$PROMPT_AUDIO" \
   --text "مرحبا، هذا اختبار للبنية الحالية." \
-  --concurrency-levels 1 2 4
+  --concurrency-levels 1 2 \
+  --trace-shapes
 ```
 
 ## 8. Run Streaming Concurrency Benchmark
@@ -75,7 +80,8 @@ PYTHONPATH=external/chatterbox/src python external/chatterbox/benchmark_multilin
   --language-id ar \
   --audio-prompt-path "$PROMPT_AUDIO" \
   --text "مرحبا، هذا اختبار للبنية الحالية." \
-  --concurrency-levels 1 2 4
+  --concurrency-levels 1 2 \
+  --trace-shapes
 ```
 
 ## 9. Send Back These Results
@@ -87,4 +93,5 @@ Send back:
 - full terminal output from the baseline run
 - full terminal output from the streaming run
 - whether either run crashed or OOMed
-- whether any concurrency level failed
+- whether `concurrency=2` failed
+- whether any output was obviously truncated
