@@ -15,6 +15,7 @@ _Last updated: 2026-03-14_
 - created [chatterbox_serving_shape_current_vs_target.html](/Users/hisham/Code/Bahraini_TTS/architecture/chatterbox_serving_shape_current_vs_target.html) to show current vs target serving architecture with code anchors
 - created [patches/chatterbox_streaming_runtime.patch](/Users/hisham/Code/Bahraini_TTS/patches/chatterbox_streaming_runtime.patch) so the local Chatterbox runtime changes can be reproduced on a GPU box
 - created [CLOUD_GPU_QUICKSTART.md](/Users/hisham/Code/Bahraini_TTS/CLOUD_GPU_QUICKSTART.md) with the required-only cloud setup and run commands
+- confirmed on a `4060 Ti` that stock upstream baseline currently fails before inference because `perth.PerthImplicitWatermarker` resolves to `None`
 
 ## Current Focus
 
@@ -49,6 +50,11 @@ Current `Chatterbox` is not concurrency-friendly as written because:
 - initialize only `external/chatterbox`
 - apply [patches/chatterbox_streaming_runtime.patch](/Users/hisham/Code/Bahraini_TTS/patches/chatterbox_streaming_runtime.patch)
 - run [compare_multilingual_runtime.py](/Users/hisham/Code/Bahraini_TTS/external/chatterbox/compare_multilingual_runtime.py) for `baseline` and `streaming`
+
+## Current Blocking Note
+
+- stock upstream baseline is currently blocked in this environment by the Perth watermark dependency, not by the runtime concurrency work
+- the portable patch now includes a safe watermark fallback so benchmarking can proceed
 
 ## Not Current Work
 

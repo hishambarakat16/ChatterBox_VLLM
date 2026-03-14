@@ -90,6 +90,35 @@ index 190cfbf..a27baa9 100644
 \ No newline at end of file
 +from .mtl_tts import ChatterboxMultilingualTTS, SUPPORTED_LANGUAGES
 +from .mtl_tts_streaming import ChatterboxMultilingualStreamingTTS
+diff --git a/src/chatterbox/mtl_tts.py b/src/chatterbox/mtl_tts.py
+index 68eac11..48a3037 100644
+--- a/src/chatterbox/mtl_tts.py
++++ b/src/chatterbox/mtl_tts.py
+@@ -4,7 +4,6 @@ import os
+ 
+ import librosa
+ import torch
+-import perth
+ import torch.nn.functional as F
+ from safetensors.torch import load_file as load_safetensors
+ from huggingface_hub import snapshot_download
+@@ -16,6 +15,7 @@ from .models.s3gen import S3GEN_SR, S3Gen
+ from .models.tokenizers import MTLTokenizer
+ from .models.voice_encoder import VoiceEncoder
+ from .models.t3.modules.cond_enc import T3Cond
++from .watermarking import create_watermarker
+ 
+ 
+ REPO_ID = "ResembleAI/chatterbox"
+@@ -152,7 +152,7 @@ class ChatterboxMultilingualTTS:
+         self.tokenizer = tokenizer
+         self.device = device
+         self.conds = conds
+-        self.watermarker = perth.PerthImplicitWatermarker()
++        self.watermarker = create_watermarker()
+ 
+     @classmethod
+     def get_supported_languages(cls):
 diff --git a/src/chatterbox/mtl_tts_streaming.py b/src/chatterbox/mtl_tts_streaming.py
 new file mode 100644
 index 0000000..d99b19d
@@ -398,12 +427,11 @@ index 0000000..9b6b071
 +    vocoder: dict[str, Any] = field(default_factory=dict)
 diff --git a/src/chatterbox/runtime/worker.py b/src/chatterbox/runtime/worker.py
 new file mode 100644
-index 0000000..2d97db1
+index 0000000..018afab
 --- /dev/null
 +++ b/src/chatterbox/runtime/worker.py
 @@ -0,0 +1,130 @@
 +import librosa
-+import perth
 +import torch
 +import torch.nn.functional as F
 +
@@ -414,6 +442,7 @@ index 0000000..2d97db1
 +from ..models.tokenizers import MTLTokenizer
 +from ..models.voice_encoder import VoiceEncoder
 +from ..mtl_tts import Conditionals, SUPPORTED_LANGUAGES, punc_norm
++from ..watermarking import create_watermarker
 +from .session import StreamingSession, apply_exaggeration, clone_conditionals
 +from .types import GenerationOptions
 +
@@ -438,7 +467,7 @@ index 0000000..2d97db1
 +        self.tokenizer = tokenizer
 +        self.device = device
 +        self.default_conds = default_conds
-+        self.watermarker = perth.PerthImplicitWatermarker()
++        self.watermarker = create_watermarker()
 +
 +    def build_conditionals_from_wav(self, wav_fpath: str, exaggeration: float) -> Conditionals:
 +        s3gen_ref_wav, _sr = librosa.load(wav_fpath, sr=S3GEN_SR)
@@ -532,3 +561,36 @@ index 0000000..2d97db1
 +            wav = wav.squeeze(0).detach().cpu().numpy()
 +            watermarked_wav = self.watermarker.apply_watermark(wav, sample_rate=self.sr)
 +        return torch.from_numpy(watermarked_wav).unsqueeze(0)
+diff --git a/src/chatterbox/watermarking.py b/src/chatterbox/watermarking.py
+new file mode 100644
+index 0000000..3c99003
+--- /dev/null
++++ b/src/chatterbox/watermarking.py
+@@ -0,0 +1,27 @@
++import perth
++
++
++class PassthroughWatermarker:
++    def apply_watermark(self, wav, sample_rate=None, watermark=None):
++        return wav
++
++    def get_watermark(self, wav, sample_rate=None):
++        return 0.0
++
++
++def create_watermarker():
++    implicit_cls = getattr(perth, "PerthImplicitWatermarker", None)
++    if callable(implicit_cls):
++        try:
++            return implicit_cls()
++        except Exception:
++            pass
++
++    dummy_cls = getattr(perth, "DummyWatermarker", None)
++    if callable(dummy_cls):
++        try:
++            return dummy_cls()
++        except Exception:
++            pass
++
++    return PassthroughWatermarker()
