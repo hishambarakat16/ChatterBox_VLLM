@@ -31,6 +31,17 @@ git submodule sync -- external/chatterbox
 git submodule update --init external/chatterbox
 ```
 
+### If You Copied The Workspace From An Old Instance
+
+Run this first:
+
+```bash
+rm -rf /workspace/.hf_home/hub/models--ResembleAI--chatterbox
+find /workspace/.hf_home -name '*.incomplete' -delete
+export HF_HOME=/workspace/.hf_home_fresh
+mkdir -p "$HF_HOME"
+```
+
 ## 3. Create The Python Environment
 
 Use Python `3.11`.
@@ -156,7 +167,44 @@ PYTHONPATH=external/chatterbox/src python external/chatterbox/benchmark_multilin
 
 Use `--trace-shapes` only when you are debugging a regression or verifying scheduler cohort behavior.
 
-## 13. Send Back These Results
+## 13. Run Speculative Draft Benchmark
+
+This runs the first real separate-draft speculative prototype using a layer-subset multilingual `T3` draft.
+
+```bash
+PYTHONPATH=external/chatterbox/src python external/chatterbox/benchmark_t3_speculative_prototype.py \
+  --device cuda \
+  --language-id ar \
+  --audio-prompt-path "$PROMPT_AUDIO" \
+  --text "مرحبا، هذا اختبار للبنية الحالية." \
+  --max-new-tokens 128 \
+  --speculate-k 4 \
+  --draft-mode layer_subset \
+  --draft-layers 12 \
+  --draft-layer-selection even \
+  --warmup-runs 2 \
+  --runs 6
+```
+
+If you also want rendered WAVs for listening:
+
+```bash
+PYTHONPATH=external/chatterbox/src python external/chatterbox/benchmark_t3_speculative_prototype.py \
+  --device cuda \
+  --language-id ar \
+  --audio-prompt-path "$PROMPT_AUDIO" \
+  --text "مرحبا، هذا اختبار للبنية الحالية." \
+  --max-new-tokens 128 \
+  --speculate-k 4 \
+  --draft-mode layer_subset \
+  --draft-layers 12 \
+  --draft-layer-selection even \
+  --warmup-runs 2 \
+  --runs 6 \
+  --output-dir benchmark_speculative
+```
+
+## 14. Send Back These Results
 
 Send back:
 
@@ -168,7 +216,23 @@ Send back:
 - full terminal output from the concurrent run
 - full terminal output from the scheduled run
 - full terminal output from the scheduled trace-debug run if you used it
+- full terminal output from the speculative draft benchmark
 - whether either run crashed or OOMed
 - whether `concurrency=2` or `concurrency=4` failed
 - whether any output was obviously truncated
 - whether throughput improved meaningfully or correctness was restored without much scaling gain
+
+## Troubleshooting
+
+### `OSError: [Errno 116] Stale file handle` during `snapshot_download`
+
+If you copied the workspace from an old instance, run:
+
+```bash
+rm -rf /workspace/.hf_home/hub/models--ResembleAI--chatterbox
+find /workspace/.hf_home -name '*.incomplete' -delete
+export HF_HOME=/workspace/.hf_home_fresh
+mkdir -p "$HF_HOME"
+```
+
+Then rerun the command.
