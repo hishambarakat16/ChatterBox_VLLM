@@ -4,11 +4,34 @@ This is the shortest path to run the current Chatterbox baseline and the new str
 
 ## 1. Clone The Repo
 
+Repo:
+
+```text
+https://github.com/hishambarakat16/ChatterBox_S3_Concurrency.git
+```
+
+If you want to clone with a GitHub token instead of SSH, use:
+
+```bash
+export GITHUB_TOKEN=YOUR_GITHUB_TOKEN
+git clone --recurse-submodules https://$GITHUB_TOKEN@github.com/hishambarakat16/ChatterBox_S3_Concurrency.git
+cd ChatterBox_S3_Concurrency
+git submodule update --init --recursive
+```
+
+If you want the original SSH version instead, use:
+
 ```bash
 git clone --recurse-submodules git@github.com:hishambarakat16/ChatterBox_S3_Concurrency.git
 cd ChatterBox_S3_Concurrency
 git submodule update --init --recursive
 ```
+
+Notes:
+
+- The top-level repo may need your token if it is private.
+- The current submodules use public upstream HTTPS URLs, so `git submodule update --init --recursive` should still work normally.
+- Do not paste the real token into the markdown. Keep it in `GITHUB_TOKEN`.
 
 ## 2. Create The Python Environment
 
