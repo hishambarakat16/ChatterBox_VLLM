@@ -1,0 +1,716 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>T3 Shape Contract Flow</title>
+    <style>
+      :root {
+        --bg: #ececec;
+        --paper: #fafafa;
+        --panel: #ffffff;
+        --ink: #171717;
+        --muted: #5f5f5f;
+        --line: #d1d1d1;
+        --line-strong: #8a8a8a;
+        --shared-bg: #f3f3f3;
+        --state-bg: #f7f7f7;
+        --note-bg: repeating-linear-gradient(
+          -45deg,
+          #fbfbfb 0,
+          #fbfbfb 10px,
+          #f0f0f0 10px,
+          #f0f0f0 20px
+        );
+      }
+
+      * {
+        box-sizing: border-box;
+      }
+
+      body {
+        margin: 0;
+        background: var(--bg);
+        color: var(--ink);
+        font-family: ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+      }
+
+      code,
+      .mono,
+      table {
+        font-family: ui-monospace, "SFMono-Regular", Menlo, Consolas, monospace;
+      }
+
+      .page {
+        width: 100%;
+        max-width: 1900px;
+        margin: 0 auto;
+        padding: 20px 20px 28px;
+      }
+
+      .hero,
+      .section,
+      .panel {
+        background: var(--panel);
+        border: 1px solid var(--line);
+        box-shadow: 0 1px 0 rgba(0, 0, 0, 0.04);
+      }
+
+      .hero {
+        padding: 18px 20px;
+        margin-bottom: 14px;
+      }
+
+      .title {
+        margin: 0;
+        font-size: 31px;
+        line-height: 1.08;
+        letter-spacing: -0.02em;
+      }
+
+      .subtitle {
+        margin: 8px 0 0;
+        max-width: 1180px;
+        color: var(--muted);
+        font-size: 13px;
+        line-height: 1.5;
+      }
+
+      .source-list {
+        margin: 12px 0 0;
+        padding: 0;
+        list-style: none;
+        display: grid;
+        grid-template-columns: repeat(2, minmax(0, 1fr));
+        gap: 6px 12px;
+        font-size: 11px;
+        color: var(--muted);
+      }
+
+      .summary-grid,
+      .bottom-grid {
+        display: grid;
+        grid-template-columns: repeat(4, minmax(0, 1fr));
+        gap: 12px;
+        margin-bottom: 14px;
+      }
+
+      .bottom-grid {
+        grid-template-columns: 1.1fr 1fr 1fr;
+      }
+
+      .summary-card,
+      .panel {
+        padding: 14px 15px;
+      }
+
+      .summary-label,
+      .section-title,
+      .panel-title,
+      .cell-title {
+        font-size: 11px;
+        text-transform: uppercase;
+        letter-spacing: 0.08em;
+        color: var(--muted);
+      }
+
+      .summary-value {
+        margin-top: 6px;
+        font-size: 19px;
+        line-height: 1.22;
+        font-weight: 700;
+      }
+
+      .summary-note,
+      .note,
+      .shape-line,
+      li,
+      td,
+      th {
+        font-size: 12px;
+        line-height: 1.45;
+      }
+
+      .summary-note {
+        margin-top: 8px;
+        color: var(--muted);
+      }
+
+      .section {
+        padding: 16px 18px 18px;
+        margin-bottom: 14px;
+      }
+
+      .section-title {
+        margin-bottom: 8px;
+        font-weight: 700;
+      }
+
+      .section-subtitle {
+        margin: 0 0 12px;
+        color: var(--muted);
+        font-size: 12px;
+        line-height: 1.45;
+      }
+
+      .chip-row {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 8px;
+        margin-bottom: 12px;
+      }
+
+      .chip {
+        padding: 5px 8px;
+        border: 1px solid var(--line-strong);
+        background: #fff;
+        font-size: 10px;
+        text-transform: uppercase;
+        letter-spacing: 0.08em;
+      }
+
+      .scroll {
+        overflow-x: auto;
+        overflow-y: hidden;
+        padding-bottom: 4px;
+      }
+
+      .pipeline {
+        min-width: 2380px;
+        display: flex;
+        align-items: stretch;
+        gap: 10px;
+      }
+
+      .stage {
+        width: 290px;
+        min-width: 290px;
+        border: 1px solid var(--line);
+        background: var(--paper);
+        display: grid;
+        grid-template-rows: auto 1fr;
+      }
+
+      .stage.wide {
+        width: 340px;
+        min-width: 340px;
+      }
+
+      .stage-head {
+        padding: 12px 12px 10px;
+        border-bottom: 1px solid var(--line);
+        background: rgba(255, 255, 255, 0.7);
+      }
+
+      .stage-badges {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 6px;
+        margin-bottom: 8px;
+      }
+
+      .badge {
+        padding: 2px 6px;
+        border: 1px solid var(--line-strong);
+        font-size: 10px;
+        text-transform: uppercase;
+        letter-spacing: 0.08em;
+        background: #fff;
+      }
+
+      .stage-title {
+        margin: 0;
+        font-size: 17px;
+        line-height: 1.22;
+      }
+
+      .stage-path {
+        margin-top: 6px;
+        color: var(--muted);
+        font-size: 10px;
+        line-height: 1.45;
+        word-break: break-word;
+      }
+
+      .stage-body {
+        padding: 10px 12px 12px;
+        display: grid;
+        gap: 8px;
+      }
+
+      .cell {
+        border: 1px solid var(--line);
+        background: rgba(255, 255, 255, 0.72);
+        padding: 8px 9px;
+      }
+
+      .shape-line {
+        display: block;
+        margin-top: 4px;
+      }
+
+      .tight-list {
+        margin: 6px 0 0;
+        padding-left: 16px;
+      }
+
+      .tight-list li + li {
+        margin-top: 4px;
+      }
+
+      .arrow {
+        width: 52px;
+        min-width: 52px;
+        position: relative;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+      }
+
+      .arrow::before {
+        content: "";
+        position: absolute;
+        left: 6px;
+        right: 6px;
+        top: 50%;
+        border-top: 1px solid var(--line-strong);
+      }
+
+      .arrow::after {
+        content: "";
+        position: absolute;
+        right: 6px;
+        top: calc(50% - 4px);
+        border-top: 5px solid transparent;
+        border-bottom: 5px solid transparent;
+        border-left: 8px solid var(--line-strong);
+      }
+
+      .arrow-label {
+        position: relative;
+        z-index: 1;
+        padding: 4px 6px;
+        background: var(--bg);
+        font-size: 10px;
+        text-transform: uppercase;
+        letter-spacing: 0.08em;
+        color: var(--muted);
+        writing-mode: vertical-rl;
+        transform: rotate(180deg);
+      }
+
+      .note-box {
+        border: 1px dashed var(--line-strong);
+        background: var(--note-bg);
+        padding: 10px 11px;
+      }
+
+      table {
+        width: 100%;
+        border-collapse: collapse;
+      }
+
+      th,
+      td {
+        border: 1px solid var(--line);
+        padding: 7px 8px;
+        vertical-align: top;
+        text-align: left;
+      }
+
+      th {
+        background: #efefef;
+        font-size: 10px;
+        text-transform: uppercase;
+        letter-spacing: 0.08em;
+      }
+
+      .footnote {
+        margin-top: 8px;
+        color: var(--muted);
+        font-size: 11px;
+        line-height: 1.45;
+      }
+
+      @media (max-width: 1440px) {
+        .summary-grid,
+        .bottom-grid,
+        .source-list {
+          grid-template-columns: 1fr;
+        }
+      }
+    </style>
+  </head>
+  <body>
+    <div class="page">
+      <div class="hero">
+        <h1 class="title">T3 Shape Contract Flow</h1>
+        <div class="subtitle">
+          This is the current scheduled multilingual <code>T3</code> data path only: how one logical request becomes
+          CFG rows, how prefill is assembled, how the cached decode loop runs, what state stays request-local, and where
+          speculation would have to fit if added later.
+        </div>
+        <ul class="source-list">
+          <li><code>architecture/t3_shape_contract.md</code></li>
+          <li><code>external/chatterbox/src/chatterbox/runtime/worker_scheduled.py</code></li>
+          <li><code>external/chatterbox/src/chatterbox/models/t3/t3.py</code></li>
+          <li><code>external/chatterbox/src/chatterbox/models/t3/inference/scheduled_decode.py</code></li>
+          <li><code>external/chatterbox/src/chatterbox/models/t3/inference/t3_hf_backend.py</code></li>
+          <li><code>external/chatterbox/src/chatterbox/models/t3/modules/cond_enc.py</code></li>
+        </ul>
+      </div>
+
+      <div class="summary-grid">
+        <div class="summary-card hero">
+          <div class="summary-label">Logical Request Expansion</div>
+          <div class="summary-value">1 request becomes <code>2</code> CFG rows inside <code>T3</code></div>
+          <div class="summary-note">
+            Conditional row plus unconditional row. This duplication already exists before the scheduled decode request
+            is submitted.
+          </div>
+        </div>
+        <div class="summary-card hero">
+          <div class="summary-label">Hidden Size</div>
+          <div class="summary-value"><code>D = 1024</code></div>
+          <div class="summary-note">
+            Confirmed from <code>cond_emb</code>, <code>text_emb</code>, <code>speech_emb</code>, and all traced
+            prefill/decode tensors. Current traced speech-token vocabulary is also confirmed as <code>V = 8194</code>.
+          </div>
+        </div>
+        <div class="summary-card hero">
+          <div class="summary-label">Prefill Length</div>
+          <div class="summary-value"><code>(2, 72, 1024)</code></div>
+          <div class="summary-note">
+            Current trace shows <code>71</code> tokens from <code>prepare_input_embeds()</code> plus one appended BOS
+            speech embedding. Prefill output is also now traced: <code>logits (2, 72, 8194)</code> and first-layer KV
+            cache <code>(2, 16, 72, 64)</code>.
+          </div>
+        </div>
+        <div class="summary-card hero">
+          <div class="summary-label">Cached Decode Step</div>
+          <div class="summary-value"><code>(2, 1, 1024)</code></div>
+          <div class="summary-note">
+            One narrow cached step per logical request. The first cached-step output side is now also traced:
+            <code>logits (2, 1, 8194)</code> and first-layer KV cache grows to <code>(2, 16, 73, 64)</code>.
+          </div>
+        </div>
+      </div>
+
+      <div class="section">
+        <div class="section-title">Current Flow</div>
+        <div class="chip-row">
+          <div class="chip">scheduled path only</div>
+          <div class="chip">exact traced shapes</div>
+          <div class="chip">one logical request view</div>
+          <div class="chip">speech tokens out to S3</div>
+        </div>
+        <div class="section-subtitle">
+          Read left to right. The flow stays inside <code>T3</code> until the final filtered speech-token output.
+        </div>
+        <div class="scroll">
+          <div class="pipeline">
+            <div class="stage">
+              <div class="stage-head">
+                <div class="stage-badges">
+                  <div class="badge">request in</div>
+                  <div class="badge">worker boundary</div>
+                </div>
+                <h2 class="stage-title">1. Scheduled Request</h2>
+                <div class="stage-path"><code>worker_scheduled.py:81</code></div>
+              </div>
+              <div class="stage-body">
+                <div class="cell">
+                  <div class="cell-title">Fields</div>
+                  <span class="shape-line"><code>session_id</code></span>
+                  <span class="shape-line"><code>t3_cond</code></span>
+                  <span class="shape-line"><code>text_tokens</code></span>
+                  <span class="shape-line"><code>max_new_tokens</code>, <code>temperature</code>, <code>top_p</code>, <code>min_p</code>, <code>repetition_penalty</code>, <code>cfg_weight</code></span>
+                </div>
+                <div class="cell">
+                  <div class="cell-title">Role</div>
+                  <div class="note">This is the outer scheduled request contract. Everything after this is still one logical request until speech tokens are emitted.</div>
+                </div>
+              </div>
+            </div>
+
+            <div class="arrow"><div class="arrow-label">cfg + pad</div></div>
+
+            <div class="stage">
+              <div class="stage-head">
+                <div class="stage-badges">
+                  <div class="badge">worker setup</div>
+                  <div class="badge">2 rows</div>
+                </div>
+                <h2 class="stage-title">2. Worker Entry Tensors</h2>
+                <div class="stage-path"><code>worker_scheduled.py:65</code></div>
+              </div>
+              <div class="stage-body">
+                <div class="cell">
+                  <div class="cell-title">Exact Shape</div>
+                  <span class="shape-line"><code>text_tokens (2, 36)</code></span>
+                </div>
+                <div class="cell">
+                  <div class="cell-title">Meaning</div>
+                  <ul class="tight-list">
+                    <li>row <code>0</code> = conditional</li>
+                    <li>row <code>1</code> = unconditional</li>
+                    <li>BOT/EOT already padded here</li>
+                  </ul>
+                </div>
+              </div>
+            </div>
+
+            <div class="arrow"><div class="arrow-label">prepare_input_embeds</div></div>
+
+            <div class="stage wide">
+              <div class="stage-head">
+                <div class="stage-badges">
+                  <div class="badge">shared weights</div>
+                  <div class="badge">embed build</div>
+                </div>
+                <h2 class="stage-title">3. Build Prefill Embeddings</h2>
+                <div class="stage-path"><code>t3.py:105</code> <code>prepare_input_embeds()</code></div>
+              </div>
+              <div class="stage-body">
+                <div class="cell">
+                  <div class="cell-title">Confirmed Shapes</div>
+                  <span class="shape-line"><code>cond_emb (2, 34, 1024)</code></span>
+                  <span class="shape-line"><code>text_emb (2, 36, 1024)</code></span>
+                  <span class="shape-line"><code>speech_emb (2, 1, 1024)</code></span>
+                  <span class="shape-line"><code>embeds (2, 71, 1024)</code></span>
+                  <span class="shape-line"><code>len_cond = 34</code></span>
+                </div>
+                <div class="cell">
+                  <div class="cell-title">Meaning</div>
+                  <div class="note"><code>71 = 34 cond + 36 text + 1 speech</code> before the extra BOS append used for scheduled prefill.</div>
+                </div>
+              </div>
+            </div>
+
+            <div class="arrow"><div class="arrow-label">append bos</div></div>
+
+            <div class="stage wide">
+              <div class="stage-head">
+                <div class="stage-badges">
+                  <div class="badge">prefill</div>
+                  <div class="badge">transformer in</div>
+                </div>
+                <h2 class="stage-title">4. Prefill Batch</h2>
+                <div class="stage-path"><code>scheduled_decode.py:114</code></div>
+              </div>
+              <div class="stage-body">
+                <div class="cell">
+                  <div class="cell-title">Exact Shape</div>
+                  <span class="shape-line"><code>prefill.bos bos_pos_embed (1, 1, 1024)</code></span>
+                  <span class="shape-line"><code>prefill.bos bos_embed (2, 1, 1024)</code></span>
+                  <span class="shape-line"><code>prefill.batch inputs_embeds (2, 72, 1024)</code></span>
+                </div>
+                <div class="cell">
+                  <div class="cell-title">Prefill Output</div>
+                  <span class="shape-line"><code>prefill.output logits (2, 72, 8194)</code></span>
+                  <span class="shape-line"><code>prefill.output past_key_values[0][0] (2, 16, 72, 64)</code></span>
+                  <span class="shape-line"><code>prefill.output past_key_values[0][1] (2, 16, 72, 64)</code></span>
+                </div>
+                <div class="cell">
+                  <div class="cell-title">Meaning</div>
+                  <div class="note">This is the actual transformer prefill input: the <code>(2, 71, 1024)</code> embed sequence plus one BOS speech embedding. The trace now confirms both the prefill vocabulary dimension <code>8194</code> and the first-layer KV cache layout.</div>
+                </div>
+              </div>
+            </div>
+
+            <div class="arrow"><div class="arrow-label">cache + loop</div></div>
+
+            <div class="stage wide">
+              <div class="stage-head">
+                <div class="stage-badges">
+                  <div class="badge">cached decode</div>
+                  <div class="badge">one token wide</div>
+                </div>
+                <h2 class="stage-title">5. Cached Decode Step</h2>
+                <div class="stage-path"><code>scheduled_decode.py:221</code></div>
+              </div>
+              <div class="stage-body">
+                <div class="cell">
+                  <div class="cell-title">Exact Shape</div>
+                  <span class="shape-line"><code>decode.batch inputs_embeds (2, 1, 1024)</code></span>
+                  <span class="shape-line"><code>decode.next_token_pos_embed (1, 1, 1024)</code></span>
+                  <span class="shape-line"><code>decode.next_token_embed_base (1, 1, 1024)</code></span>
+                </div>
+                <div class="cell">
+                  <div class="cell-title">First Cached-Step Output</div>
+                  <span class="shape-line"><code>decode.output.first_cached_step logits (2, 1, 8194)</code></span>
+                  <span class="shape-line"><code>decode.output.first_cached_step past_key_values[0][0] (2, 16, 73, 64)</code></span>
+                  <span class="shape-line"><code>decode.output.first_cached_step past_key_values[0][1] (2, 16, 73, 64)</code></span>
+                </div>
+                <div class="cell">
+                  <div class="cell-title">Meaning</div>
+                  <div class="note">After prefill, every later decode round sends exactly one new speech-token embedding back through the transformer with KV cache. One sampled token is embedded as <code>(1, 1, 1024)</code> and then duplicated back to CFG width. The first traced cached step confirms the expected cache growth from sequence length <code>72</code> to <code>73</code>.</div>
+                </div>
+                <div class="note-box">
+                  <div class="cell-title">Where Speculation Would Fit</div>
+                  <div class="note">Inside this one-token cached decode loop, not outside the request boundary. The outer contract should stay: same request in, same speech tokens out. The remaining risk is no longer tensor shape; it is verifier/logit alignment when validating a proposed token block against the causal target model.</div>
+                </div>
+              </div>
+            </div>
+
+            <div class="arrow"><div class="arrow-label">cfg combine</div></div>
+
+            <div class="stage">
+              <div class="stage-head">
+                <div class="stage-badges">
+                  <div class="badge">one logical row</div>
+                  <div class="badge">sampling logits</div>
+                </div>
+                <h2 class="stage-title">6. Combine Cond/Uncond</h2>
+                <div class="stage-path"><code>scheduled_decode.py:241</code></div>
+              </div>
+              <div class="stage-body">
+                <div class="cell">
+                  <div class="cell-title">Rule</div>
+                  <span class="shape-line"><code>cond = logits_step[0::2, :]</code></span>
+                  <span class="shape-line"><code>uncond = logits_step[1::2, :]</code></span>
+                  <span class="shape-line"><code>logits = cond + cfg * (cond - uncond)</code></span>
+                </div>
+                <div class="cell">
+                  <div class="cell-title">Meaning</div>
+                  <div class="note">The transformer still runs on CFG rows, but the committed sampling logits collapse back to one row per logical request.</div>
+                </div>
+              </div>
+            </div>
+
+            <div class="arrow"><div class="arrow-label">sample + update</div></div>
+
+            <div class="stage">
+              <div class="stage-head">
+                <div class="stage-badges">
+                  <div class="badge">request-local</div>
+                  <div class="badge">mutable state</div>
+                </div>
+                <h2 class="stage-title">7. Update Request State</h2>
+                <div class="stage-path"><code>scheduled_decode.py:42</code></div>
+              </div>
+              <div class="stage-body">
+                <div class="cell">
+                  <div class="cell-title">Fields</div>
+                  <span class="shape-line"><code>generated_ids</code></span>
+                  <span class="shape-line"><code>predicted_tokens</code></span>
+                  <span class="shape-line"><code>alignment_state</code></span>
+                  <span class="shape-line"><code>past_key_values</code></span>
+                  <span class="shape-line"><code>decode_step</code></span>
+                  <span class="shape-line"><code>next_inputs_embeds</code></span>
+                </div>
+                <div class="cell">
+                  <div class="cell-title">Meaning</div>
+                  <div class="note">This state stays request-local. Speculative decode has to wrap this state cleanly, not erase or move the outer request boundary.</div>
+                </div>
+              </div>
+            </div>
+
+            <div class="arrow"><div class="arrow-label">eos removed</div></div>
+
+            <div class="stage">
+              <div class="stage-head">
+                <div class="stage-badges">
+                  <div class="badge">speech tokens out</div>
+                  <div class="badge">to s3</div>
+                </div>
+                <h2 class="stage-title">8. Emit Tokens</h2>
+                <div class="stage-path"><code>scheduled_decode.py</code> then filter before <code>S3</code></div>
+              </div>
+              <div class="stage-body">
+                <div class="cell">
+                  <div class="cell-title">Exact Output</div>
+                  <span class="shape-line"><code>predicted_tokens (1, 94)</code></span>
+                  <span class="shape-line"><code>filtered speech_tokens (93,)</code></span>
+                  <span class="shape-line"><code>predicted_tokens (1, 96)</code></span>
+                  <span class="shape-line"><code>filtered speech_tokens (95,)</code></span>
+                </div>
+                <div class="cell">
+                  <div class="cell-title">Meaning</div>
+                  <div class="note">Across the traced runs, one EOS token was emitted and then removed before sending the final speech-token stream into <code>S3</code>.</div>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <div class="bottom-grid">
+        <div class="panel">
+          <div class="panel-title">Current Invariants</div>
+          <table>
+            <thead>
+              <tr>
+                <th>Invariant</th>
+                <th>Current Contract</th>
+              </tr>
+            </thead>
+            <tbody>
+              <tr>
+                <td>CFG rows per logical request</td>
+                <td><code>2</code></td>
+              </tr>
+              <tr>
+                <td>hidden size</td>
+                <td><code>1024</code></td>
+              </tr>
+              <tr>
+                <td>prefill shape</td>
+                <td><code>(2, 72, 1024)</code></td>
+              </tr>
+              <tr>
+                <td>speech-token vocabulary</td>
+                <td><code>8194</code></td>
+              </tr>
+              <tr>
+                <td>prefill first-layer KV cache</td>
+                <td><code>(2, 16, 72, 64)</code></td>
+              </tr>
+              <tr>
+                <td>cached decode-step shape</td>
+                <td><code>(2, 1, 1024)</code></td>
+              </tr>
+              <tr>
+                <td>first cached-step logits</td>
+                <td><code>(2, 1, 8194)</code></td>
+              </tr>
+              <tr>
+                <td>first cached-step first-layer KV cache</td>
+                <td><code>(2, 16, 73, 64)</code></td>
+              </tr>
+              <tr>
+                <td>output row count after CFG combine</td>
+                <td><code>1</code> row per logical request</td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
+        <div class="panel">
+          <div class="panel-title">Request-Local State</div>
+          <ul class="tight-list">
+            <li><code>past_key_values</code></li>
+            <li><code>generated_ids</code></li>
+            <li><code>predicted_tokens</code></li>
+            <li><code>decode_step</code></li>
+            <li><code>alignment_state</code></li>
+            <li><code>next_inputs_embeds</code></li>
+          </ul>
+          <div class="footnote">
+            This is the mutable state ownership contract that any speculative path has to preserve.
+          </div>
+        </div>
+        <div class="panel">
+          <div class="panel-title">Remaining Correctness Risk</div>
+          <ul class="tight-list">
+            <li>one explicit verifier/logit alignment check for draft-token verification order</li>
+            <li>one code-level confirmation of how accepted-prefix and correction-token replay map onto target logits</li>
+          </ul>
+          <div class="footnote">
+            Tensor shape is now effectively locked down for the current scheduled path. The main remaining uncertainty is
+            causal verification alignment, not cache layout or embedding size.
+          </div>
+        </div>
+      </div>
+    </div>
+  </body>
+</html>
