@@ -13,7 +13,7 @@ __pycache__/
 
 # Data, training outputs, and model artifacts
 data/*
-!data/arabic_medusa_manifest.csv
+!data/arabic_medusa_manifest*.csv
 datasets/
 preprocessed/
 speaker_export_SPK*/
