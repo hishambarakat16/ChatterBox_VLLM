@@ -14,6 +14,7 @@ __pycache__/
 # Data, training outputs, and model artifacts
 data/*
 !data/arabic_medusa_manifest*.csv
+!data/*
 !data/*/*.jsonl
 
 datasets/
