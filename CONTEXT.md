@@ -21,6 +21,12 @@ Immediate milestone:
 - make `2` simultaneous requests complete correctly on one shared model instance
 - treat truncated outputs and silent early-stop outputs as failures, even if Python does not raise
 
+Status:
+
+- achieved in the new `concurrent` A/B runtime path using request-local `T3` decode state plus a coarse full-decode `T3` lock
+- validated as correct through `concurrency=4`
+- next step is to remove the coarse `T3` serialization bottleneck and test true scaling
+
 ## Current Baseline
 
 The baseline is the current open-source `Chatterbox` multilingual stack.
@@ -73,7 +79,7 @@ There was also a separate baseline environment issue:
 - reinstalling Perth from source fixed that
 - that was a dependency/runtime issue, not evidence against the streaming runtime work
 
-New benchmark result:
+Earlier benchmark result:
 
 - both `baseline` and the current `streaming` wrapper break logically or structurally at `concurrency >= 2`
 - the wrapper improved session-state isolation, but did not make the shared `T3` inference path safe
@@ -88,6 +94,22 @@ The strongest current suspect is `T3.inference()`:
 
 That means concurrent requests can still stomp on shared inference state even after the new session wrapper.
 
+New validated result:
+
+- the new `concurrent` runtime path completes `concurrency=2` with `errors=[]`
+- both saved waveforms sounded correct on manual listening
+- the first-pass fix works by:
+  - moving `T3` backend/analyzer state into request-local objects
+  - keeping shared weights shared
+  - putting a coarse full-decode lock around `T3`
+
+Current read:
+
+- the original shared-state correctness bug is fixed for `concurrency=2`
+- the remaining problem is now latency/throughput efficiency, not immediate correctness
+- the new `concurrent` path also completes `concurrency=4` with `errors=[]`
+- but throughput gain is still weak because `T3` is effectively queued behind a coarse full-decode lock
+
 ### 3. The current S3 path is likely the first hot spot
 
 - Chatterbox README says `speech-token -> mel` was the bottleneck
@@ -100,6 +122,13 @@ Current order:
 
 - first fix `T3` concurrency correctness for `2` simultaneous requests
 - then profile and reduce `S3` serving cost
+
+Updated order:
+
+- `T3` correctness at `2` simultaneous requests: done in the `concurrent` path
+- `concurrency=4` correctness: also stable in the `concurrent` path
+- next isolate where throughput is still being lost: coarse `T3` lock first, then `S3` cost
+- note: as long as `T3` is serialized this way, `S3` is not being tested under a truly concurrent front half
 
 ### 4. Chatterbox S3 comes from the CosyVoice family
 
@@ -184,12 +213,13 @@ The target runtime shape is:
 
 - shared worker owns read-only model weights and helpers
 - session object owns request conditionals, caches, and decode progress
+- request-local `T3` decode path owns backend/analyzer state for each request
 
 ### Phase 2: Improve streaming efficiency
 
-- keep `T3` unchanged at first
-- isolate `S3` as the first decoder hot path
-- reduce per-stream cost on the S3 side
+- replace the coarse full-decode `T3` lock with a better scheduling model
+- step active requests through `T3` in a more concurrency-friendly way
+- only then isolate `S3` as the next decoder hot path
 
 ### Phase 3: Re-evaluate architecture
 
@@ -206,6 +236,8 @@ The shortest path is:
 2. validate the new Layer 1 runtime path on GPU using the forked submodule + quickstart flow
 3. compare baseline vs new runtime path under simultaneous requests
 4. make `2` simultaneous requests work correctly on one shared model instance
-5. only then decide whether `S3` must change first
+5. treat `concurrency=4` stability as proof of correctness, not proof of scalability
+6. design the next `T3` scheduling step
+7. only then decide how much of the remaining bottleneck belongs to `S3`
 
 Anything outside that path is context bloat for now.

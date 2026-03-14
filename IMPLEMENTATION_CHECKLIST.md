@@ -6,10 +6,19 @@
 
 ## Immediate Gate
 
-- [ ] one shared model instance handles `2` simultaneous requests correctly
-- [ ] both outputs are plausible full utterances
-- [ ] no truncated output like `1920` samples
-- [ ] no tensor-shape or kernel-size runtime error
+- [x] one shared model instance handles `2` simultaneous requests correctly
+- [x] both outputs are plausible full utterances
+- [x] no truncated output like `1920` samples
+- [x] no tensor-shape or kernel-size runtime error
+
+Gate status:
+
+- achieved in the `concurrent` A/B runtime path
+- still correct at `concurrency=4`
+- implementation shape:
+  - request-local `T3` backend
+  - request-local alignment analyzer
+  - coarse full-decode `T3` lock
 
 ## Baseline
 
@@ -52,11 +61,18 @@ Current traced single-request reference:
 
 ## Concurrency Safety
 
-- [ ] make one model instance safe for `2` active sessions first
+- [x] make one model instance safe for `2` active sessions first
+- [x] verify the new `concurrent` path remains correct at `concurrency=4`
 - [ ] remove hidden cross-request mutation
 - [ ] identify batch-size-1 assumptions on the serving path
 - [ ] isolate caches by session
-- [ ] stop mutating shared `T3` inference state during active requests
+- [x] stop mutating shared `T3` inference state during active requests in the new `concurrent` path
+- [ ] replace the coarse full-decode `T3` lock with a better scheduler
+
+Current note:
+
+- baseline and `streaming` are still not the concurrency-safe paths
+- the new `concurrent` A/B path is currently the only validated path for `concurrency=2` and `4`
 
 ## S3 Work
 
@@ -67,12 +83,22 @@ Current traced single-request reference:
 Current read:
 
 - Layer 1 runtime works, but it is slower than baseline on the first single-request smoke test
-- current `concurrency=2` is still not correct
-- `T3` shared inference state is the first suspect
+- current `concurrency=2` is now correct in the `concurrent` path
+- current `concurrency=4` is also correct in the `concurrent` path
+- `T3` shared inference state was the first blocker, and the first-pass fix worked
 - traced single-request flow is sane end-to-end
+- next question is efficiency:
+  - coarse `T3` lock cost
+  - only after reducing that lock can we measure `S3` concurrency cost cleanly
 
 ## Decision Rule
 
 - if runtime cleanup is enough, keep the current architecture longer
 - if concurrency is still poor, replace or redesign `S3`
 - but first make `T3` safe enough for `concurrency=2`
+
+Current status:
+
+- that first gate is done
+- `concurrency=4` did not fail
+- the next decision point is how to replace coarse `T3` serialization with a scheduler or more granular stepping model

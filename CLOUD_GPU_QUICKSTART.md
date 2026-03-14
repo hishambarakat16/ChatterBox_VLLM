@@ -73,8 +73,7 @@ PYTHONPATH=external/chatterbox/src python external/chatterbox/benchmark_multilin
   --language-id ar \
   --audio-prompt-path "$PROMPT_AUDIO" \
   --text "مرحبا، هذا اختبار للبنية الحالية." \
-  --concurrency-levels 1 2 \
-  --trace-shapes
+  --concurrency-levels 1 2
 ```
 
 ## 8. Run Streaming Concurrency Benchmark
@@ -86,8 +85,7 @@ PYTHONPATH=external/chatterbox/src python external/chatterbox/benchmark_multilin
   --language-id ar \
   --audio-prompt-path "$PROMPT_AUDIO" \
   --text "مرحبا، هذا اختبار للبنية الحالية." \
-  --concurrency-levels 1 2 \
-  --trace-shapes
+  --concurrency-levels 1 2
 ```
 
 ## 9. Run Concurrent T3 Benchmark
@@ -99,9 +97,12 @@ PYTHONPATH=external/chatterbox/src python external/chatterbox/benchmark_multilin
   --language-id ar \
   --audio-prompt-path "$PROMPT_AUDIO" \
   --text "مرحبا، هذا اختبار للبنية الحالية." \
-  --concurrency-levels 1 2 \
-  --trace-shapes
+  --concurrency-levels 1 4 \
+  --output-dir benchmark_wavs
+
 ```
+
+Use `--trace-shapes` only when you are debugging a regression. It is not needed for normal benchmark runs anymore.
 
 ## 10. Send Back These Results
 
@@ -113,5 +114,6 @@ Send back:
 - full terminal output from the streaming run
 - full terminal output from the concurrent run
 - whether either run crashed or OOMed
-- whether `concurrency=2` failed
+- whether `concurrency=2` or `concurrency=4` failed
 - whether any output was obviously truncated
+- whether throughput improved meaningfully or correctness was restored without much scaling gain

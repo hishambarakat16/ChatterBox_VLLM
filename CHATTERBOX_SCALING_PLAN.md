@@ -31,6 +31,12 @@ The next job is narrower:
 
 - make `concurrency=2` correct before caring about `4+`
 
+Current status:
+
+- `concurrency=2` is now correct in the `concurrent` path
+- `concurrency=4` is also correct
+- the next blocker is no longer correctness, but the coarse `T3` serialization strategy
+
 Current validated baseline env note:
 
 - `RTX 4060 Ti` with stock `torch 2.6.0+cu124` was fine
@@ -91,10 +97,11 @@ Target:
 Current read:
 
 - session data is now more isolated
-- but `T3` inference internals are still shared and mutable
-- that is why `concurrency=2` still corrupts outputs
+- `T3` inference internals were the first blocker and are now isolated in the `concurrent` path
+- the new issue is that the current fix uses a coarse full-decode `T3` lock
 - the exact hazard breakdown is recorded in [t3_concurrent_inference_findings.md](/Users/hisham/Code/Bahraini_TTS/architecture/t3_concurrent_inference_findings.md)
 - the most direct blockers are shared `self.patched_model` / `self.compiled` mutation plus persistent forward hooks on shared transformer layers
+- the current most direct scalability blocker is the coarse `T3` lock, not corrupted shared state
 
 ### 4. S3 serving cost
 
@@ -105,8 +112,9 @@ After the runtime is safe:
 
 This ordering matters:
 
-- `T3` is the first correctness blocker
+- `T3` was the first correctness blocker
 - `S3` is still the first likely performance hot path after correctness is restored
+- but `S3` is not being measured fairly yet while `T3` is serialized with a full-decode lock
 
 ## Current Architecture Judgment
 
@@ -144,11 +152,11 @@ If S3 is improved and concurrency is still poor:
 ## Immediate Work Order
 
 1. use [CLOUD_GPU_QUICKSTART.md](/Users/hisham/Code/Bahraini_TTS/CLOUD_GPU_QUICKSTART.md) on the GPU box
-2. install Perth from source in that env
-3. initialize the forked `external/chatterbox` submodule cleanly
-4. validate `concurrency=1` and `concurrency=2`
-5. patch shared `T3` inference state until `concurrency=2` is correct
-6. use [t3_concurrent_inference_findings.md](/Users/hisham/Code/Bahraini_TTS/architecture/t3_concurrent_inference_findings.md) as the implementation guide for `T3` correctness work
+2. keep the forked `external/chatterbox` submodule as the execution path
+3. treat `concurrency=2` and `concurrency=4` stability as correctness checkpoints already achieved
+4. profile how much throughput is being lost to the coarse full-decode `T3` lock
+5. replace that lock with a scheduler or finer-grained stepping model
+6. rerun concurrency benchmarks after the new `T3` scheduling shape
 7. only then attack `S3`
 
 ## Multiprocessing Note

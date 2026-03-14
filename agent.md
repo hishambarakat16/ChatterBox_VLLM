@@ -79,16 +79,16 @@ Then:
 ## Current Project Summary
 
 - Goal: improve the Chatterbox serving shape for streaming concurrency per GPU.
-- Current focus: validate the local Layer 1 streaming runtime on a GPU box and compare it against the untouched baseline.
-- Next architectural step: only redesign `S3` if the runtime cleanup is still not enough.
-- Main risks: mistaking runtime cleanup for a full model fix, skipping baseline measurement, or changing the speech-token path too early.
+- Current focus: correctness is now validated through `concurrency=4` in the `concurrent` path; the next step is replacing coarse `T3` serialization with a scheduler or finer stepping model.
+- Next architectural step: improve `T3` scheduling first, then reassess how much of the remaining bottleneck belongs to `S3`.
+- Main risks: mistaking restored correctness for real scalability, skipping throughput analysis after the coarse `T3` lock, or changing the speech-token path too early.
 
 ## File Map
 
 - [CONTEXT.md](/Users/hisham/Code/Bahraini_TTS/CONTEXT.md): project architecture and scope
 - [PROGRESS.md](/Users/hisham/Code/Bahraini_TTS/PROGRESS.md): status and open questions
 - [CHATTERBOX_SCALING_PLAN.md](/Users/hisham/Code/Bahraini_TTS/CHATTERBOX_SCALING_PLAN.md): current execution direction for scaling work
-- [chatterbox_serving_shape_current_vs_target.html](/Users/hisham/Code/Bahraini_TTS/architecture/chatterbox_serving_shape_current_vs_target.html): self-contained engineering diagram for current flow, traced tensor shapes, concurrency hazards, and target concurrent redesign
+- [chatterbox_serving_shape_current_vs_target.html](/Users/hisham/Code/Bahraini_TTS/architecture/chatterbox_serving_shape_current_vs_target.html): self-contained engineering diagram for current flow, traced tensor shapes, concurrency hazards, validated concurrent checkpoint, and target concurrent redesign
 - [CLOUD_GPU_QUICKSTART.md](/Users/hisham/Code/Bahraini_TTS/CLOUD_GPU_QUICKSTART.md): required-only GPU setup and baseline-vs-streaming run commands
 - [cosyvoice_v1_linear_parallel_breakdown.md](/Users/hisham/Code/Bahraini_TTS/architecture/cosyvoice_v1_linear_parallel_breakdown.md): focused CozyVoice step-by-step and parallelism analysis
 - [t3_concurrent_inference_findings.md](/Users/hisham/Code/Bahraini_TTS/architecture/t3_concurrent_inference_findings.md): focused T3 concurrent-inference hazard review and architecture recommendation

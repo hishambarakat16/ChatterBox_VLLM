@@ -31,7 +31,8 @@ Only log items that are clearly confirmed in discussion.
 - HM understands the current portable execution path is `CLOUD_GPU_QUICKSTART.md` plus `patches/chatterbox_streaming_runtime.patch`, not a published Chatterbox fork commit yet.
 - HM understands the first successful baseline run on `4060 Ti` required replacing PyPI Perth with Perth from source.
 - HM understands `forcing EOS` in multilingual `T3` is an alignment-integrity heuristic, not automatically a hard error.
-- HM understands the current immediate milestone is `2` simultaneous correct requests, not higher concurrency yet.
+- HM understands the `concurrent` path now holds correctness through `concurrency=4`, and that this is proof of correctness restoration rather than proof of good scalability.
+- HM understands the next blocker is the coarse full-decode `T3` lock and scheduling efficiency, not the original shared-state corruption bug.
 - HM understands multiprocessing can isolate failures operationally, but it is not the core architectural fix because it duplicates model state and reduces density per GPU.
 - HM understands the repo now has a concrete file-by-file tensor/state reference in [CHATTERBOX_STATE_FLOW.md](/Users/hisham/Code/Bahraini_TTS/CHATTERBOX_STATE_FLOW.md).
 
@@ -41,7 +42,7 @@ Only log items that are clearly confirmed in discussion.
 - HM understands the current repo mostly contains design docs, diagrams, and reference repos.
 - HM understands the current project direction has pivoted from Stage 1 pronunciation review toward Chatterbox scalability analysis.
 - HM understands the active KPI is `max concurrent streaming sessions per GPU at target latency`.
-- HM understands the current next step is GPU validation of `baseline` vs `streaming` runtime, not `S3` redesign yet.
+- HM understands the current next step is improving `T3` scheduling after the validated `concurrent` correctness result, not jumping straight to `S3` redesign.
 
 ### Working Process
 

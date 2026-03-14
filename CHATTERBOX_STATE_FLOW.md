@@ -13,9 +13,10 @@ Visual companion:
 
 - [architecture/chatterbox_serving_shape_current_vs_target.html](/Users/hisham/Code/Bahraini_TTS/architecture/chatterbox_serving_shape_current_vs_target.html)
 
-The current immediate goal is:
+Current status:
 
-- make `2` simultaneous requests complete correctly on one shared model instance
+- the `concurrent` path now completes `2` and `4` simultaneous requests correctly on one shared model instance
+- the next goal is to replace the coarse full-decode `T3` lock with a better scheduling model
 
 ## State Categories
 
