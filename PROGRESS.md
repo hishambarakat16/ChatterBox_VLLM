@@ -14,6 +14,8 @@ _Last updated: 2026-03-14_
 - added Layer 1 streaming-runtime scaffolding inside `external/chatterbox`
 - expanded and later trimmed [chatterbox_serving_shape_current_vs_target.html](/Users/hisham/Code/Bahraini_TTS/architecture/chatterbox_serving_shape_current_vs_target.html) into a self-contained engineering diagram with current end-to-end flow, trace shapes, concurrency hazards, the current `scheduled` runtime checkpoint, and the target shared-vs-request-local boundary
 - added [chatterbox_runtime_evolution.html](/Users/hisham/Code/Bahraini_TTS/architecture/chatterbox_runtime_evolution.html) as the chronological runtime change log showing each serving change, its code anchors, and the measured improvement it produced
+- updated [chatterbox_runtime_evolution.html](/Users/hisham/Code/Bahraini_TTS/architecture/chatterbox_runtime_evolution.html) with the GPU-local scheduled alignment-state milestone and its measured `c8` improvement over the prior scheduled guard implementation
+- added a baseline-to-current concurrency performance ladder to [chatterbox_runtime_evolution.html](/Users/hisham/Code/Bahraini_TTS/architecture/chatterbox_runtime_evolution.html) so the starting point and each later serving gain stay visible in one place
 - created [patches/chatterbox_streaming_runtime.patch](/Users/hisham/Code/Bahraini_TTS/patches/chatterbox_streaming_runtime.patch) so the local Chatterbox runtime changes can be reproduced on a GPU box
 - created [CLOUD_GPU_QUICKSTART.md](/Users/hisham/Code/Bahraini_TTS/CLOUD_GPU_QUICKSTART.md) with the required-only cloud setup and run commands
 - confirmed on a `4060 Ti` that PyPI Perth was the real blocker because `perth.PerthImplicitWatermarker` resolved to `None`
@@ -162,6 +164,18 @@ _Last updated: 2026-03-14_
   - CPU copies and full-history growth were a real part of the scheduled guard overhead
   - that part is now reduced
   - the next likely structural cost is still `output_attentions=True` forcing the slower attention path
+- added a standalone `T3` output-attentions microbenchmark to isolate that one flag from the rest of the runtime
+- measured the isolated `output_attentions=True` tax at `concurrency=8`, `decode_steps=64`:
+  - `prefill_overhead_pct = 1.16%`
+  - `decode_overhead_pct = 14.83%`
+  - `total_t3_overhead_pct = 13.71%`
+- updated the bottleneck read again:
+  - returned attention maps are a real cost
+  - but they are not the whole problem
+  - the larger structural limit is still the shape of AR decode itself:
+    - tiny per-step query length
+    - CFG doubling the rows
+    - many small decode steps instead of one large GPU-friendly workload
 
 ## Current Focus
 
@@ -188,6 +202,7 @@ Status:
 - next target is to validate staggered arrivals, profile `T3` further, and then add true first-audio-chunk measurement
 - the alignment guard stays enabled while this profiling continues, because the recent experiments showed it is necessary for quality
 - the current best analyzer implementation is now the GPU-local scheduled version, but the attention-output fallback is still likely the next guard-path tax
+- the latest isolated A/B also says the next architecture work should look beyond the guard alone and into the base `T3` decode shape
 
 ## Current Baseline Judgment
 

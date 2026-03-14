@@ -331,6 +331,19 @@ Current alignment-guard read:
   - this removed a real chunk of scheduled-guard overhead
   - but it did not remove the deeper `output_attentions=True` cost
   - the next likely structural limiter inside the guard path is still the attention fallback itself
+- isolated `T3` microbenchmark result:
+  - `output_attentions=True` does impose a real decode-time tax
+  - at `concurrency=8`, `decode_steps=64`, the isolated `T3` backend showed:
+    - `prefill_overhead_pct = 1.16%`
+    - `decode_overhead_pct = 14.83%`
+    - `total_t3_overhead_pct = 13.71%`
+- updated read after that A/B:
+  - attention output is a meaningful cost
+  - but it is not large enough by itself to explain the whole utilization gap
+  - the deeper remaining issue is still the shape of autoregressive decode:
+    - tiny per-step query length
+    - CFG doubling the effective rows
+    - many small decode steps instead of one large GPU-friendly workload
 
 Important clarification:
 
@@ -351,6 +364,9 @@ Important clarification:
   - keep the alignment guardrail enabled while profiling, since the experiments showed it is necessary for output quality
   - treat the new GPU-local scheduled guard as the current best version of the analyzer path
   - next deeper guard question is no longer CPU copies/history growth, but whether `output_attentions=True` can be made cheaper or replaced
+  - but the broader `T3` utilization question is now clearer:
+    - the remaining bottleneck is not just the guard
+    - it is also the underlying autoregressive decode shape itself
   - add true first-audio-chunk measurement once partial audio emission exists
   - only then decide whether `S3` becomes the next real bottleneck
   - keep tracking GPU utilization and `VRAM`

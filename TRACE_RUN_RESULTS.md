@@ -677,3 +677,38 @@ Current interpretation:
 - the GPU-local rewrite removed a meaningful part of that overhead
 - output quality still looked healthy on manual listening
 - the next likely remaining guard-path cost is still the attention fallback caused by `output_attentions=True`
+
+## Isolated T3 `output_attentions` Microbenchmark
+
+This was added to separate one question from the rest of the runtime:
+
+- how much does `output_attentions=True` cost by itself on the same `T3` decode shapes?
+
+Command shape:
+
+- `benchmark_t3_output_attentions.py --concurrency 8 --decode-steps 64 --warmup-runs 1 --runs 5`
+
+Important note:
+
+- this benchmark isolates the `T3` backend forward path
+- it does **not** include the full scheduled analyzer hook logic
+- it is meant to measure the flag-level tax, not the whole guard implementation
+
+Result:
+
+- `prefill_overhead_pct = 1.16%`
+- `decode_overhead_pct = 14.83%`
+- `decode_per_step_overhead_pct = 14.83%`
+- `total_t3_overhead_pct = 13.71%`
+
+Interpretation:
+
+- `output_attentions=True` is a real decode-time cost
+- the cost is concentrated in token-by-token decode, not in prefill
+- but this is still only part of the remaining utilization problem
+- updated read:
+  - returned attention maps matter
+  - but the deeper structural limit is still the shape of autoregressive decode itself:
+    - tiny per-step query length
+    - CFG doubling the effective rows
+    - many small decode steps instead of one large GPU-friendly workload
