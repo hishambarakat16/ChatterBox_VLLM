@@ -10,6 +10,13 @@ The goal is to preserve the exact shapes, boundaries, and correctness signals th
 
 This is not a production-serving design doc. It is a confirmed prototype contract.
 
+Current status:
+
+- the speculative wrapper remains useful as a correctness and compatibility harness
+- self-draft proved the wrapper is sound
+- the first naive separate `AR` draft failed as a serving strategy
+- the next planned use of this contract is to verify the planner-middle boundary for a `Medusa`-style upgrade
+
 ## Scope
 
 Prototype files:
@@ -22,6 +29,11 @@ Reference production path:
 
 - [scheduled_decode.py](/Users/hisham/Code/Bahraini_TTS/external/chatterbox/src/chatterbox/models/t3/inference/scheduled_decode.py)
 - [t3.py](/Users/hisham/Code/Bahraini_TTS/external/chatterbox/src/chatterbox/models/t3/t3.py)
+
+Planned next target:
+
+- future multi-token planner heads attached to the current `T3` backbone
+- verified first through the existing speculative prototype before any runtime integration
 
 ## Current Working Mode
 
@@ -214,6 +226,7 @@ Interpretation:
 - it does not yet prove production latency improvement
 - it does not yet prove concurrency improvement
 - it does not yet prove anything about a smaller external draft model
+- it does not yet prove that a planner-middle `Medusa`-style modification is shape-compatible
 
 ## Layer-Subset Draft Outcome
 
@@ -289,6 +302,35 @@ Interpretation:
 - self-draft remains a correctness scaffold
 - it is not a performance path
 - the benchmark is now telling the truth
+
+## Updated Direction
+
+What has been tried in this prototype line:
+
+- self-draft speculative decode
+- untrained layer-subset multilingual draft
+
+What worked:
+
+- exact token agreement
+- correct verify-block shapes
+- correct cache growth and commit boundaries
+- preserved end-to-end `T3 -> S3` contract
+
+What did not work:
+
+- real speedup from self-draft
+- useful acceptance from the naive smaller `AR` draft
+
+What this note is for now:
+
+- keep the external request/output and cache contract frozen
+- use that contract to test the next planner-only middle section
+- re-run shape tracing specifically around:
+  - final `T3` hidden states
+  - future-token head outputs
+  - multi-token planner proposals
+  - verify-block logits and cache growth
 
 ## Likely Explanation For Audio Tail Trimming
 

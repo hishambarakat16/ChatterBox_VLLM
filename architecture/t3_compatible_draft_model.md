@@ -8,6 +8,12 @@ This note records the first practical draft-model candidate for multilingual `T3
 
 The goal is to keep the speculative interface compatible while making the draft materially cheaper than the target model.
 
+Current status:
+
+- this document now records a failed but informative baseline
+- the layer-subset draft remains useful as evidence about compatibility vs behavioral closeness
+- it is no longer the preferred next architecture direction
+
 ## What We Learned First
 
 Self-draft speculative decoding was useful, but only for correctness.
@@ -77,6 +83,8 @@ Interpretation:
 
 This means the first untrained layer-subset draft is a valid baseline experiment, but not a viable serving solution.
 
+That is the main reason the next step is shifting toward a planner-local `Medusa`-style upgrade rather than more naive draft shrinking.
+
 ## Why This Candidate Exists
 
 We need a draft model that keeps:
@@ -141,6 +149,12 @@ This layer-subset draft should answer:
 
 The first experiment answered this negatively for the untrained layer-subset version.
 
+More concretely, it proved:
+
+- interface compatibility can be preserved
+- correctness can still hold end to end
+- that alone is nowhere near enough if the draft is not behaviorally close to the teacher
+
 ## What It Does Not Solve Yet
 
 - it is not trained or distilled specifically as a draft model
@@ -198,6 +212,12 @@ That pushes the next step toward one of two directions:
 1. a trained/distilled compatible draft model
 2. a token-compatible planner re-architecture that is more parallel by design
 
+Current preference:
+
+- keep this layer-subset draft as the negative baseline
+- move the next active work toward planner-local multi-token heads
+- reuse the speculative harness to verify compatibility and shape boundaries during that work
+
 ## Short Summary
 
 The first real draft-model direction is now clear:
@@ -205,4 +225,4 @@ The first real draft-model direction is now clear:
 - self-draft proved correctness
 - layer-subset multilingual `T3` was the first actual cheaper compatible draft candidate
 - that candidate failed badly on acceptance and triggered massive replay churn
-- the next serious draft path is trained/distilled compatibility, not naive layer subsetting
+- the next serious draft path is either trained/distilled compatibility or a `Medusa`-style planner re-architecture, not naive layer subsetting
