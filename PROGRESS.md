@@ -11,6 +11,8 @@ _Last updated: 2026-03-14_
 - checked `CosyVoice 3` as a later family evolution
 - reduced the project docs to a streaming-concurrency focus
 - defined the local Chatterbox fork strategy and minimal-file-duplication plan
+- added Layer 1 streaming-runtime scaffolding inside `external/chatterbox`
+- created [chatterbox_serving_shape_current_vs_target.html](/Users/hisham/Code/Bahraini_TTS/architecture/chatterbox_serving_shape_current_vs_target.html) to show current vs target serving architecture with code anchors
 
 ## Current Focus
 
@@ -27,6 +29,7 @@ Main KPI:
 Current `Chatterbox` is not concurrency-friendly as written because:
 
 - request state is stored and mutated on the model object
+- that either risks unsafe sharing or pushes us toward wasteful one-model-per-request fallback
 - S3 contains batch-size-1 assumptions
 - T3 and S3 are both serial hot paths
 
@@ -35,7 +38,7 @@ Current `Chatterbox` is not concurrency-friendly as written because:
 1. keep current Chatterbox as baseline
 2. make runtime request-safe
 3. introduce explicit session state
-4. rerun baseline
+4. compare baseline vs new runtime path
 5. optimize `S3` next
 
 ## Not Current Work

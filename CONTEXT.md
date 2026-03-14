@@ -33,6 +33,10 @@ text
 
 We are treating the current implementation as the reference system to beat.
 
+Serving-shape visual:
+
+- [chatterbox_serving_shape_current_vs_target.html](/Users/hisham/Code/Bahraini_TTS/architecture/chatterbox_serving_shape_current_vs_target.html)
+
 ## What We Know
 
 ### 1. The stack is serial twice
@@ -47,6 +51,13 @@ This is the core structural reason concurrency is hard.
 In `mtl_tts.py`, the model instance stores and mutates shared `self.conds`.
 
 That is bad for concurrent serving.
+
+The current issue is therefore:
+
+- runtime architecture problem
+- plus serial model architecture problem
+
+Not just one slow function.
 
 ### 3. The current S3 path is likely the first hot spot
 
@@ -100,6 +111,11 @@ Concrete fork plan:
 - make per-request / per-session conditionals explicit
 - define a streaming session abstraction
 - make the runtime concurrency-safe
+
+The target runtime shape is:
+
+- shared worker owns read-only model weights and helpers
+- session object owns request conditionals, caches, and decode progress
 
 ### Phase 2: Improve streaming efficiency
 

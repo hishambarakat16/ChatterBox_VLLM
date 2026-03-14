@@ -29,6 +29,7 @@ Repo strategy:
 See:
 
 - [CHATTERBOX_FORK_IMPLEMENTATION_PLAN.md](/Users/hisham/Code/Bahraini_TTS/CHATTERBOX_FORK_IMPLEMENTATION_PLAN.md)
+- [chatterbox_serving_shape_current_vs_target.html](/Users/hisham/Code/Bahraini_TTS/architecture/chatterbox_serving_shape_current_vs_target.html)
 
 ## What Must Be Fixed First
 
@@ -37,6 +38,7 @@ See:
 Current problem:
 
 - `self.conds` is stored on the model instance and mutated per request
+- the serving problem is runtime shape plus a double-serial model path, not one isolated slow line
 
 Target:
 
@@ -79,6 +81,11 @@ After the runtime is safe:
 - shared mutable runtime state
 - batch-size-1 assumptions on the S3 side
 - iterative mel-space S3 cost under many active streams
+
+The main runtime decision remains:
+
+- fix request/session isolation first
+- then decide whether `S3` itself must change
 
 ## Decision Rule
 

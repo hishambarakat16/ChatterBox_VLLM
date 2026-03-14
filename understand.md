@@ -25,12 +25,16 @@ Only log items that are clearly confirmed in discussion.
 - HM understands Turbo-style step reduction is an optimization, not a full scalability solution if the architecture remains sequential.
 - HM understands the direct `S3` lineage is `CosyVoice -> Chatterbox`, with the flow-decoder core inherited from the `Matcha-TTS` line.
 - HM understands the CosyVoice contribution is not just flow matching itself, but the combination of supervised semantic speech tokens, prompt conditioning, speaker conditioning, and mel-space flow decoding.
+- HM understands the current Chatterbox serving issue is `runtime architecture + serial model architecture`, not one slow line.
+- HM understands the current fix is `runtime/session isolation first`, then `S3` redesign only if concurrency is still poor.
+- HM understands the target runtime shape is `shared worker + explicit session state`, not immediate model replacement.
 
 ### Project State
 
 - HM understands the repo is still architecture-first and pre-implementation.
 - HM understands the current repo mostly contains design docs, diagrams, and reference repos.
 - HM understands the current project direction has pivoted from Stage 1 pronunciation review toward Chatterbox scalability analysis.
+- HM understands the active KPI is `max concurrent streaming sessions per GPU at target latency`.
 
 ### Working Process
 

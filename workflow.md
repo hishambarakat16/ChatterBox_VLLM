@@ -55,10 +55,11 @@ When discussing architecture:
 
 1. [CONTEXT.md](/Users/hisham/Code/Bahraini_TTS/CONTEXT.md)
 2. [CHATTERBOX_SCALING_PLAN.md](/Users/hisham/Code/Bahraini_TTS/CHATTERBOX_SCALING_PLAN.md)
-3. [cosyvoice_v1_linear_parallel_breakdown.md](/Users/hisham/Code/Bahraini_TTS/architecture/cosyvoice_v1_linear_parallel_breakdown.md) when the discussion is about token-to-mel flow or linear vs parallel decoding
-4. [s3_origin_story.html](/Users/hisham/Code/Bahraini_TTS/architecture/s3_origin_story.html) when the discussion is about historical lineage or a fast visual explanation
-5. Relevant Chatterbox or CozyVoice files in `external/`
-6. [IMPLEMENTATION_CHECKLIST.md](/Users/hisham/Code/Bahraini_TTS/IMPLEMENTATION_CHECKLIST.md)
+3. [chatterbox_serving_shape_current_vs_target.html](/Users/hisham/Code/Bahraini_TTS/architecture/chatterbox_serving_shape_current_vs_target.html) when the discussion is about current vs target serving shape
+4. [cosyvoice_v1_linear_parallel_breakdown.md](/Users/hisham/Code/Bahraini_TTS/architecture/cosyvoice_v1_linear_parallel_breakdown.md) when the discussion is about token-to-mel flow or linear vs parallel decoding
+5. [s3_origin_story.html](/Users/hisham/Code/Bahraini_TTS/architecture/s3_origin_story.html) when the discussion is about historical lineage or a fast visual explanation
+6. Relevant Chatterbox or CozyVoice files in `external/`
+7. [IMPLEMENTATION_CHECKLIST.md](/Users/hisham/Code/Bahraini_TTS/IMPLEMENTATION_CHECKLIST.md)
 
 When discussing project state:
 
@@ -74,10 +75,10 @@ When discussing upstream sources:
 For this thesis, use this order unless HM redirects:
 
 1. Benchmark Chatterbox.
-2. Isolate runtime bottlenecks.
-3. Focus on `S3 token -> mel` scalability work.
-4. Decide whether an Arabic-only student is justified.
-5. Only then discuss Bahraini specialization.
+2. Refactor runtime around explicit session state.
+3. Rerun concurrency measurements.
+4. Focus on `S3 token -> mel` scalability work only if runtime cleanup is still not enough.
+5. Revisit `T3` only after that.
 
 ## What Not To Do
 

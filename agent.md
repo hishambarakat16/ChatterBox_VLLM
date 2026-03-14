@@ -78,16 +78,17 @@ Then:
 
 ## Current Project Summary
 
-- Goal: evaluate a Chatterbox-based path for Arabic/Bahraini TTS.
-- Current focus: benchmark Chatterbox, isolate the `S3 token -> mel` bottleneck, and improve scalability first.
-- Next architectural step: Arabic-only student design if the Chatterbox path is worth keeping.
-- Main risks: solving the wrong bottleneck, changing the speech-token interface too early, mixing scalability and dialect-quality work.
+- Goal: improve the Chatterbox serving shape for streaming concurrency per GPU.
+- Current focus: remove shared mutable request state, introduce explicit session state, and measure clean concurrency baselines.
+- Next architectural step: only redesign `S3` if the runtime cleanup is still not enough.
+- Main risks: mistaking runtime cleanup for a full model fix, skipping baseline measurement, or changing the speech-token path too early.
 
 ## File Map
 
 - [CONTEXT.md](/Users/hisham/Code/Bahraini_TTS/CONTEXT.md): project architecture and scope
 - [PROGRESS.md](/Users/hisham/Code/Bahraini_TTS/PROGRESS.md): status and open questions
 - [CHATTERBOX_SCALING_PLAN.md](/Users/hisham/Code/Bahraini_TTS/CHATTERBOX_SCALING_PLAN.md): current execution direction for scaling work
+- [chatterbox_serving_shape_current_vs_target.html](/Users/hisham/Code/Bahraini_TTS/architecture/chatterbox_serving_shape_current_vs_target.html): current vs target serving architecture with code anchors
 - [cosyvoice_v1_linear_parallel_breakdown.md](/Users/hisham/Code/Bahraini_TTS/architecture/cosyvoice_v1_linear_parallel_breakdown.md): focused CozyVoice step-by-step and parallelism analysis
 - [s3_origin_story.html](/Users/hisham/Code/Bahraini_TTS/architecture/s3_origin_story.html): lightweight visual explainer for the S3 lineage and current architecture
 - [REFERENCE_REPOS.md](/Users/hisham/Code/Bahraini_TTS/REFERENCE_REPOS.md): upstream references and clone strategy

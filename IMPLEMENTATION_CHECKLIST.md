@@ -14,8 +14,8 @@
 
 ## Runtime Refactor
 
-- [ ] create `mtl_tts_streaming.py` beside the original runtime wrapper
-- [ ] create explicit streaming session state files under `external/chatterbox/src/chatterbox/runtime/`
+- [x] create `mtl_tts_streaming.py` beside the original runtime wrapper
+- [x] create explicit streaming session state files under `external/chatterbox/src/chatterbox/runtime/`
 - [ ] remove shared mutable request state from the model object
 - [ ] make conditionals explicit per request
 - [ ] define a streaming session object
