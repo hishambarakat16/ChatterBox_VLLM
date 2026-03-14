@@ -93,7 +93,11 @@ Then:
 - [cosyvoice_v1_linear_parallel_breakdown.md](/Users/hisham/Code/Bahraini_TTS/architecture/cosyvoice_v1_linear_parallel_breakdown.md): focused CozyVoice step-by-step and parallelism analysis
 - [t3_concurrent_inference_findings.md](/Users/hisham/Code/Bahraini_TTS/architecture/t3_concurrent_inference_findings.md): focused T3 concurrent-inference hazard review and architecture recommendation
 - [t3_serving_research_memo.md](/Users/hisham/Code/Bahraini_TTS/architecture/t3_serving_research_memo.md): focused research memo on whether shared-instance `prefill + step + scheduler` serving is already solved in TTS
+- [t3_speculative_decoding_research_memo.md](/Users/hisham/Code/Bahraini_TTS/architecture/t3_speculative_decoding_research_memo.md): focused research memo on whether speculative decoding is a good fit for the current multilingual `T3` architecture
+- [t3_planner_rearchitecture_prior_art_memo.md](/Users/hisham/Code/Bahraini_TTS/architecture/t3_planner_rearchitecture_prior_art_memo.md): focused prior-art memo on replacing only the planner while keeping the downstream renderer fixed or mostly fixed
 - [s3_origin_story.html](/Users/hisham/Code/Bahraini_TTS/architecture/s3_origin_story.html): lightweight visual explainer for the S3 lineage and current architecture
+- [References/speculative_decoding/README.md](/Users/hisham/Code/Bahraini_TTS/References/speculative_decoding/README.md): local primary-source bundle for speculative-decoding papers and supporting docs
+- [References/planner_rearchitecture/README.md](/Users/hisham/Code/Bahraini_TTS/References/planner_rearchitecture/README.md): local primary-source bundle for planner-only and stage-local TTS re-architecture work
 - [REFERENCE_REPOS.md](/Users/hisham/Code/Bahraini_TTS/REFERENCE_REPOS.md): upstream references and clone strategy
 - [IMPLEMENTATION_CHECKLIST.md](/Users/hisham/Code/Bahraini_TTS/IMPLEMENTATION_CHECKLIST.md): execution checklist and design gaps
 - [workflow.md](/Users/hisham/Code/Bahraini_TTS/workflow.md): how discussions and work should flow
@@ -111,6 +115,10 @@ Then:
 - Main result: the first correctness blocker is shared mutable `T3` inference state, especially request-local backend state stored on `self` and persistent forward hooks on shared transformer layers.
 - I also created [t3_serving_research_memo.md](/Users/hisham/Code/Bahraini_TTS/architecture/t3_serving_research_memo.md) after checking whether this serving problem is already solved elsewhere.
 - Main result: the closest existing TTS-side solutions already adapt `LLM` serving engines like `vLLM` and `SGLang`, so the right next move for Chatterbox `T3` is adaptation of that design, not inventing the scheduler pattern from scratch.
+- I also created [t3_speculative_decoding_research_memo.md](/Users/hisham/Code/Bahraini_TTS/architecture/t3_speculative_decoding_research_memo.md) after checking whether speculative decoding is a good next architecture candidate for multilingual `T3`.
+- Main result: speculative decoding looks promising here, but only if we train or obtain a verifier-compatible smaller multilingual draft `T3`; `Chatterbox Turbo` is useful as a speed reference, not as a drop-in draft/verifier pair.
+- I also created [t3_planner_rearchitecture_prior_art_memo.md](/Users/hisham/Code/Bahraini_TTS/architecture/t3_planner_rearchitecture_prior_art_memo.md) after checking whether people already replace only the planner while leaving the downstream renderer intact.
+- Main result: yes in broad form, especially in `SPEAR-TTS`, `VALL-E 2`, `VALL-E R`, `MaskGCT`, and `SoundStorm`; but an open-source multilingual `T3-only` swap into an existing `T3 -> S3` contract still looks relatively open.
 
 ## Update Rules
 

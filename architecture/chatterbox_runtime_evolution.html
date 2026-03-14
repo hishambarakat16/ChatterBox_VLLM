@@ -194,7 +194,7 @@
       }
 
       .timeline {
-        min-width: 2320px;
+        min-width: 2810px;
         display: flex;
         align-items: stretch;
         gap: 10px;
@@ -441,11 +441,97 @@
           </div>
         </div>
         <div class="summary-card">
-          <div class="summary-label">Current Measured Read</div>
-          <div class="summary-value">active <code>T3</code> compute is still larger than <code>S3</code></div>
+          <div class="summary-label">Latest Guard Cleanup</div>
+          <div class="summary-value">GPU-local scheduled alignment state removed a real chunk of guard overhead</div>
           <div class="summary-note">
-            In the latest timed scheduled run, scheduler wait is tiny and <code>T3</code> remains the larger hot path.
+            Quality stayed clean, <code>errors=[]</code> held through <code>concurrency=8</code>, and the next likely
+            remaining guard cost is still the <code>output_attentions=True</code> attention fallback.
           </div>
+        </div>
+      </div>
+
+      <div class="section">
+        <div class="section-title">Performance Ladder From Original Baseline To Current Runtime</div>
+        <div class="section-subtitle">
+          This is the compact “where we started vs where we are now” table. It mixes the earliest recorded baseline
+          traces with later concurrency benchmarks, so single-request baseline rows are not perfectly apples-to-apples
+          with the later benchmark harness. They are still useful as the historical starting point.
+        </div>
+        <div class="scroll">
+          <table class="metric-table" style="min-width: 1680px;">
+            <thead>
+              <tr>
+                <th>Stage</th>
+                <th>Main Change</th>
+                <th><code>c1</code></th>
+                <th><code>c2</code></th>
+                <th><code>c4</code></th>
+                <th><code>c8</code></th>
+                <th>Main Read</th>
+              </tr>
+            </thead>
+            <tbody>
+              <tr>
+                <td><strong>Original baseline</strong></td>
+                <td>Unmodified shared-object runtime</td>
+                <td><code>4.3412s</code>, <code>81600</code> samples<br />single-request trace only</td>
+                <td>fail<br />tensor-size mismatch</td>
+                <td>fail</td>
+                <td>not tested</td>
+                <td>Good for one request, unsafe for real concurrent use.</td>
+              </tr>
+              <tr>
+                <td><strong>Streaming scaffold only</strong></td>
+                <td>Session wrapper and request setup, but shared <code>T3</code> internals still unsafe</td>
+                <td><code>4.46s</code>, <code>100800</code> samples<br />single-request trace only</td>
+                <td>logical failure<br />one output collapsed to <code>1920</code> samples</td>
+                <td>fail</td>
+                <td>not tested</td>
+                <td>Better runtime shape, but not a concurrency fix yet.</td>
+              </tr>
+              <tr>
+                <td><strong>Concurrent coarse-lock</strong></td>
+                <td>Request-local <code>T3</code> backend/analyzer plus full-decode <code>T3</code> lock</td>
+                <td><code>0.8549</code><br /><code>wall 5.2871s</code></td>
+                <td><code>1.1257</code><br /><code>wall 6.8933s</code></td>
+                <td><code>1.2339</code><br /><code>wall 12.7722s</code></td>
+                <td>not tested</td>
+                <td>Correctness restored, but scaling stayed weak because <code>T3</code> was still serialized.</td>
+              </tr>
+              <tr>
+                <td><strong>Scheduled first cohorts</strong></td>
+                <td>Real batched <code>T3</code> cohorts by <code>batch_key</code></td>
+                <td><code>1.0309</code><br /><code>wall 3.8411s</code></td>
+                <td><code>1.7764</code><br /><code>wall 4.2557s</code></td>
+                <td><code>1.8018</code><br /><code>wall 10.0345s</code></td>
+                <td>not tested</td>
+                <td>First real throughput win over the coarse-lock path.</td>
+              </tr>
+              <tr>
+                <td><strong>Scheduled hardened + timed</strong></td>
+                <td>Round-robin active cohorts, mid-cohort admission, stage timing, <code>VRAM</code> measurement</td>
+                <td><code>1.0346</code><br /><code>wall 4.1369s</code></td>
+                <td><code>1.8267</code><br /><code>wall 3.6349s</code></td>
+                <td><code>2.7884</code><br /><code>wall 5.8816s</code></td>
+                <td><code>3.2907</code><br /><code>wall 10.8185s</code></td>
+                <td>Meaningful scaling through <code>c8</code>; timing showed active <code>T3</code> compute stayed hotter than <code>S3</code>.</td>
+              </tr>
+              <tr>
+                <td><strong>GPU-local scheduled alignment state</strong><br />current latest guard step</td>
+                <td>Kept guard on, removed per-step CPU copy and full CPU history growth</td>
+                <td><code>0.992</code><br /><code>wall 4.4756s</code></td>
+                <td><code>1.5918</code><br /><code>wall 5.3274s</code></td>
+                <td><code>2.5951</code><br /><code>wall 6.4274s</code></td>
+                <td><code>3.4518</code><br /><code>wall 9.5139s</code></td>
+                <td>Directional <code>c8</code> win with quality preserved; remaining guard-path cost is still the attention-output fallback.</td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
+        <div class="footnote">
+          Throughput cells are <code>audio_seconds_per_second</code> where available. The two earliest rows are historical
+          single-request traces, not the later concurrency benchmark harness, so they are included for origin tracking
+          rather than strict benchmark comparability.
         </div>
       </div>
 
@@ -786,12 +872,84 @@
                 </div>
               </div>
             </div>
+
+            <div class="arrow"><div class="arrow-label">trim guard overhead</div></div>
+
+            <div class="change-card">
+              <div class="card-head">
+                <div class="step-row">
+                  <div class="step-num">5</div>
+                  <div>
+                    <div class="step-kicker">Alignment Cleanup</div>
+                    <h2 class="step-title">GPU-Local Scheduled Alignment State</h2>
+                  </div>
+                </div>
+                <div class="tag-row">
+                  <div class="tag ok">quality preserved</div>
+                  <div class="tag ok">throughput gain</div>
+                  <div class="tag warn">not final</div>
+                </div>
+              </div>
+              <div class="card-body">
+                <div class="box">
+                  <div class="mini-title">What Changed</div>
+                  <ul class="tight-list">
+                    <li>Kept the scheduled alignment guard enabled after the sweep showed it is necessary for output quality.</li>
+                    <li>Removed the scheduled hook's per-step <code>.cpu()</code> attention copy.</li>
+                    <li>Removed the growing CPU-side full alignment matrix.</li>
+                    <li>Replaced it with rolling GPU-local state: recent rows, early-text activation max, post-completion tail mass, and post-completion repetition mass.</li>
+                  </ul>
+                </div>
+                <div class="box">
+                  <div class="mini-title">Code And Commit Anchors</div>
+                  <span class="code-ref"><code>alignment_stream_analyzer_scheduled.py</code> keeps rolling GPU-local state in <code>ScheduledAlignmentState</code></span>
+                  <span class="code-ref"><code>scheduled_decode.py</code> still wires scheduled requests through the guarded path</span>
+                  <span class="code-ref"><code>fcac6a2</code> submodule: <code>keep scheduled alignment state on gpu</code></span>
+                  <span class="code-ref"><code>454794f</code> parent: <code>update chatterbox gpu-local alignment state</code></span>
+                  <span class="code-ref"><code>4d297e3</code> docs: <code>record gpu-local alignment state results</code></span>
+                </div>
+                <div class="box">
+                  <div class="mini-title">Improvement Result</div>
+                  <table class="metric-table">
+                    <tr>
+                      <th>Metric</th>
+                      <th>Value</th>
+                    </tr>
+                    <tr>
+                      <td>quality / stability</td>
+                      <td>manual listening stayed clean and <code>errors=[]</code> held through <code>concurrency=8</code></td>
+                    </tr>
+                    <tr>
+                      <td>latest current run checkpoints</td>
+                      <td><code>c1 0.992 / 4.4756s</code>, <code>c2 1.5918 / 5.3274s</code>, <code>c4 2.5951 / 6.4274s</code></td>
+                    </tr>
+                    <tr>
+                      <td>clearest directional win at <code>c8</code></td>
+                      <td><code>wall_s 11.0954 -&gt; 9.5139</code>, <code>audio_seconds_per_second 3.1941 -&gt; 3.4518</code></td>
+                    </tr>
+                    <tr>
+                      <td><code>T3</code> timing improvement</td>
+                      <td><code>stage_t3_s_mean 6.9425 -&gt; 5.6515</code>, <code>stage_t3_first_token_s_mean 0.2016 -&gt; 0.1561</code></td>
+                    </tr>
+                  </table>
+                </div>
+                <div class="box">
+                  <div class="mini-title">What It Bought Us</div>
+                  <div class="note">
+                    This removed a meaningful chunk of scheduled guard overhead without weakening the guardrail. It did
+                    not remove the deeper <code>output_attentions=True</code> fallback cost, so the next likely guard-path
+                    bottleneck is still the attention-output path itself, not CPU history growth.
+                  </div>
+                </div>
+              </div>
+            </div>
           </div>
         </div>
         <div class="footnote">
           Latest interpretation: request-local runtime state is no longer the main unresolved issue, coarse full-decode
-          locking is gone, real batched <code>T3</code> scheduling exists, and the next technical question is deeper
-          <code>T3</code> profiling plus staggered-arrival validation.
+          locking is gone, real batched <code>T3</code> scheduling exists, and the newest alignment cleanup removed a
+          real chunk of guard overhead. The next technical question is deeper <code>T3</code> profiling, especially the
+          remaining attention-output fallback cost, plus staggered-arrival validation.
         </div>
       </div>
 
@@ -802,7 +960,7 @@
             <li>The first fixes were about state ownership, not speed.</li>
             <li>The first big correctness win came from making <code>T3</code> decode state request-local.</li>
             <li>The first big scaling win came from replacing the coarse lock with batched <code>T3</code> cohorts.</li>
-            <li>The latest visibility win came from stage timing and <code>VRAM</code> measurement, which now point back to active <code>T3</code> compute.</li>
+            <li>The latest guard cleanup kept alignment on, moved rolling state back onto GPU, and cut a meaningful chunk of scheduled guard overhead.</li>
           </ul>
         </div>
         <div class="panel">
@@ -810,6 +968,7 @@
           <ul class="tight-list">
             <li>validate staggered-arrival behavior under live load, not just simultaneous starts</li>
             <li>profile deeper inside <code>T3</code> prefill and decode compute</li>
+            <li>measure how much of the remaining guard cost comes from the <code>output_attentions=True</code> fallback path</li>
             <li>revisit <code>S3</code> only after the deeper <code>T3</code> read is clear</li>
           </ul>
         </div>
@@ -817,8 +976,8 @@
           <div class="panel-title">Best One-Line Summary</div>
           <div class="note">
             The runtime evolved from “shared mutable inference state breaks concurrency” to “batched <code>T3</code>
-            scheduling scales meaningfully through <code>concurrency=4</code>, and the next measured bottleneck is still
-            <code>T3</code>, not <code>S3</code>.”
+            scheduling scales meaningfully through <code>concurrency=8</code>, with the latest GPU-local alignment-state
+            cleanup removing guard overhead while leaving the deeper attention-output fallback cost still on the table.”
           </div>
         </div>
       </div>

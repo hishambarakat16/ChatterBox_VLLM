@@ -1,0 +1,700 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>T3 Speculative Prototype Flow</title>
+    <style>
+      :root {
+        --bg: #ececec;
+        --paper: #fafafa;
+        --panel: #ffffff;
+        --ink: #171717;
+        --muted: #5f5f5f;
+        --line: #d1d1d1;
+        --line-strong: #8a8a8a;
+        --note-bg: repeating-linear-gradient(
+          -45deg,
+          #fbfbfb 0,
+          #fbfbfb 10px,
+          #f0f0f0 10px,
+          #f0f0f0 20px
+        );
+      }
+
+      * {
+        box-sizing: border-box;
+      }
+
+      body {
+        margin: 0;
+        background: var(--bg);
+        color: var(--ink);
+        font-family: ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+      }
+
+      code,
+      .mono,
+      table {
+        font-family: ui-monospace, "SFMono-Regular", Menlo, Consolas, monospace;
+      }
+
+      code {
+        overflow-wrap: anywhere;
+      }
+
+      .page {
+        width: 100%;
+        max-width: 1900px;
+        margin: 0 auto;
+        padding: 20px 20px 28px;
+      }
+
+      .hero,
+      .section,
+      .panel {
+        background: var(--panel);
+        border: 1px solid var(--line);
+        box-shadow: 0 1px 0 rgba(0, 0, 0, 0.04);
+      }
+
+      .hero {
+        padding: 18px 20px;
+        margin-bottom: 14px;
+      }
+
+      .title {
+        margin: 0;
+        font-size: 31px;
+        line-height: 1.08;
+        letter-spacing: -0.02em;
+      }
+
+      .subtitle {
+        margin: 8px 0 0;
+        max-width: 1240px;
+        color: var(--muted);
+        font-size: 13px;
+        line-height: 1.5;
+      }
+
+      .source-list {
+        margin: 12px 0 0;
+        padding: 0;
+        list-style: none;
+        display: grid;
+        grid-template-columns: repeat(2, minmax(0, 1fr));
+        gap: 6px 12px;
+        font-size: 11px;
+        color: var(--muted);
+      }
+
+      .summary-grid,
+      .bottom-grid {
+        display: grid;
+        grid-template-columns: repeat(4, minmax(0, 1fr));
+        gap: 12px;
+        margin-bottom: 14px;
+      }
+
+      .bottom-grid {
+        grid-template-columns: 1.15fr 1fr 1fr;
+      }
+
+      .summary-card,
+      .panel {
+        padding: 14px 15px;
+      }
+
+      .summary-label,
+      .section-title,
+      .panel-title,
+      .cell-title {
+        font-size: 11px;
+        text-transform: uppercase;
+        letter-spacing: 0.08em;
+        color: var(--muted);
+      }
+
+      .summary-value {
+        margin-top: 6px;
+        font-size: 19px;
+        line-height: 1.22;
+        font-weight: 700;
+      }
+
+      .summary-note,
+      .note,
+      .shape-line,
+      li,
+      td,
+      th {
+        font-size: 12px;
+        line-height: 1.45;
+      }
+
+      .summary-note {
+        margin-top: 8px;
+        color: var(--muted);
+      }
+
+      .section {
+        padding: 16px 18px 18px;
+        margin-bottom: 14px;
+      }
+
+      .section-title {
+        margin-bottom: 8px;
+        font-weight: 700;
+      }
+
+      .section-subtitle {
+        margin: 0 0 12px;
+        color: var(--muted);
+        font-size: 12px;
+        line-height: 1.45;
+      }
+
+      .chip-row {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 8px;
+        margin-bottom: 12px;
+      }
+
+      .chip {
+        padding: 5px 8px;
+        border: 1px solid var(--line-strong);
+        background: #fff;
+        font-size: 10px;
+        text-transform: uppercase;
+        letter-spacing: 0.08em;
+      }
+
+      .scroll {
+        overflow-x: auto;
+        overflow-y: hidden;
+        padding-bottom: 4px;
+      }
+
+      .pipeline {
+        min-width: 2500px;
+        display: flex;
+        align-items: stretch;
+        gap: 10px;
+      }
+
+      .stage {
+        width: 320px;
+        min-width: 320px;
+        border: 1px solid var(--line);
+        background: var(--paper);
+        display: grid;
+        grid-template-rows: auto 1fr;
+      }
+
+      .stage.wide {
+        width: 370px;
+        min-width: 370px;
+      }
+
+      .stage-head {
+        padding: 12px 12px 10px;
+        border-bottom: 1px solid var(--line);
+        background: rgba(255, 255, 255, 0.7);
+      }
+
+      .stage-badges {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 6px;
+        margin-bottom: 8px;
+      }
+
+      .badge {
+        padding: 2px 6px;
+        border: 1px solid var(--line-strong);
+        font-size: 10px;
+        text-transform: uppercase;
+        letter-spacing: 0.08em;
+        background: #fff;
+      }
+
+      .stage-title {
+        margin: 0;
+        font-size: 17px;
+        line-height: 1.22;
+      }
+
+      .stage-path {
+        margin-top: 6px;
+        color: var(--muted);
+        font-size: 10px;
+        line-height: 1.45;
+        word-break: break-word;
+      }
+
+      .stage-body {
+        padding: 10px 12px 12px;
+        display: grid;
+        gap: 8px;
+      }
+
+      .cell {
+        border: 1px solid var(--line);
+        background: rgba(255, 255, 255, 0.72);
+        padding: 8px 9px;
+      }
+
+      .shape-line {
+        display: block;
+        margin-top: 4px;
+      }
+
+      .tight-list {
+        margin: 6px 0 0;
+        padding-left: 16px;
+      }
+
+      .tight-list li + li {
+        margin-top: 4px;
+      }
+
+      .arrow {
+        width: 52px;
+        min-width: 52px;
+        position: relative;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+      }
+
+      .arrow::before {
+        content: "";
+        position: absolute;
+        left: 6px;
+        right: 6px;
+        top: 50%;
+        border-top: 1px solid var(--line-strong);
+      }
+
+      .arrow::after {
+        content: "";
+        position: absolute;
+        right: 6px;
+        top: calc(50% - 4px);
+        border-top: 5px solid transparent;
+        border-bottom: 5px solid transparent;
+        border-left: 8px solid var(--line-strong);
+      }
+
+      .arrow-label {
+        position: relative;
+        z-index: 1;
+        padding: 4px 6px;
+        background: var(--bg);
+        font-size: 10px;
+        text-transform: uppercase;
+        letter-spacing: 0.08em;
+        color: var(--muted);
+        writing-mode: vertical-rl;
+        transform: rotate(180deg);
+      }
+
+      .note-box {
+        border: 1px dashed var(--line-strong);
+        background: var(--note-bg);
+        padding: 10px 11px;
+      }
+
+      table {
+        width: 100%;
+        border-collapse: collapse;
+      }
+
+      th,
+      td {
+        border: 1px solid var(--line);
+        padding: 7px 8px;
+        vertical-align: top;
+        text-align: left;
+      }
+
+      th {
+        background: #efefef;
+        font-size: 10px;
+        text-transform: uppercase;
+        letter-spacing: 0.08em;
+      }
+
+      .footnote {
+        margin-top: 8px;
+        color: var(--muted);
+        font-size: 11px;
+        line-height: 1.45;
+      }
+
+      @media (max-width: 1440px) {
+        .summary-grid,
+        .bottom-grid,
+        .source-list {
+          grid-template-columns: 1fr;
+        }
+      }
+    </style>
+  </head>
+  <body>
+    <div class="page">
+      <div class="hero">
+        <h1 class="title">T3 Speculative Prototype Flow</h1>
+        <div class="subtitle">
+          This is the current in-progress speculative wrapper around scheduled multilingual <code>T3</code>: shared
+          prefill, draft proposal, verifier block, accept-or-correct commit, and the unchanged <code>S3</code>
+          boundary.
+        </div>
+        <div class="subtitle">
+          The currently validated mode is <code>self-draft + greedy + cfg_weight=0.5 + alignment guard off</code>.
+          Dimension labels beside each tuple are semantic mnemonics, not code variable names.
+        </div>
+        <ul class="source-list">
+          <li><code>architecture/t3_speculative_shape_contract.md</code></li>
+          <li><code>external/chatterbox/src/chatterbox/models/t3/inference/speculative_decode.py</code></li>
+          <li><code>external/chatterbox/src/chatterbox/models/t3/inference/draft_model.py</code></li>
+          <li><code>external/chatterbox/benchmark_t3_speculative_prototype.py</code></li>
+          <li><code>external/chatterbox/src/chatterbox/models/t3/inference/scheduled_decode.py</code></li>
+          <li><code>external/chatterbox/src/chatterbox/models/t3/t3.py</code></li>
+        </ul>
+      </div>
+
+      <div class="summary-grid">
+        <div class="summary-card hero">
+          <div class="summary-label">Validated Mode</div>
+          <div class="summary-value">Self-draft correctness scaffold</div>
+          <div class="summary-note">
+            Current multilingual <code>T3</code> acts as both draft and verifier. This proves shape correctness and
+            verifier alignment, not final serving speed.
+          </div>
+        </div>
+        <div class="summary-card hero">
+          <div class="summary-label">Prefill Contract</div>
+          <div class="summary-value"><code>(2, 72, 1024)</code> <code>(cfg_rows, prefill_seq_len_with_bos, hidden_size)</code></div>
+          <div class="summary-note">
+            Prefill returns <code>raw_logits (2, 72, 8194)</code> <code>(cfg_rows, prefill_seq_len_with_bos, vocab_size)</code>,
+            one CFG-combined next-token distribution <code>next_logits (1, 8194)</code>
+            <code>(logical_request_rows, vocab_size)</code>, and initial <code>kv_seq_len = 72</code>.
+          </div>
+        </div>
+        <div class="summary-card hero">
+          <div class="summary-label">Verified Block Contract</div>
+          <div class="summary-value"><code>(2, 4, 1024)</code> <code>(cfg_rows, draft_block_len, hidden_size)</code></div>
+          <div class="summary-note">
+            For <code>speculate_k = 4</code>, verifier block output is <code>raw_block_logits (2, 4, 8194)</code>
+            <code>(cfg_rows, draft_block_len, vocab_size)</code> then CFG-combined to
+            <code>cfg_block_logits (1, 4, 8194)</code> <code>(logical_request_rows, draft_block_len, vocab_size)</code>.
+          </div>
+        </div>
+        <div class="summary-card hero">
+          <div class="summary-label">Fair Benchmark Caution</div>
+          <div class="summary-value">Correct, but slower than baseline</div>
+          <div class="summary-note">
+            Repeated fair runs show <code>baseline_t3_s_mean ~= 1.68s</code>,
+            <code>speculative_t3_s_mean ~= 2.12s</code>, speedup about <code>-26%</code>, and peak allocated delta
+            about <code>151.8MB -> 230.5MB</code>.
+          </div>
+        </div>
+      </div>
+
+      <div class="section">
+        <div class="section-title">Current Prototype Flow</div>
+        <div class="chip-row">
+          <div class="chip">prototype only</div>
+          <div class="chip">self-draft path validated</div>
+          <div class="chip">layer-subset scaffold exists</div>
+          <div class="chip">s3 unchanged</div>
+        </div>
+        <div class="section-subtitle">
+          Read left to right. This is the speculative wrapper around the current scheduled <code>T3</code> path, not a
+          final serving architecture.
+        </div>
+        <div class="scroll">
+          <div class="pipeline">
+            <div class="stage">
+              <div class="stage-head">
+                <div class="stage-badges">
+                  <div class="badge">request in</div>
+                  <div class="badge">scheduled boundary</div>
+                </div>
+                <h2 class="stage-title">1. Prototype Request</h2>
+                <div class="stage-path"><code>ScheduledDecodeRequest</code> from runtime</div>
+              </div>
+              <div class="stage-body">
+                <div class="cell">
+                  <div class="cell-title">Inputs</div>
+                  <span class="shape-line"><code>t3_cond</code></span>
+                  <span class="shape-line"><code>text_tokens (2, 36)</code> <code>(cfg_rows, text_seq_len)</code></span>
+                  <span class="shape-line"><code>cfg_weight = 0.5</code></span>
+                  <span class="shape-line"><code>max_new_tokens</code>, sampling options</span>
+                </div>
+                <div class="cell">
+                  <div class="cell-title">Meaning</div>
+                  <div class="note">
+                    One logical request already enters speculative <code>T3</code> as two CFG rows. The outer request
+                    boundary stays identical to scheduled production.
+                  </div>
+                </div>
+              </div>
+            </div>
+
+            <div class="arrow"><div class="arrow-label">shared prefill</div></div>
+
+            <div class="stage wide">
+              <div class="stage-head">
+                <div class="stage-badges">
+                  <div class="badge">shared weights</div>
+                  <div class="badge">same as scheduled</div>
+                </div>
+                <h2 class="stage-title">2. Prefill and First Next-Token Distribution</h2>
+                <div class="stage-path"><code>t3.py</code> + <code>speculative_decode.py</code></div>
+              </div>
+              <div class="stage-body">
+                <div class="cell">
+                  <div class="cell-title">Input Embeddings</div>
+                  <span class="shape-line"><code>cond_emb (2, 34, 1024)</code> <code>(cfg_rows, cond_seq_len, hidden_size)</code></span>
+                  <span class="shape-line"><code>text_emb (2, 36, 1024)</code> <code>(cfg_rows, text_seq_len, hidden_size)</code></span>
+                  <span class="shape-line"><code>speech_emb (2, 1, 1024)</code> <code>(cfg_rows, speech_seed_len, hidden_size)</code></span>
+                  <span class="shape-line"><code>embeds (2, 71, 1024)</code> <code>(cfg_rows, prefill_seq_len_no_bos, hidden_size)</code></span>
+                </div>
+                <div class="cell">
+                  <div class="cell-title">Prefill Output</div>
+                  <span class="shape-line"><code>bos_pos_embed (1, 1, 1024)</code> <code>(shared_pos_rows, bos_token_len, hidden_size)</code></span>
+                  <span class="shape-line"><code>bos_embed (2, 1, 1024)</code> <code>(cfg_rows, bos_token_len, hidden_size)</code></span>
+                  <span class="shape-line"><code>inputs_embeds (2, 72, 1024)</code> <code>(cfg_rows, prefill_seq_len_with_bos, hidden_size)</code></span>
+                  <span class="shape-line"><code>raw_logits (2, 72, 8194)</code> <code>(cfg_rows, prefill_seq_len_with_bos, vocab_size)</code></span>
+                  <span class="shape-line"><code>next_logits (1, 8194)</code> <code>(logical_request_rows, vocab_size)</code></span>
+                  <span class="shape-line"><code>kv_seq_len = 72</code></span>
+                </div>
+                <div class="cell">
+                  <div class="cell-title">Meaning</div>
+                  <div class="note">
+                    The speculative path preserves the production prefill boundary exactly, then starts proposing and
+                    verifying tokens from the same initial KV state.
+                  </div>
+                </div>
+              </div>
+            </div>
+
+            <div class="arrow"><div class="arrow-label">draft propose</div></div>
+
+            <div class="stage">
+              <div class="stage-head">
+                <div class="stage-badges">
+                  <div class="badge">draft path</div>
+                  <div class="badge">in progress</div>
+                </div>
+                <h2 class="stage-title">3. Draft Proposal</h2>
+                <div class="stage-path"><code>draft_model.py</code> or self-draft fallback</div>
+              </div>
+              <div class="stage-body">
+                <div class="cell">
+                  <div class="cell-title">Current Validated Step</div>
+                  <span class="shape-line"><code>tokens (1, 1)</code> <code>(logical_request_rows, decode_step_token_len)</code></span>
+                  <span class="shape-line"><code>base_embed (1, 1, 1024)</code> <code>(logical_request_rows, decode_step_token_len, hidden_size)</code></span>
+                  <span class="shape-line"><code>pos_embed (1, 1, 1024)</code> <code>(shared_pos_rows, decode_step_token_len, hidden_size)</code></span>
+                  <span class="shape-line"><code>duplicated (2, 1, 1024)</code> <code>(cfg_rows, decode_step_token_len, hidden_size)</code></span>
+                </div>
+                <div class="cell">
+                  <div class="cell-title">Draft Scaffold</div>
+                  <ul class="tight-list">
+                    <li><code>draft_mode = layer_subset</code></li>
+                    <li>same multilingual token interface</li>
+                    <li>same BOS/EOS semantics</li>
+                    <li>same embeddings and output heads</li>
+                    <li>fewer transformer layers from base <code>T3</code></li>
+                  </ul>
+                </div>
+              </div>
+            </div>
+
+            <div class="arrow"><div class="arrow-label">verify k=4</div></div>
+
+            <div class="stage wide">
+              <div class="stage-head">
+                <div class="stage-badges">
+                  <div class="badge">verifier block</div>
+                  <div class="badge">k tokens</div>
+                </div>
+                <h2 class="stage-title">4. Verify Draft Block</h2>
+                <div class="stage-path"><code>speculative_decode.py</code> block verification</div>
+              </div>
+              <div class="stage-body">
+                <div class="cell">
+                  <div class="cell-title">Confirmed Block Input</div>
+                  <span class="shape-line"><code>tokens (1, 4)</code> <code>(logical_request_rows, draft_block_len)</code></span>
+                  <span class="shape-line"><code>base_embed (1, 4, 1024)</code> <code>(logical_request_rows, draft_block_len, hidden_size)</code></span>
+                  <span class="shape-line"><code>pos_embed (1, 4, 1024)</code> <code>(shared_pos_rows, draft_block_len, hidden_size)</code></span>
+                  <span class="shape-line"><code>duplicated (2, 4, 1024)</code> <code>(cfg_rows, draft_block_len, hidden_size)</code></span>
+                </div>
+                <div class="cell">
+                  <div class="cell-title">Confirmed Verifier Output</div>
+                  <span class="shape-line"><code>block_inputs (2, 4, 1024)</code> <code>(cfg_rows, draft_block_len, hidden_size)</code></span>
+                  <span class="shape-line"><code>raw_block_logits (2, 4, 8194)</code> <code>(cfg_rows, draft_block_len, vocab_size)</code></span>
+                  <span class="shape-line"><code>cfg_block_logits (1, 4, 8194)</code> <code>(logical_request_rows, draft_block_len, vocab_size)</code></span>
+                </div>
+                <div class="cell">
+                  <div class="cell-title">Meaning</div>
+                  <div class="note">
+                    Multi-token verifier forward is already confirmed. The block is embedded once as one logical row,
+                    then duplicated back to CFG width before the verifier forward.
+                  </div>
+                </div>
+              </div>
+            </div>
+
+            <div class="arrow"><div class="arrow-label">accept or correct</div></div>
+
+            <div class="stage wide">
+              <div class="stage-head">
+                <div class="stage-badges">
+                  <div class="badge">commit path</div>
+                  <div class="badge">cache invariant</div>
+                </div>
+                <h2 class="stage-title">5. Commit Accepted Prefix and Advance KV</h2>
+                <div class="stage-path"><code>speculative_decode.py</code> acceptance bookkeeping</div>
+              </div>
+              <div class="stage-body">
+                <div class="cell">
+                  <div class="cell-title">Confirmed Cache Growth</div>
+                  <span class="shape-line"><code>kv_seq_len: 72 -> 76 -> 80 -> 84 -> 88 ...</code></span>
+                  <span class="shape-line"><code>accepted block length K</code> advances cache by exactly <code>+K</code></span>
+                </div>
+                <div class="cell">
+                  <div class="cell-title">Prototype Bookkeeping</div>
+                  <span class="shape-line"><code>speculative_rounds = 16</code></span>
+                  <span class="shape-line"><code>proposed_tokens_total = 64</code></span>
+                  <span class="shape-line"><code>accepted_draft_tokens_total = 64</code></span>
+                  <span class="shape-line"><code>correction_tokens_total = 0</code></span>
+                  <span class="shape-line"><code>acceptance_rate = 1.0000</code></span>
+                </div>
+                <div class="note-box">
+                  <div class="cell-title">Why This Matters</div>
+                  <div class="note">
+                    This is the critical speculative invariant: accepted verifier tokens advance the real cache exactly
+                    as if the baseline decode loop had generated them one by one. The current run stayed on the full
+                    accept branch, but the architecture still has to support correction-token replay.
+                  </div>
+                </div>
+              </div>
+            </div>
+
+            <div class="arrow"><div class="arrow-label">same s3</div></div>
+
+            <div class="stage">
+              <div class="stage-head">
+                <div class="stage-badges">
+                  <div class="badge">speech tokens out</div>
+                  <div class="badge">audio parity</div>
+                </div>
+                <h2 class="stage-title">6. Emit Tokens to S3</h2>
+                <div class="stage-path"><code>S3</code> untouched by prototype</div>
+              </div>
+              <div class="stage-body">
+                <div class="cell">
+                  <div class="cell-title">Output Contract</div>
+                  <span class="shape-line"><code>speech_tokens</code></span>
+                  <span class="shape-line"><code>baseline_rendered_token_count = 64</code></span>
+                  <span class="shape-line"><code>speculative_rendered_token_count = 64</code></span>
+                  <span class="shape-line"><code>baseline_rendered_num_samples = 61440</code></span>
+                  <span class="shape-line"><code>speculative_rendered_num_samples = 61440</code></span>
+                </div>
+                <div class="cell">
+                  <div class="cell-title">Correctness Signal</div>
+                  <span class="shape-line"><code>exact_token_match = True</code></span>
+                  <span class="shape-line"><code>first_mismatch_index = None</code></span>
+                  <span class="shape-line"><code>S3</code> boundary unchanged</span>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <div class="bottom-grid">
+        <div class="panel">
+          <div class="panel-title">Confirmed Prototype Contract</div>
+          <table>
+            <thead>
+              <tr>
+                <th>Item</th>
+                <th>Current Confirmed Value</th>
+              </tr>
+            </thead>
+            <tbody>
+              <tr>
+                <td>CFG rows per request</td>
+                <td><code>2</code></td>
+              </tr>
+              <tr>
+                <td>hidden size</td>
+                <td><code>1024</code></td>
+              </tr>
+              <tr>
+                <td>speech-token vocabulary</td>
+                <td><code>8194</code></td>
+              </tr>
+              <tr>
+                <td>prefill input shape</td>
+                <td><code>(2, 72, 1024)</code> <code>(cfg_rows, prefill_seq_len_with_bos, hidden_size)</code></td>
+              </tr>
+              <tr>
+                <td>prefill next-token logits</td>
+                <td><code>(1, 8194)</code> <code>(logical_request_rows, vocab_size)</code></td>
+              </tr>
+              <tr>
+                <td>verify block input for <code>k=4</code></td>
+                <td><code>(2, 4, 1024)</code> <code>(cfg_rows, draft_block_len, hidden_size)</code></td>
+              </tr>
+              <tr>
+                <td>verify block CFG output</td>
+                <td><code>(1, 4, 8194)</code> <code>(logical_request_rows, draft_block_len, vocab_size)</code></td>
+              </tr>
+              <tr>
+                <td>cache growth rule</td>
+                <td><code>kv_seq_len += accepted_block_len</code></td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
+
+        <div class="panel">
+          <div class="panel-title">What This Proves</div>
+          <ul class="tight-list">
+            <li>The speculative wrapper can sit around the current scheduled <code>T3</code> decode loop.</li>
+            <li>Prefill, draft, verify, and commit boundaries are shape-correct.</li>
+            <li>Causal verifier alignment is correct for greedy self-draft mode.</li>
+            <li>Accepted block length advances the real verifier cache by exactly <code>+K</code>.</li>
+            <li>Committed speculative tokens matched baseline greedy tokens exactly.</li>
+          </ul>
+          <div class="footnote">
+            The current strongest correctness signals are <code>exact_token_match = True</code>,
+            <code>correction_tokens_total = 0</code>, and matching rendered waveform length.
+          </div>
+        </div>
+
+        <div class="panel">
+          <div class="panel-title">What This Does Not Yet Prove</div>
+          <ul class="tight-list">
+            <li>No real latency win yet.</li>
+            <li>No GPU-saturation win yet.</li>
+            <li>No concurrency win yet.</li>
+            <li>No evidence yet for an external smaller draft model.</li>
+            <li>Self-draft is still a correctness scaffold, not a deployable serving strategy.</li>
+          </ul>
+          <div class="footnote">
+            Fair repeated runs currently show the opposite of a speedup: baseline about <code>1.68s</code> vs
+            speculative about <code>2.12s</code>, plus higher peak allocation.
+          </div>
+        </div>
+      </div>
+    </div>
+  </body>
+</html>

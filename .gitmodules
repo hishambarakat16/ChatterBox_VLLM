@@ -4,6 +4,7 @@
 [submodule "external/F5-TTS"]
 	path = external/F5-TTS
 	url = https://github.com/SWivid/F5-TTS.git
+	ignore = dirty
 [submodule "external/FastSpeech2"]
 	path = external/FastSpeech2
 	url = https://github.com/ming024/FastSpeech2.git
@@ -19,6 +20,7 @@
 [submodule "external/hifi-gan"]
 	path = external/hifi-gan
 	url = https://github.com/jik876/hifi-gan.git
+	ignore = dirty
 [submodule "References/Matcha-TTS_repo"]
 	path = References/Matcha-TTS_repo
 	url = https://github.com/shivammehta25/Matcha-TTS.git

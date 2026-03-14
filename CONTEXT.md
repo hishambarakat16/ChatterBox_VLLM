@@ -51,6 +51,7 @@ Serving-shape visual:
 
 - [chatterbox_serving_shape_current_vs_target.html](/Users/hisham/Code/Bahraini_TTS/architecture/chatterbox_serving_shape_current_vs_target.html)
 - [chatterbox_runtime_evolution.html](/Users/hisham/Code/Bahraini_TTS/architecture/chatterbox_runtime_evolution.html)
+- [t3_shape_contract_flow.html](/Users/hisham/Code/Bahraini_TTS/architecture/t3_shape_contract_flow.html)
 - [CLOUD_GPU_QUICKSTART.md](/Users/hisham/Code/Bahraini_TTS/CLOUD_GPU_QUICKSTART.md)
 - [CHATTERBOX_STATE_FLOW.md](/Users/hisham/Code/Bahraini_TTS/CHATTERBOX_STATE_FLOW.md)
 - [TRACE_RUN_RESULTS.md](/Users/hisham/Code/Bahraini_TTS/TRACE_RUN_RESULTS.md)

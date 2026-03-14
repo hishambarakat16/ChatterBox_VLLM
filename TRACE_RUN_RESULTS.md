@@ -664,6 +664,27 @@ Latest benchmark result:
 - `errors=[]` through `concurrency=8`
 - manual listening stayed clean
 
+Latest recorded post-rewrite checkpoints from the full scheduled run:
+
+- `c1`
+  - `wall_s=4.4756`
+  - `audio_seconds_per_second=0.992`
+  - `vram_peak_allocated_mb=3514.9`
+  - `stage_t3_s_mean=3.156`
+  - `stage_t3_first_token_s_mean=0.2188`
+- `c2`
+  - `wall_s=5.3274`
+  - `audio_seconds_per_second=1.5918`
+  - `vram_peak_allocated_mb=3945.7`
+  - `stage_t3_s_mean=3.2636`
+  - `stage_t3_first_token_s_mean=0.0715`
+- `c4`
+  - `wall_s=6.4274`
+  - `audio_seconds_per_second=2.5951`
+  - `vram_peak_allocated_mb=4640.0`
+  - `stage_t3_s_mean=4.1891`
+  - `stage_t3_first_token_s_mean=0.0847`
+
 Most useful directional comparison was at `c8` against the last clean pre-change run:
 
 - `wall_s`: `11.0954 -> 9.5139`

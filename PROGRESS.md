@@ -16,6 +16,9 @@ _Last updated: 2026-03-14_
 - added [chatterbox_runtime_evolution.html](/Users/hisham/Code/Bahraini_TTS/architecture/chatterbox_runtime_evolution.html) as the chronological runtime change log showing each serving change, its code anchors, and the measured improvement it produced
 - updated [chatterbox_runtime_evolution.html](/Users/hisham/Code/Bahraini_TTS/architecture/chatterbox_runtime_evolution.html) with the GPU-local scheduled alignment-state milestone and its measured `c8` improvement over the prior scheduled guard implementation
 - added a baseline-to-current concurrency performance ladder to [chatterbox_runtime_evolution.html](/Users/hisham/Code/Bahraini_TTS/architecture/chatterbox_runtime_evolution.html) so the starting point and each later serving gain stay visible in one place
+- added [t3_shape_contract_flow.html](/Users/hisham/Code/Bahraini_TTS/architecture/t3_shape_contract_flow.html) as a simple T3-only flow board showing request-in, CFG row expansion, prefill shape, cached decode step, request-local state, CFG logit combine, and speech-token output
+- synced [t3_shape_contract_flow.html](/Users/hisham/Code/Bahraini_TTS/architecture/t3_shape_contract_flow.html) to the latest traced contract so it now includes confirmed prefill logits, BOS positional shapes, speech-token vocab size, and first-layer prefill KV-cache shape
+- added [t3_speculative_shape_contract_flow.html](/Users/hisham/Code/Bahraini_TTS/architecture/t3_speculative_shape_contract_flow.html) as the in-progress speculative T3 board showing the preserved scheduled prefill boundary, draft proposal path, verifier block contract, cache-growth invariant, and the current self-draft benchmark caution
 - created [patches/chatterbox_streaming_runtime.patch](/Users/hisham/Code/Bahraini_TTS/patches/chatterbox_streaming_runtime.patch) so the local Chatterbox runtime changes can be reproduced on a GPU box
 - created [CLOUD_GPU_QUICKSTART.md](/Users/hisham/Code/Bahraini_TTS/CLOUD_GPU_QUICKSTART.md) with the required-only cloud setup and run commands
 - confirmed on a `4060 Ti` that PyPI Perth was the real blocker because `perth.PerthImplicitWatermarker` resolved to `None`
@@ -29,6 +32,10 @@ _Last updated: 2026-03-14_
 - added an opt-in shape-trace path across baseline, streaming, T3, and S3 code paths, now exposed through `--trace-shapes` on the benchmark scripts
 - added [t3_concurrent_inference_findings.md](/Users/hisham/Code/Bahraini_TTS/architecture/t3_concurrent_inference_findings.md) with the focused `T3` concurrency hazard review, short-term correctness fix, and long-term scheduler recommendation
 - added [t3_serving_research_memo.md](/Users/hisham/Code/Bahraini_TTS/architecture/t3_serving_research_memo.md) with the focused research read on whether `prefill + step + scheduler` serving is already solved in TTS or mainly inherited from LLM serving
+- added [t3_speculative_decoding_research_memo.md](/Users/hisham/Code/Bahraini_TTS/architecture/t3_speculative_decoding_research_memo.md) with a Chatterbox-specific research pass on speculative decoding for the multilingual `T3` planner
+- added [References/speculative_decoding/README.md](/Users/hisham/Code/Bahraini_TTS/References/speculative_decoding/README.md) plus a local PDF bundle for the primary speculative-decoding sources used in that memo
+- added [t3_planner_rearchitecture_prior_art_memo.md](/Users/hisham/Code/Bahraini_TTS/architecture/t3_planner_rearchitecture_prior_art_memo.md) with a focused prior-art pass on replacing only the upstream `T3`-like planner while keeping the downstream renderer as fixed as possible
+- added [References/planner_rearchitecture/README.md](/Users/hisham/Code/Bahraini_TTS/References/planner_rearchitecture/README.md) plus a local paper bundle for the planner-only / stage-local replacement literature
 - switched the intended cloud workflow from patch-application toward a real forked `external/chatterbox` submodule path
 - captured traced single-request baseline and streaming runs in [TRACE_RUN_RESULTS.md](/Users/hisham/Code/Bahraini_TTS/TRACE_RUN_RESULTS.md)
 - added a first-pass `concurrent` runtime path with:
@@ -155,6 +162,10 @@ _Last updated: 2026-03-14_
 - validated the GPU-local scheduled analyzer rewrite on the `4060 Ti`:
   - `errors=[]`
   - manual listening stayed clean
+  - latest recorded post-rewrite checkpoints:
+    - `c1`: `wall_s=4.4756`, `audio_seconds_per_second=0.992`
+    - `c2`: `wall_s=5.3274`, `audio_seconds_per_second=1.5918`
+    - `c4`: `wall_s=6.4274`, `audio_seconds_per_second=2.5951`
   - clearest high-load gain at `c8`:
     - `wall_s: 11.0954 -> 9.5139`
     - `audio_seconds_per_second: 3.1941 -> 3.4518`
@@ -176,6 +187,30 @@ _Last updated: 2026-03-14_
     - tiny per-step query length
     - CFG doubling the rows
     - many small decode steps instead of one large GPU-friendly workload
+- completed a focused speculative-decoding research pass for the current multilingual `T3` architecture:
+  - strong current read:
+    - speculative decoding is mature in `LLM` serving
+    - there is adjacent speech evidence from `Distil-Whisper`
+    - but there is not strong evidence yet that it is already a standard open-source solution for `AR speech-token TTS planners`
+  - best near-term candidate for this repo:
+    - classic draft-and-verify with a smaller multilingual draft `T3`
+  - important blocker:
+    - existing `Chatterbox Turbo` is too architecturally mismatched to act as a direct draft model for the multilingual verifier
+  - best long-term alternative if retraining is acceptable:
+    - self-speculative / early-exit `T3` in the `LayerSkip` style
+- completed a focused prior-art pass on `planner-only` or `stage-local` TTS acceleration:
+  - strongest direct structural prior:
+    - `SPEAR-TTS`, because it cleanly separates the planner-like stage from the downstream speaking/rendering stage
+  - strongest planner-side speed priors in codec-LM TTS:
+    - `VALL-E 2`
+    - `VALL-E R`
+  - strongest open-source non-AR token-planner prior:
+    - `MaskGCT`
+  - strongest stage-local but downstream-shifted analog:
+    - `SoundStorm`
+  - updated read:
+    - people have already changed only one discrete-token generation stage while leaving downstream codec synthesis mostly intact
+    - but a clean open-source multilingual `T3-only` swap into an existing `T3 -> S3` renderer contract still does not look common
 
 ## Current Focus
 
