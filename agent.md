@@ -53,6 +53,8 @@ Read this first in new sessions.
 - If HM assigns you an identity like `Agent 1`, keep that identity stable for the session and include it in relevant handoff notes.
 - Pick up from where another agent left off when possible instead of restarting from stale assumptions.
 - If another agent's note conflicts with your current conclusion, record the conflict clearly instead of silently overwriting it.
+- When you finish meaningful work, update the relevant shared `.md` files so the repo reflects the new state and later agents do not redo completed research.
+- If you create a new artifact such as a diagram, HTML explainer, benchmark note, or architecture write-up, add it to the relevant `.md` files instead of leaving it undocumented.
 
 ## Session Startup
 
@@ -87,6 +89,7 @@ Then:
 - [PROGRESS.md](/Users/hisham/Code/Bahraini_TTS/PROGRESS.md): status and open questions
 - [CHATTERBOX_SCALING_PLAN.md](/Users/hisham/Code/Bahraini_TTS/CHATTERBOX_SCALING_PLAN.md): current execution direction for scaling work
 - [cosyvoice_v1_linear_parallel_breakdown.md](/Users/hisham/Code/Bahraini_TTS/architecture/cosyvoice_v1_linear_parallel_breakdown.md): focused CozyVoice step-by-step and parallelism analysis
+- [s3_origin_story.html](/Users/hisham/Code/Bahraini_TTS/architecture/s3_origin_story.html): lightweight visual explainer for the S3 lineage and current architecture
 - [REFERENCE_REPOS.md](/Users/hisham/Code/Bahraini_TTS/REFERENCE_REPOS.md): upstream references and clone strategy
 - [IMPLEMENTATION_CHECKLIST.md](/Users/hisham/Code/Bahraini_TTS/IMPLEMENTATION_CHECKLIST.md): execution checklist and design gaps
 - [workflow.md](/Users/hisham/Code/Bahraini_TTS/workflow.md): how discussions and work should flow
@@ -105,4 +108,6 @@ Then:
 
 - Update [understand.md](/Users/hisham/Code/Bahraini_TTS/understand.md) when HM clearly understands or decides something important.
 - Update [PROGRESS.md](/Users/hisham/Code/Bahraini_TTS/PROGRESS.md) when project state changes materially.
+- Update [CONTEXT.md](/Users/hisham/Code/Bahraini_TTS/CONTEXT.md), [CHATTERBOX_SCALING_PLAN.md](/Users/hisham/Code/Bahraini_TTS/CHATTERBOX_SCALING_PLAN.md), and other relevant `.md` files when research clarifies architecture, lineage, bottlenecks, or decisions.
+- Do not leave completed work only in your terminal output; record the result in the shared docs so another agent can pick it up without repeating the work.
 - Keep updates brief and factual.

@@ -357,7 +357,9 @@
             Chatterbox `S3` is best understood as a CosyVoice-derived
             token-to-mel stack, and CosyVoice itself inherits the mel-space
             conditional-flow decoder from Matcha-TTS, which sits in the earlier
-            Glow-TTS / Grad-TTS acoustic-model line.
+            Glow-TTS / Grad-TTS acoustic-model line. `CosyVoice 3` improves this
+            family, but it still does not remove the core autoregressive-token
+            plus iterative-flow structure.
           </div>
           <div class="link-card">
             <h2>Open First</h2>
@@ -426,6 +428,16 @@
               </p>
             </article>
             <article class="contrib-card">
+              <div class="tag system">CosyVoice 3</div>
+              <h3>Partial architectural cleanup</h3>
+              <p>
+                Replaces the older token-to-mel estimator stack with a
+                `DiT`-based flow estimator and a simpler token-side expansion
+                path, but still keeps AR speech tokens, iterative flow, and a
+                separate vocoder.
+              </p>
+            </article>
+            <article class="contrib-card">
               <div class="tag system">Chatterbox S3</div>
               <h3>Direct descendant</h3>
               <p>
@@ -485,13 +497,21 @@
 
       <div class="bottom-grid">
         <section class="note-card">
-          <h2>Why It Scales Poorly</h2>
+            <h2>Why It Scales Poorly</h2>
           <p>
             The expensive part is not just the step count. The structure expands
             a shorter token sequence into a longer mel sequence and then runs a
             heavy whole-sequence generator there. Even if you distill from 10
             steps to 1, you still keep the mel-resolution compute and you still
             sit behind upstream `T3` autoregression.
+          </p>
+          <p style="margin-top: 12px;">
+            <strong>CosyVoice 3 note:</strong>
+            it appears to improve this path, not eliminate it. The later code
+            still keeps `speech token LM -> flow decoder -> mel -> HiFT vocoder`.
+            The public evidence is mostly overall quality gains plus a
+            bi-streaming latency claim, not a clean published percentage for
+            isolated `token -> mel` speedup.
           </p>
         </section>
 
@@ -509,6 +529,10 @@
             <a href="../References/CosyVoice_v1.pdf">
               <strong>CosyVoice v1 paper</strong>
               <span>Best primary source for the full speech-token to mel stack.</span>
+            </a>
+            <a href="../References/CozyVoice3.pdf">
+              <strong>CosyVoice 3 paper</strong>
+              <span>Later family evolution: better stack, but not a full removal of the structural bottleneck.</span>
             </a>
             <a href="../References/Matcha-TTS_2309.03199.pdf">
               <strong>Matcha-TTS paper</strong>
@@ -537,7 +561,7 @@
       const syntax = String.raw`infographic relation-dagre-flow-tb-badge-card
 data
   title S3 Token-to-Mel Lineage
-  desc From flow-TTS foundations to the current Chatterbox S3 path
+  desc From flow-TTS foundations to the current Chatterbox S3 path, including the later CosyVoice 3 evolution
   nodes
     - id glow
       label Glow-TTS
@@ -560,6 +584,9 @@ data
     - id cosy2
       label CosyVoice 2
       desc Causal chunk-aware continuation of the same idea
+    - id cosy3
+      label CosyVoice 3
+      desc DiT-based flow evolution, still not a full structural fix
     - id chat
       label Chatterbox S3
       desc Direct descendant used in the current analysis
@@ -570,6 +597,7 @@ data
     s3 - speech-token interface -> cosy1
     matcha - flow decoder ancestor -> cosy1
     cosy1 - causal and streaming evolution -> cosy2
+    cosy2 - DiT and bi-streaming evolution -> cosy3
     cosy1 - direct code ancestor -> chat
 theme
   palette

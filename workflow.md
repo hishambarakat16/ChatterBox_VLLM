@@ -26,7 +26,8 @@ Use this when turning decisions into repo changes.
 3. Make the smallest useful change.
 4. Verify it.
 5. Summarize the result.
-6. Update the relevant project docs if needed.
+6. Update the relevant project docs.
+7. If you created a new artifact, add it to the shared `.md` trail so later agents can find it without rediscovering it.
 
 ## Multi-Agent Coordination
 
@@ -37,6 +38,7 @@ Use this when turning decisions into repo changes.
 - If HM gave you an agent identity, include it in your handoff note so other agents can follow the trail.
 - If you inherit a task from another agent, continue from their latest valid note instead of redoing the whole investigation.
 - If two agent notes disagree, surface the disagreement explicitly and tie it to files or code.
+- Treat markdown updates as part of finishing the task, not as optional cleanup.
 
 ## Discussion Rules
 
@@ -54,8 +56,9 @@ When discussing architecture:
 1. [CONTEXT.md](/Users/hisham/Code/Bahraini_TTS/CONTEXT.md)
 2. [CHATTERBOX_SCALING_PLAN.md](/Users/hisham/Code/Bahraini_TTS/CHATTERBOX_SCALING_PLAN.md)
 3. [cosyvoice_v1_linear_parallel_breakdown.md](/Users/hisham/Code/Bahraini_TTS/architecture/cosyvoice_v1_linear_parallel_breakdown.md) when the discussion is about token-to-mel flow or linear vs parallel decoding
-4. Relevant Chatterbox or CozyVoice files in `external/`
-5. [IMPLEMENTATION_CHECKLIST.md](/Users/hisham/Code/Bahraini_TTS/IMPLEMENTATION_CHECKLIST.md)
+4. [s3_origin_story.html](/Users/hisham/Code/Bahraini_TTS/architecture/s3_origin_story.html) when the discussion is about historical lineage or a fast visual explanation
+5. Relevant Chatterbox or CozyVoice files in `external/`
+6. [IMPLEMENTATION_CHECKLIST.md](/Users/hisham/Code/Bahraini_TTS/IMPLEMENTATION_CHECKLIST.md)
 
 When discussing project state:
 

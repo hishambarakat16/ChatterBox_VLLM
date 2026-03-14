@@ -19,3 +19,6 @@
 [submodule "external/hifi-gan"]
 	path = external/hifi-gan
 	url = https://github.com/jik876/hifi-gan.git
+[submodule "References/Matcha-TTS_repo"]
+	path = References/Matcha-TTS_repo
+	url = https://github.com/shivammehta25/Matcha-TTS.git

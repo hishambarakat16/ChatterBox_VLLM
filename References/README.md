@@ -12,6 +12,10 @@ This folder contains the primary references used to trace the `S3 token -> mel` 
   - Official paper URL: `https://arxiv.org/pdf/2412.10117.pdf`
   - Why it matters: evolves the same idea toward streaming with finite-scalar-quantized speech tokens and chunk-aware causal flow matching.
 
+- `CozyVoice3.pdf`
+  - Official paper URL: `https://arxiv.org/pdf/2505.17589.pdf`
+  - Why it matters: later CosyVoice-family evolution focused on in-the-wild quality, post-training, and bi-streaming deployment. It changes the flow stack, but does not remove the core autoregressive speech-token LM plus iterative flow-decoder structure.
+
 - `Matcha-TTS_2309.03199.pdf`
   - Official paper URL: `https://arxiv.org/pdf/2309.03199.pdf`
   - Why it matters: direct flow-decoder ancestor of the CosyVoice acoustic model.
@@ -40,5 +44,7 @@ These were part of the same research pass but already live outside this folder:
 
 - `external/CosyVoice/`
 - `external/chatterbox/`
+- `architecture/s3_origin_story.html`
+- `architecture/cosyvoice2_vs_3_scaling.html`
 
 Those are not duplicated here.
