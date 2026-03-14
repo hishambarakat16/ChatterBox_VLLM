@@ -46,6 +46,15 @@ mkdir -p "$HF_HOME"
 
 Use Python `3.11`.
 
+If `conda` is not installed on the box yet, run this once first:
+
+```bash
+wget https://repo.anaconda.com/miniconda/Miniconda3-latest-Linux-x86_64.sh
+bash Miniconda3-latest-Linux-x86_64.sh -b -p "$HOME/miniconda3"
+eval "$("$HOME/miniconda3/bin/conda" shell.bash hook)"
+conda init bash
+```
+
 ```bash
 conda create -y -n chatterbox-s3 python=3.11
 conda activate chatterbox-s3
