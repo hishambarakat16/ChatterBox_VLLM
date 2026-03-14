@@ -55,7 +55,7 @@ pip install --no-cache-dir git+https://github.com/resemble-ai/Perth.git
 ```bash
 python -c "import torch; print('torch', torch.__version__); print('cuda', torch.version.cuda); print('cuda_available', torch.cuda.is_available()); print('device_count', torch.cuda.device_count()); print('gpu', torch.cuda.get_device_name(0) if torch.cuda.is_available() else 'none')"
 python -c "import perth; print(perth.PerthImplicitWatermarker)"
-python -c "from chatterbox import ChatterboxMultilingualTTS, ChatterboxMultilingualStreamingTTS, ChatterboxMultilingualConcurrentTTS; print('imports_ok')"
+python -c "from chatterbox import ChatterboxMultilingualTTS, ChatterboxMultilingualStreamingTTS, ChatterboxMultilingualConcurrentTTS, ChatterboxMultilingualScheduledTTS; print('imports_ok')"
 ```
 
 ## 6. Pick A Prompt File
@@ -104,7 +104,21 @@ PYTHONPATH=external/chatterbox/src python external/chatterbox/benchmark_multilin
 
 Use `--trace-shapes` only when you are debugging a regression. It is not needed for normal benchmark runs anymore.
 
-## 10. Send Back These Results
+## 10. Run Scheduled T3 Benchmark
+
+```bash
+PYTHONPATH=external/chatterbox/src python external/chatterbox/benchmark_multilingual_concurrency.py \
+  --impl scheduled \
+  --device cuda \
+  --language-id ar \
+  --audio-prompt-path "$PROMPT_AUDIO" \
+  --text "مرحبا، هذا اختبار للبنية الحالية." \
+  --concurrency-levels 1 2 \
+  --trace-shapes \
+  --output-dir benchmark_wavs
+```
+
+## 11. Send Back These Results
 
 Send back:
 
@@ -113,6 +127,7 @@ Send back:
 - full terminal output from the baseline run
 - full terminal output from the streaming run
 - full terminal output from the concurrent run
+- full terminal output from the scheduled run
 - whether either run crashed or OOMed
 - whether `concurrency=2` or `concurrency=4` failed
 - whether any output was obviously truncated
