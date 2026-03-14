@@ -18,6 +18,8 @@ _Last updated: 2026-03-14_
 - confirmed on a `4060 Ti` that PyPI Perth was the real blocker because `perth.PerthImplicitWatermarker` resolved to `None`
 - confirmed that reinstalling Perth from source fixes the watermarker path and allows baseline inference to run
 - captured the first GPU baseline smoke numbers on `4060 Ti`: `load_s=22.2723`, `latency_s=[4.128, 3.6289, 4.3737]`, `num_samples=114240`
+- captured the first Layer 1 streaming-runtime smoke numbers on `4060 Ti`: `load_s=22.2407`, `latency_s=[4.4991, 4.7963, 5.3084]`, `num_samples=123840`
+- added [benchmark_multilingual_concurrency.py](/Users/hisham/Code/Bahraini_TTS/external/chatterbox/benchmark_multilingual_concurrency.py) for simultaneous-request benchmarking at `1/2/4/...` concurrency levels
 
 ## Current Focus
 
@@ -52,12 +54,19 @@ Current `Chatterbox` is not concurrency-friendly as written because:
 - initialize only `external/chatterbox`
 - apply [patches/chatterbox_streaming_runtime.patch](/Users/hisham/Code/Bahraini_TTS/patches/chatterbox_streaming_runtime.patch)
 - replace PyPI Perth with Perth from source
-- run [compare_multilingual_runtime.py](/Users/hisham/Code/Bahraini_TTS/external/chatterbox/compare_multilingual_runtime.py) for `baseline` and `streaming`
+- run [benchmark_multilingual_concurrency.py](/Users/hisham/Code/Bahraini_TTS/external/chatterbox/benchmark_multilingual_concurrency.py) for `baseline` and `streaming`
 
 ## Current Baseline Note
 
 - the original blocker was the Perth PyPI package, not the runtime concurrency work
 - the portable patch still carries a safe Perth fallback, but the cleaner working env fix is Perth from source
+
+## Current Comparison Note
+
+- baseline avg full-response latency: about `4.04s`
+- streaming avg full-response latency: about `4.87s`
+- current Layer 1 runtime is therefore slower on this single-request smoke test
+- the output lengths also differ (`114240` vs `123840` samples), so this is not a perfectly length-matched comparison yet
 
 ## Not Current Work
 

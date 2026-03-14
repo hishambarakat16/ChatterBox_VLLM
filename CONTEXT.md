@@ -126,6 +126,7 @@ Current Layer 1 artifacts already exist locally:
 - [runtime/types.py](/Users/hisham/Code/Bahraini_TTS/external/chatterbox/src/chatterbox/runtime/types.py)
 - [runtime/worker.py](/Users/hisham/Code/Bahraini_TTS/external/chatterbox/src/chatterbox/runtime/worker.py)
 - [compare_multilingual_runtime.py](/Users/hisham/Code/Bahraini_TTS/external/chatterbox/compare_multilingual_runtime.py)
+- [benchmark_multilingual_concurrency.py](/Users/hisham/Code/Bahraini_TTS/external/chatterbox/benchmark_multilingual_concurrency.py)
 
 Important current repo fact:
 
@@ -142,6 +143,19 @@ Current validated baseline smoke result:
 - `load_s=22.2723`
 - `latency_s=[4.128, 3.6289, 4.3737]`
 - `num_samples=114240`
+
+Current validated Layer 1 streaming-runtime smoke result:
+
+- GPU: `RTX 4060 Ti`
+- `load_s=22.2407`
+- `latency_s=[4.4991, 4.7963, 5.3084]`
+- `num_samples=123840`
+
+Immediate interpretation:
+
+- Layer 1 runtime is functionally working
+- it is slower than baseline on this single-request smoke test
+- this does not yet answer the concurrency question
 
 The target runtime shape is:
 
@@ -167,7 +181,7 @@ The shortest path is:
 
 1. treat current Chatterbox as baseline
 2. validate the new Layer 1 runtime path on GPU using the patch + quickstart flow
-3. compare baseline vs new runtime path
+3. compare baseline vs new runtime path under simultaneous requests
 4. only then decide whether `S3` must change first
 
 Anything outside that path is context bloat for now.

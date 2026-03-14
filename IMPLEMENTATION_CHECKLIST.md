@@ -19,12 +19,20 @@ Current baseline smoke result:
 - `latency_s=[4.128, 3.6289, 4.3737]`
 - `num_samples=114240`
 
+Current streaming-runtime smoke result:
+
+- `RTX 4060 Ti`
+- `load_s=22.2407`
+- `latency_s=[4.4991, 4.7963, 5.3084]`
+- `num_samples=123840`
+
 ## Runtime Refactor
 
 - [x] create `mtl_tts_streaming.py` beside the original runtime wrapper
 - [x] create explicit streaming session state files under `external/chatterbox/src/chatterbox/runtime/`
 - [x] define a streaming session object
 - [x] add a baseline-vs-streaming compare script
+- [x] add a simultaneous-request concurrency benchmark script
 - [x] create a portable patch for the local Chatterbox runtime changes
 - [x] create a cloud GPU runbook for baseline-vs-streaming validation
 - [ ] remove shared mutable request state from the model object
@@ -43,6 +51,10 @@ Current baseline smoke result:
 - [ ] profile `S3` after runtime cleanup
 - [ ] reduce per-stream S3 cost
 - [ ] rerun the same baseline test
+
+Current read:
+
+- Layer 1 runtime works, but it is slower than baseline on the first single-request smoke test
 
 ## Decision Rule
 

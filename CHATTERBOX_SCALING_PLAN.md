@@ -120,7 +120,7 @@ If S3 is improved and concurrency is still poor:
 1. use [CLOUD_GPU_QUICKSTART.md](/Users/hisham/Code/Bahraini_TTS/CLOUD_GPU_QUICKSTART.md) on the GPU box
 2. install Perth from source in that env
 3. apply [patches/chatterbox_streaming_runtime.patch](/Users/hisham/Code/Bahraini_TTS/patches/chatterbox_streaming_runtime.patch)
-4. capture baseline vs streaming-runtime numbers with [compare_multilingual_runtime.py](/Users/hisham/Code/Bahraini_TTS/external/chatterbox/compare_multilingual_runtime.py)
+4. capture baseline vs streaming-runtime numbers with [benchmark_multilingual_concurrency.py](/Users/hisham/Code/Bahraini_TTS/external/chatterbox/benchmark_multilingual_concurrency.py)
 5. only then attack `S3`
 
 ## Reference Scope

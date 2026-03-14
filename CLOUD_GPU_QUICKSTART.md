@@ -54,30 +54,28 @@ python -c "from chatterbox import ChatterboxMultilingualTTS, ChatterboxMultiling
 export PROMPT_AUDIO=$PWD/SPK_17_000003.wav
 ```
 
-## 7. Run Baseline
+## 7. Run Baseline Concurrency Benchmark
 
 ```bash
-PYTHONPATH=external/chatterbox/src python external/chatterbox/compare_multilingual_runtime.py \
+PYTHONPATH=external/chatterbox/src python external/chatterbox/benchmark_multilingual_concurrency.py \
   --impl baseline \
   --device cuda \
   --language-id ar \
   --audio-prompt-path "$PROMPT_AUDIO" \
   --text "مرحبا، هذا اختبار للبنية الحالية." \
-  --warmup-runs 1 \
-  --runs 3
+  --concurrency-levels 1 2 4
 ```
 
-## 8. Run Streaming Runtime
+## 8. Run Streaming Concurrency Benchmark
 
 ```bash
-PYTHONPATH=external/chatterbox/src python external/chatterbox/compare_multilingual_runtime.py \
+PYTHONPATH=external/chatterbox/src python external/chatterbox/benchmark_multilingual_concurrency.py \
   --impl streaming \
   --device cuda \
   --language-id ar \
   --audio-prompt-path "$PROMPT_AUDIO" \
   --text "مرحبا، هذا اختبار للبنية الحالية." \
-  --warmup-runs 1 \
-  --runs 3
+  --concurrency-levels 1 2 4
 ```
 
 ## 9. Send Back These Results
@@ -89,4 +87,4 @@ Send back:
 - full terminal output from the baseline run
 - full terminal output from the streaming run
 - whether either run crashed or OOMed
-- whether both runs produced the same rough audio length
+- whether any concurrency level failed
