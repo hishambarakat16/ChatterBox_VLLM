@@ -213,7 +213,43 @@ PYTHONPATH=external/chatterbox/src python external/chatterbox/benchmark_t3_specu
   --output-dir benchmark_speculative
 ```
 
-## 14. Send Back These Results
+## 14. Train T3 Medusa Heads
+
+This trains a head-only Medusa-1 style adapter on top of the frozen multilingual `T3`.
+
+```bash
+PYTHONPATH=external/chatterbox/src python external/chatterbox/train_t3_medusa.py \
+  --dataset-dir data/t3_medusa_distill_ar_short_5000_384 \
+  --output-dir runs/t3_medusa_ar_short_5k_h2_run1 \
+  --device cuda \
+  --batch-size 8 \
+  --epochs 3 \
+  --lr 5e-4 \
+  --medusa-heads 2 \
+  --medusa-layers 1 \
+  --save-every 200
+```
+
+## 15. Run Medusa Speculative Benchmark
+
+Point `--medusa-checkpoint-dir` at the checkpoint directory produced by the training run above.
+
+```bash
+PYTHONPATH=external/chatterbox/src python external/chatterbox/benchmark_t3_speculative_prototype.py \
+  --device cuda \
+  --language-id ar \
+  --audio-prompt-path "$PROMPT_AUDIO" \
+  --text "مرحبا، هذا اختبار للبنية الحالية." \
+  --max-new-tokens 128 \
+  --speculate-k 3 \
+  --draft-mode medusa \
+  --medusa-checkpoint-dir runs/t3_medusa_ar_short_5k_h2_run1/checkpoint_step_001683 \
+  --warmup-runs 2 \
+  --runs 6 \
+  --output-dir benchmark_speculative_medusa
+```
+
+## 16. Send Back These Results
 
 Send back:
 
@@ -226,6 +262,8 @@ Send back:
 - full terminal output from the scheduled run
 - full terminal output from the scheduled trace-debug run if you used it
 - full terminal output from the speculative draft benchmark
+- full terminal output from the Medusa training run if you used it
+- full terminal output from the Medusa speculative benchmark if you used it
 - whether either run crashed or OOMed
 - whether `concurrency=2` or `concurrency=4` failed
 - whether any output was obviously truncated
