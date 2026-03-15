@@ -213,7 +213,47 @@ PYTHONPATH=external/chatterbox/src python external/chatterbox/benchmark_t3_specu
   --output-dir benchmark_speculative
 ```
 
-## 14. Train T3 Medusa Heads
+## 14. Build T3 Medusa Distill Datasets In Chunks
+
+Use the chunked launcher when you want the builder process to restart every `N` manifest rows.
+This is the safer path for long overnight runs because it works for both the original greedy teacher
+and the newer scheduled builder path without keeping one giant process alive for the whole dataset.
+
+Original greedy-teacher style build:
+
+```bash
+PYTHONPATH=external/chatterbox/src python external/chatterbox/run_t3_medusa_distill_in_chunks.py \
+  --manifest-csv data/arabic_medusa_manifest_short_40000.csv \
+  --audio-prompt-path "$PROMPT_AUDIO" \
+  --language-id ar \
+  --device cuda \
+  --output-dir data/t3_medusa_distill_ar_short_40000_384_v5_greedy \
+  --max-new-tokens 384 \
+  --decode-impl greedy \
+  --chunk-size 10000 \
+  --mp-workers 3 \
+  --resume-existing
+```
+
+Chunked scheduled build:
+
+```bash
+PYTHONPATH=external/chatterbox/src python external/chatterbox/run_t3_medusa_distill_in_chunks.py \
+  --manifest-csv data/arabic_medusa_manifest_short_40000.csv \
+  --audio-prompt-path "$PROMPT_AUDIO" \
+  --language-id ar \
+  --device cuda \
+  --output-dir data/t3_medusa_distill_ar_short_40000_384_v6_scheduled \
+  --max-new-tokens 384 \
+  --decode-impl scheduled \
+  --chunk-size 10000 \
+  --mp-workers 3 \
+  --scheduler-inflight 10 \
+  --scheduler-batching-window-ms 10 \
+  --resume-existing
+```
+
+## 15. Train T3 Medusa Heads
 
 This trains a head-only Medusa-1 style adapter on top of the frozen multilingual `T3`.
 
@@ -230,7 +270,7 @@ PYTHONPATH=external/chatterbox/src python external/chatterbox/train_t3_medusa.py
   --save-every 200
 ```
 
-## 15. Run Medusa Speculative Benchmark
+## 16. Run Medusa Speculative Benchmark
 
 Point `--medusa-checkpoint-dir` at the checkpoint directory produced by the training run above.
 
@@ -249,7 +289,7 @@ PYTHONPATH=external/chatterbox/src python external/chatterbox/benchmark_t3_specu
   --output-dir benchmark_speculative_medusa
 ```
 
-## 16. Send Back These Results
+## 17. Send Back These Results
 
 Send back:
 
