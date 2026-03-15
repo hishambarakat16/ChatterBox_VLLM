@@ -218,6 +218,9 @@ PYTHONPATH=external/chatterbox/src python external/chatterbox/benchmark_t3_specu
 Use the chunked launcher when you want the builder process to restart every `N` manifest rows.
 This is the safer path for long overnight runs because it works for both the original greedy teacher
 and the newer scheduled builder path without keeping one giant process alive for the whole dataset.
+The scheduled dataset builder disables the alignment controller by default so it stays closer to the
+original greedy teacher policy; add `--enable-alignment-controller` only if you explicitly want the
+scheduled runtime guard behavior in the teacher outputs.
 
 Original greedy-teacher style build:
 
