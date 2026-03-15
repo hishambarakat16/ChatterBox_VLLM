@@ -1,6 +1,6 @@
 # T3 Shape Contract
 
-_Last updated: 2026-03-14_
+_Last updated: 2026-03-16_
 
 ## Purpose
 
@@ -9,6 +9,8 @@ This note freezes the current `T3` runtime boundary for the multilingual schedul
 The goal is to avoid speculative-decoding bugs caused by guessing tensor shapes, cache layout, or per-request state ownership.
 
 This is not a final speculative design doc. It is the current shape and state contract for the production `scheduled` `T3` path.
+
+The scheduled runtime can optionally attach the alignment controller, but the default scheduled path now leaves that controller disabled. The tensor and cache contract below describes the controller-free default path.
 
 ## Scope
 

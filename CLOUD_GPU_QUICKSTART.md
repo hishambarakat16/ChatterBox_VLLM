@@ -158,6 +158,9 @@ PYTHONPATH=external/chatterbox/src python external/chatterbox/benchmark_multilin
   --output-dir benchmark_wavs
 ```
 
+The scheduled runtime now disables the alignment controller by default. Add
+`--enable-alignment-controller` only if you explicitly want the old guarded behavior back.
+
 ## 12. Run Scheduled Trace Debug Benchmark
 
 Use this only when you want to inspect scheduler batching behavior or debug a regression.
@@ -175,6 +178,8 @@ PYTHONPATH=external/chatterbox/src python external/chatterbox/benchmark_multilin
 ```
 
 Use `--trace-shapes` only when you are debugging a regression or verifying scheduler cohort behavior.
+The default scheduled benchmark path also runs without the alignment controller unless you add
+`--enable-alignment-controller`.
 
 ## 13. Run Speculative Draft Benchmark
 
