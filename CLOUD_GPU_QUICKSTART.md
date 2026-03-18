@@ -362,6 +362,8 @@ Send back:
 - full terminal output from the speculative draft benchmark
 - full terminal output from the Medusa training run if you used it
 - full terminal output from the Medusa speculative benchmark if you used it
+- full terminal output from the Hydra training run if you used it
+- full terminal output from the Hydra speculative benchmark if you used it
 - whether either run crashed or OOMed
 - whether `concurrency=2` or `concurrency=4` failed
 - whether any output was obviously truncated
@@ -381,3 +383,100 @@ mkdir -p "$HF_HOME"
 ```
 
 Then rerun the command.
+
+## Appendix A. Build The Hydra Dataset
+
+Hydra dataset build is much faster than the original Medusa dataset build because it reuses the
+existing teacher `speech_tokens` and only extracts teacher-forced planner hidden states.
+
+```bash
+PYTHONPATH=external/chatterbox/src python external/chatterbox/build_t3_hydra_distill_dataset.py \
+  --source-dataset-dir data/t3_medusa_distill_ar_short_40000_384_v5_greedy \
+  --output-dir data/t3_hydra_distill_ar_short_40000_v1 \
+  --device cuda \
+  --resume-existing \
+  --save-every 200
+```
+
+## Appendix B. Train Hydra Heads
+
+This is the first completed Hydra training run that currently leads Medusa on the single-request
+planner benchmark.
+
+```bash
+PYTHONPATH=external/chatterbox/src python external/chatterbox/train_t3_hydra.py \
+  --dataset-dir data/t3_hydra_distill_ar_short_40000_v1 \
+  --output-dir runs/t3_hydra_ar_short_40k_h2_run1 \
+  --device cuda \
+  --batch-size 8 \
+  --epochs 5 \
+  --lr 3e-4 \
+  --hydra-heads 2 \
+  --hydra-layers 1 \
+  --save-every 800
+```
+
+Current best completed Hydra checkpoint:
+
+- `runs/t3_hydra_ar_short_40k_h2_run1/checkpoint_step_022910`
+- `eval_loss = 2.2706`
+- `eval_base_top1 = 0.6808`
+- `eval_hydra_head_0_top1 = 0.4787`
+- `eval_hydra_head_1_top1 = 0.3756`
+
+## Appendix C. Run Hydra Speculative Benchmarks
+
+Hydra is now the current best planner path in this repo.
+
+Best current `k3` command:
+
+```bash
+PYTHONPATH=external/chatterbox/src python external/chatterbox/benchmark_t3_hydra_prototype.py \
+  --device cuda \
+  --language-id ar \
+  --audio-prompt-path "$PROMPT_AUDIO" \
+  --text "مرحبا، هذا اختبار للبنية الحالية." \
+  --max-new-tokens 128 \
+  --speculate-k 3 \
+  --hydra-checkpoint-dir runs/t3_hydra_ar_short_40k_h2_run1/checkpoint_step_022910 \
+  --warmup-runs 2 \
+  --runs 6 \
+  --output-dir benchmark_hydra_k3
+```
+
+Reference `k2` command:
+
+```bash
+PYTHONPATH=external/chatterbox/src python external/chatterbox/benchmark_t3_hydra_prototype.py \
+  --device cuda \
+  --language-id ar \
+  --audio-prompt-path "$PROMPT_AUDIO" \
+  --text "مرحبا، هذا اختبار للبنية الحالية." \
+  --max-new-tokens 128 \
+  --speculate-k 2 \
+  --hydra-checkpoint-dir runs/t3_hydra_ar_short_40k_h2_run1/checkpoint_step_022910 \
+  --warmup-runs 2 \
+  --runs 6 \
+  --output-dir benchmark_hydra_k2
+```
+
+Current Hydra benchmark results:
+
+- `k2`:
+  - `speedup = 18.88%`
+  - `acceptance_rate = 0.7907`
+  - `exact_token_match = true`
+  - `rebuild_count = 0`
+- `k3`:
+  - `speedup = 24.34%`
+  - `acceptance_rate = 0.6078`
+  - `exact_token_match = true`
+  - `rebuild_count = 0`
+
+Current read:
+
+- Hydra beats the current best Medusa benchmark on the single-request planner test
+- Medusa best so far remains:
+  - `speedup = 14.09%`
+  - `acceptance_rate = 0.7326`
+- Hydra `k3` is the current best overall speculative setting

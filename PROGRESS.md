@@ -4,6 +4,10 @@ _Last updated: 2026-03-18_
 
 ## Done
 
+- built the first `Hydra` dataset on top of the best greedy Medusa corpus:
+  - source dataset: [t3_medusa_distill_ar_short_40000_384_v5_greedy](/Users/hisham/Code/Bahraini_TTS/data/t3_medusa_distill_ar_short_40000_384_v5_greedy)
+  - Hydra dataset: `data/t3_hydra_distill_ar_short_40000_v1`
+  - effective training rows: `37400`
 - added the first separate `Hydra` path for multilingual `T3`, split cleanly from `Medusa`:
   - dataset builder: [build_t3_hydra_distill_dataset.py](/Users/hisham/Code/Bahraini_TTS/external/chatterbox/build_t3_hydra_distill_dataset.py)
   - trainer: [hydra_distill.py](/Users/hisham/Code/Bahraini_TTS/external/chatterbox/src/chatterbox/models/t3/train/hydra_distill.py)
@@ -22,6 +26,29 @@ _Last updated: 2026-03-18_
     - base head predicts the current next token
     - Hydra head `0` predicts the token after that
     - later Hydra heads continue sequentially
+- trained the first large `Hydra h2/l1` checkpoint:
+  - run: `runs/t3_hydra_ar_short_40k_h2_run1/checkpoint_step_022910`
+  - `eval_loss = 2.2706`
+  - `eval_base_top1 = 0.6808`
+  - `eval_hydra_head_0_top1 = 0.4787`
+  - `eval_hydra_head_1_top1 = 0.3756`
+- fixed the first Hydra inference bug in checkpoint loading:
+  - Hydra heads were initially left on `cpu` during benchmark load
+  - loader now moves the Hydra model onto the verifier device and forces `eval()`
+- benchmarked the first Hydra checkpoint and established a new best speculative planner result:
+  - `k2`:
+    - `speedup = 18.88%`
+    - `acceptance_rate = 0.7907`
+    - `exact_token_match = true`
+    - `rebuild_count = 0`
+  - `k3`:
+    - `speedup = 24.34%`
+    - `acceptance_rate = 0.6078`
+    - `exact_token_match = true`
+    - `rebuild_count = 0`
+  - current read:
+    - Hydra is now ahead of the best Medusa result on this single-request planner benchmark
+    - current best overall speculative setting is `Hydra h2` trained, infer with `k3`
 - uploaded the current best Medusa checkpoint to the private Hugging Face model repo `Hishambarakat/TTS_Optimization`
 - kept the uploaded payload minimal so the downloaded snapshot can be used directly as `--medusa-checkpoint-dir`:
   - `README.md`
@@ -242,10 +269,10 @@ _Last updated: 2026-03-18_
 
 Immediate branch:
 
-- run the new Hydra dataset builder on top of the best greedy Medusa corpus
-- train the first Hydra `h2/l1` checkpoint
-- benchmark Hydra at `k2` and `k3`
-- compare Hydra acceptance / speedup against the current best Medusa result
+- carry the new Hydra win into the real runtime path
+- compare scheduled baseline vs scheduled + Hydra on the same machine
+- verify whether the single-request `24.34%` planner win produces a real concurrency/runtime gain
+- keep Medusa as the secondary baseline, not the leading candidate
 
 Broader project objective:
 

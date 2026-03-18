@@ -4,12 +4,13 @@
 
 Immediate active branch:
 
-- test whether `Hydra` can beat the current best `Medusa` speculative path for multilingual `T3`
+- thread the now-leading `Hydra` speculative path into the real scheduled runtime and measure the end-to-end effect
 - keep the implementation `T3`-native:
   - reuse the Medusa-style teacher corpus
   - extend it with Hydra hidden-state sidecars
   - train separate Hydra future heads
-  - benchmark Hydra separately from Medusa
+  - benchmark Hydra separately from Medusa first
+  - then compare scheduled baseline vs scheduled + Hydra
 
 Broader project goal:
 
@@ -27,10 +28,10 @@ Support metrics:
 
 Immediate Hydra milestone:
 
-- build the Hydra dataset from the best greedy Medusa corpus
-- train the first Hydra `h2/l1` checkpoint
-- benchmark `k2` and `k3`
-- compare against the current best Medusa checkpoint before any serving integration
+- keep the first Hydra training/benchmark result as the new planner baseline
+- integrate Hydra into the scheduled runtime path
+- measure whether the single-request planner win carries over into concurrency
+- only revisit architecture/training again after that runtime comparison
 
 Broader serving milestone:
 
@@ -39,9 +40,20 @@ Broader serving milestone:
 
 Status:
 
-- the separate Hydra build/train/inference scaffolding now exists locally in `external/chatterbox`
-- it has only been syntax-checked so far
-- the next execution step is to build a Hydra-ready dataset from the existing greedy Medusa corpus and then run the first Hydra training/benchmark cycle
+- the separate Hydra build/train/inference scaffolding exists locally in `external/chatterbox`
+- the first Hydra dataset has already been built from the best greedy Medusa corpus
+- the first Hydra `h2/l1` checkpoint has already been trained:
+  - `runs/t3_hydra_ar_short_40k_h2_run1/checkpoint_step_022910`
+  - `eval_base_top1 = 0.6808`
+  - `eval_hydra_head_0_top1 = 0.4787`
+  - `eval_hydra_head_1_top1 = 0.3756`
+- the first Hydra speculative benchmarks are complete:
+  - `k2`: `speedup = 18.88%`, `acceptance = 0.7907`, `exact_token_match = true`, `rebuild_count = 0`
+  - `k3`: `speedup = 24.34%`, `acceptance = 0.6078`, `exact_token_match = true`, `rebuild_count = 0`
+- current read:
+  - Hydra is now ahead of the best Medusa result on the single-request planner benchmark
+  - the new best speculative setting is Hydra `h2` trained, infer with `k3`
+  - the next execution step is no longer another planner-only experiment; it is runtime integration and scheduled/concurrency validation
 - achieved first in the `concurrent` A/B runtime path using request-local `T3` decode state plus a coarse full-decode `T3` lock
 - improved further in the new `scheduled` A/B runtime path using batched `T3` cohorts
 - validated as correct through `concurrency=4`
