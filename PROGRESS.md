@@ -1,9 +1,17 @@
 # Progress
 
-_Last updated: 2026-03-14_
+_Last updated: 2026-03-18_
 
 ## Done
 
+- uploaded the current best Medusa checkpoint to the private Hugging Face model repo `Hishambarakat/TTS_Optimization`
+- kept the uploaded payload minimal so the downloaded snapshot can be used directly as `--medusa-checkpoint-dir`:
+  - `README.md`
+  - `t3_medusa_config.json`
+  - `t3_medusa_heads.safetensors`
+- updated [CLOUD_GPU_QUICKSTART.md](/Users/hisham/Code/Bahraini_TTS/CLOUD_GPU_QUICKSTART.md) to point at the current best Medusa checkpoint `runs/t3_medusa_ar_short_40k_v5_greedy_h2_run1/checkpoint_step_022910` instead of the older `5k` run
+- added the canonical private-download flow to [CLOUD_GPU_QUICKSTART.md](/Users/hisham/Code/Bahraini_TTS/CLOUD_GPU_QUICKSTART.md) using `huggingface_hub.snapshot_download(...)` from the `chatterbox-s3` env
+- updated [CONTEXT.md](/Users/hisham/Code/Bahraini_TTS/CONTEXT.md) with a shared handoff note for the uploaded Medusa checkpoint, its benchmark status, and how later agents should download and use it
 - cloned and registered reference repos as submodules under `external/`
 - inspected local `Chatterbox` runtime
 - traced `T3 -> S3 -> vocoder`

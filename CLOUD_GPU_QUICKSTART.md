@@ -263,24 +263,64 @@ PYTHONPATH=external/chatterbox/src python external/chatterbox/run_t3_medusa_dist
 
 ## 15. Train T3 Medusa Heads
 
-This trains a head-only Medusa-1 style adapter on top of the frozen multilingual `T3`.
+This trains a head-only Medusa adapter on top of the frozen multilingual `T3`.
+The current best dataset family is the greedy-teacher `v5` build, and the current best
+training shape is still `h2` training (`--medusa-heads 2`, `--medusa-layers 1`).
 
 ```bash
 PYTHONPATH=external/chatterbox/src python external/chatterbox/train_t3_medusa.py \
-  --dataset-dir data/t3_medusa_distill_ar_short_5000_384 \
-  --output-dir runs/t3_medusa_ar_short_5k_h2_run1 \
+  --dataset-dir data/t3_medusa_distill_ar_short_40000_384_v5_greedy \
+  --output-dir runs/t3_medusa_ar_short_40k_v5_greedy_h2_run1 \
   --device cuda \
   --batch-size 8 \
-  --epochs 3 \
-  --lr 5e-4 \
+  --epochs 5 \
+  --lr 3e-4 \
   --medusa-heads 2 \
   --medusa-layers 1 \
   --save-every 200
 ```
 
-## 16. Run Medusa Speculative Benchmark
+Current best completed checkpoint:
 
-Point `--medusa-checkpoint-dir` at the checkpoint directory produced by the training run above.
+- `runs/t3_medusa_ar_short_40k_v5_greedy_h2_run1/checkpoint_step_022910`
+- `eval_loss = 3.0694`
+- `eval_base_top1 = 0.6721`
+- `eval_medusa_head_0_top1 = 0.4155`
+- `eval_medusa_head_1_top1 = 0.2962`
+
+## 16. Download The Published Medusa Checkpoint
+
+The private Hugging Face model repo currently hosting this exact checkpoint is:
+
+- `Hishambarakat/TTS_Optimization`
+
+Use the same `HF_TOKEN` you use for private repo access, then download the checkpoint to a
+local folder that can be passed directly as `--medusa-checkpoint-dir`:
+
+```bash
+export HF_TOKEN=YOUR_HF_TOKEN
+export MEDUSA_CHECKPOINT_DIR=$PWD/models/t3_medusa_ar_short_40k_v5_greedy_h2_checkpoint_step_022910
+mkdir -p "$MEDUSA_CHECKPOINT_DIR"
+/home/ubuntu/miniconda3/envs/chatterbox-s3/bin/python - <<'PY'
+import os
+from huggingface_hub import snapshot_download
+snapshot_download(
+    repo_id='Hishambarakat/TTS_Optimization',
+    repo_type='model',
+    local_dir=os.environ['MEDUSA_CHECKPOINT_DIR'],
+    local_dir_use_symlinks=False,
+    token=os.environ['HF_TOKEN'],
+    allow_patterns=['README.md', 't3_medusa_config.json', 't3_medusa_heads.safetensors'],
+)
+print(os.environ['MEDUSA_CHECKPOINT_DIR'])
+PY
+```
+
+## 17. Run Medusa Speculative Benchmark
+
+The current best serving tradeoff is to train with `h2` and infer with `--speculate-k 2`.
+You can point `--medusa-checkpoint-dir` either at the local training checkpoint directory or at
+`$MEDUSA_CHECKPOINT_DIR` from the download step above.
 
 ```bash
 PYTHONPATH=external/chatterbox/src python external/chatterbox/benchmark_t3_speculative_prototype.py \
@@ -289,15 +329,25 @@ PYTHONPATH=external/chatterbox/src python external/chatterbox/benchmark_t3_specu
   --audio-prompt-path "$PROMPT_AUDIO" \
   --text "مرحبا، هذا اختبار للبنية الحالية." \
   --max-new-tokens 128 \
-  --speculate-k 3 \
+  --speculate-k 2 \
   --draft-mode medusa \
-  --medusa-checkpoint-dir runs/t3_medusa_ar_short_5k_h2_run1/checkpoint_step_001683 \
+  --medusa-checkpoint-dir "$MEDUSA_CHECKPOINT_DIR" \
   --warmup-runs 2 \
   --runs 6 \
-  --output-dir benchmark_speculative_medusa
+  --output-dir benchmark_speculative_medusa_40k_v5_greedy_h2_k2
 ```
 
-## 17. Send Back These Results
+Current best benchmark result for that checkpoint:
+
+- `speedup = 14.09%`
+- `acceptance_rate = 0.7326`
+- `exact_token_match = true`
+- `rebuild_count = 0`
+
+`--speculate-k 3` also works and preserves exact output, but it is currently a weaker tradeoff
+for this checkpoint (`speedup = 11.92%`, `acceptance_rate = 0.4954`).
+
+## 18. Send Back These Results
 
 Send back:
 

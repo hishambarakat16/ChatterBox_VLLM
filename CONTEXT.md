@@ -381,6 +381,62 @@ If the runtime is request-safe but concurrency is still poor:
 - decide whether S3 must be replaced
 - decide whether T3 autoregression must also be reduced
 
+## Current Medusa Checkpoint Status
+
+The speculative-decoding / Medusa side path now has a published reference artifact for the
+current best checkpoint.
+
+Current best uploaded checkpoint:
+
+- local run: `runs/t3_medusa_ar_short_40k_v5_greedy_h2_run1`
+- local checkpoint: `runs/t3_medusa_ar_short_40k_v5_greedy_h2_run1/checkpoint_step_022910`
+- private Hugging Face model repo: `Hishambarakat/TTS_Optimization`
+- uploaded payload is intentionally minimal:
+  - `README.md`
+  - `t3_medusa_config.json`
+  - `t3_medusa_heads.safetensors`
+- this is a Medusa-heads checkpoint only, not a standalone full multilingual TTS model
+
+Current best known Medusa training / serving read:
+
+- dataset family: `data/t3_medusa_distill_ar_short_40000_384_v5_greedy`
+- Medusa training shape: `h2` (`medusa_heads=2`, `medusa_layers=1`)
+- frozen base: `true`
+- best checkpoint config read:
+  - `epochs = 5`
+  - `lr = 3e-4`
+  - `batch_size = 8`
+  - `global_step = 22910`
+- current best serving tradeoff is still:
+  - train with `h2`
+  - infer with `--speculate-k 2`
+- current best benchmark read for that checkpoint:
+  - `speedup = 14.09%`
+  - `acceptance_rate = 0.7326`
+  - `exact_token_match = true`
+  - `rebuild_count = 0`
+
+Operational note for other agents:
+
+- `CLOUD_GPU_QUICKSTART.md` has been updated to point at this exact checkpoint, not the older `5k` run
+- the quickstart now includes:
+  - the current best training command
+  - a private Hugging Face download step
+  - the exact speculative benchmark command for this checkpoint
+- the canonical local variable name in the quickstart is:
+  - `MEDUSA_CHECKPOINT_DIR=$PWD/models/t3_medusa_ar_short_40k_v5_greedy_h2_checkpoint_step_022910`
+- the download flow is:
+  - export `HF_TOKEN`
+  - use `huggingface_hub.snapshot_download(...)` from the `chatterbox-s3` env
+  - allow only `README.md`, `t3_medusa_config.json`, and `t3_medusa_heads.safetensors`
+  - pass the downloaded folder directly as `--medusa-checkpoint-dir`
+
+This uploaded checkpoint is now the reference artifact to use when someone asks for:
+
+- the best current Medusa checkpoint
+- how to download the checkpoint on a new GPU box
+- how to reproduce the current best `k2` speculative benchmark
+
 ## Current Decision
 
 The shortest path is:
