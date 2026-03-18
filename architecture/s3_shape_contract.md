@@ -122,29 +122,40 @@ speech_tokens (1, 85)
 
 ## Runtime Boundaries
 
-The benchmark currently exposes only one coarse `S3` stage:
+The benchmark now exposes both the coarse `S3` stage and the internal request-time `S3` substages:
 
 - `stage_s3_s`
   - total time spent in the `S3` stack for a request
-  - this currently includes both token-to-mel and HiFT/vocoder work
-
-The benchmark does not yet split that into:
-
+- `stage_s3_ref_prepare_s`
+  - per-request reference dictionary preparation and dtype/device casting
 - `stage_s3_token2mel_s`
+  - token-to-mel generation time
 - `stage_s3_hift_s`
+  - HiFT vocoder time
+- `stage_s3_trim_s`
+  - waveform trim/fade time
+- `stage_s3_inference_internal_s`
+  - internal `S3` inference path total
 
-So the current doc can pin down the tensor contract and total `S3` cost, but not yet the internal cost split between the two main `S3` components.
+Session-time prompt conditioning also has dedicated keys, but those are not part of request latency in this benchmark:
+
+- `stage_session_conditioning_s`
+- `stage_s3_ref_mel_s`
+- `stage_s3_ref_speaker_s`
+- `stage_s3_ref_tokenize_s`
+- `stage_s3_ref_align_s`
+- `stage_s3_ref_embed_s`
 
 ## Measured Performance
 
-Current scheduled+Hydra `S3` timings on the traced run:
+Current scheduled+Hydra `S3` timings on the latest traced run:
 
 | Concurrency | `stage_s3_s_mean` | `stage_audio_ready_s_mean` | Throughput (`audio_seconds_per_second`) | Read |
 |---|---:|---:|---:|---|
-| `c1` | `3.5420s` | `7.3320s` | `0.4426` | single-request baseline on this run |
-| `c2` | `1.8349s` | `4.6923s` | `1.4251` | best per-request `S3` efficiency in this run |
-| `c4` | `3.2712s` | `6.3983s` | `2.0944` | `S3` starts growing again |
-| `c8` | `8.1225s` | `12.4766s` | `2.1536` | `S3` becomes the major bottleneck |
+| `c1` | `4.7602s` | `9.3834s` | `0.3494` | cold single-request baseline on this run |
+| `c2` | `2.1098s` | `4.9376s` | `1.3356` | best per-request `S3` efficiency in this run |
+| `c4` | `3.3746s` | `9.4711s` | `1.4042` | `S3` starts degrading materially |
+| `c8` | `6.8995s` | `14.0846s` | `1.8687` | `S3` is the dominant downstream bottleneck |
 
 ### Relative Increase
 
@@ -152,15 +163,41 @@ Using `c2` as the clean baseline:
 
 | Metric | `c2` | `c4` | `c8` | `c2 -> c4` | `c2 -> c8` |
 |---|---:|---:|---:|---:|---:|
-| `stage_s3_s_mean` | `1.8349s` | `3.2712s` | `8.1225s` | `+78.3%` | `+342.7%` |
-| `stage_audio_ready_s_mean` | `4.6923s` | `6.3983s` | `12.4766s` | `+36.4%` | `+165.9%` |
+| `stage_s3_s_mean` | `2.1098s` | `3.3746s` | `6.8995s` | `+59.9%` | `+227.0%` |
+| `stage_audio_ready_s_mean` | `4.9376s` | `9.4711s` | `14.0846s` | `+91.8%` | `+185.3%` |
+
+## Internal S3 Breakdown
+
+Per-request `S3` substages on the same run:
+
+| Stage | `c1` mean (s) | `c2` mean (s) | `c4` mean (s) | `c8` mean (s) | `c2 -> c4` | `c2 -> c8` | Read |
+|---|---:|---:|---:|---:|---:|---:|---|
+| `s3_ref_prepare_s` | `0.0004` | `0.0009` | `0.0008` | `0.0018` | `-11.1%` | `+100.0%` | negligible |
+| `s3_token2mel_s` | `3.5140` | `1.8980` | `3.1110` | `6.5268` | `+63.9%` | `+243.9%` | main `S3` bottleneck |
+| `s3_hift_s` | `1.2437` | `0.2093` | `0.2581` | `0.3661` | `+23.3%` | `+74.9%` | secondary bottleneck |
+| `s3_trim_s` | `0.0001` | `0.0001` | `0.0003` | `0.0003` | about flat | about flat | irrelevant |
+| `s3_inference_internal_s` | `4.7600` | `2.1097` | `3.3745` | `6.8993` | `+59.9%` | `+227.0%` | total internal `S3` time |
+| `s3_s` | `4.7602` | `2.1098` | `3.3746` | `6.8995` | `+59.9%` | `+227.0%` | total measured `S3` time |
+
+## Contribution Split
+
+How much each request-time component contributes to total `S3` time:
+
+| Concurrency | `token2mel` share of `s3_s` | `HiFT` share of `s3_s` | Read |
+|---|---:|---:|---|
+| `c1` | `73.8%` | `26.3%` | token-to-mel dominates |
+| `c2` | `89.9%` | `9.9%` | token-to-mel overwhelmingly dominates |
+| `c4` | `92.2%` | `7.6%` | almost entirely token-to-mel |
+| `c8` | `94.6%` | `5.3%` | bottleneck is clearly token-to-mel |
 
 ### What This Suggests
 
 - `S3` scales well enough from `c1 -> c2`
 - `S3` degrades materially by `c4`
 - `S3` is the dominant downstream bottleneck by `c8`
-- the repeated per-request `token2mel.input` traces suggest `S3` is still effectively running per request, not cohort-batched like scheduled `T3`
+- the bottleneck is now clearly inside `token2mel`, not inside `HiFT`
+- the repeated per-request `token2mel.input` traces still suggest `S3` is effectively running per request, not cohort-batched like scheduled `T3`
+- the session-time reference conditioning keys are `0.0` in this benchmark because session creation happens before timed request generation
 
 ## Current Structural Expectations
 
