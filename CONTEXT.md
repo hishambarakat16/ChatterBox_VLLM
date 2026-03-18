@@ -4,13 +4,10 @@
 
 Immediate active branch:
 
-- thread the now-leading `Hydra` speculative path into the real scheduled runtime and measure the end-to-end effect
-- keep the implementation `T3`-native:
-  - reuse the Medusa-style teacher corpus
-  - extend it with Hydra hidden-state sidecars
-  - train separate Hydra future heads
-  - benchmark Hydra separately from Medusa first
-  - then compare scheduled baseline vs scheduled + Hydra
+- record the `T3` stage-timing read and come back to the scheduler/orchestration overhead later
+- shift the immediate tracing/debugging target from `T3` to `S3`
+- build the same kind of concrete shape contract for `S3` that already exists for `T3`
+- keep the current `Hydra` scheduled runtime path in place while tracing only the downstream `S3` side
 
 Broader project goal:
 
@@ -29,9 +26,12 @@ Support metrics:
 Immediate Hydra milestone:
 
 - keep the first Hydra training/benchmark result as the new planner baseline
-- integrate Hydra into the scheduled runtime path
-- measure whether the single-request planner win carries over into concurrency
-- only revisit architecture/training again after that runtime comparison
+- integrate Hydra into the scheduled runtime path: done
+- measure whether the single-request planner win carries over into concurrency: partially done
+- resolve the new runtime finding:
+  - scheduled+Hydra is stable through `concurrency=8`
+  - but it currently emits shorter outputs than scheduled baseline on the same prompt
+- only revisit architecture/training again after that runtime equivalence check
 
 Broader serving milestone:
 
@@ -57,7 +57,27 @@ Status:
 - current read:
   - Hydra is now ahead of the best Medusa result on the single-request planner benchmark
   - the new best speculative setting is Hydra `h2` trained, infer with `k3`
-  - the next execution step is no longer another planner-only experiment; it is runtime integration and scheduled/concurrency validation
+  - runtime integration is now implemented in the scheduled path
+  - the first scheduled+Hydra concurrency run on the newer cloud GPU completed with `errors=[]` through `concurrency=8`
+  - measured planner stats remained stable under scheduler load:
+    - `stage_t3_acceptance_rate_mean = 0.6078`
+    - `stage_t3_rounds_mean = 34`
+  - same-machine A/B against scheduled baseline on the newer cloud GPU shows:
+    - scheduled+Hydra improves measured `T3` time at every tested concurrency
+    - scheduled+Hydra improves total throughput at `c1/c2/c4`
+    - scheduled+Hydra loses total throughput at `c8`
+  - but this is not yet a clean end-to-end win because the outputs are shorter:
+    - scheduled+Hydra: `81600` samples
+    - scheduled baseline: `122880` samples
+- current next step is therefore not more planner training; it is decode-contract / output-equivalence debugging inside the scheduled Hydra path
+- current side branch:
+  - the `T3` stage timing breakdown now shows:
+    - `hydra_verify_forward` and `hydra_replay_forward` do not scale badly
+    - `t3_wait_s` is the suspicious orchestration signal at `c8`
+    - `S3` is large enough to justify focused tracing next
+  - a selective `S3` trace mode now exists in the concurrency benchmark:
+    - `--trace-s3-shapes`
+  - `architecture/s3_shape_contract.md` is now the new downstream debugging anchor
 - achieved first in the `concurrent` A/B runtime path using request-local `T3` decode state plus a coarse full-decode `T3` lock
 - improved further in the new `scheduled` A/B runtime path using batched `T3` cohorts
 - validated as correct through `concurrency=4`

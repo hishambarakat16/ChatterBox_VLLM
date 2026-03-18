@@ -1,9 +1,60 @@
 # Progress
 
-_Last updated: 2026-03-18_
+_Last updated: 2026-03-19_
 
 ## Done
 
+- recorded the current `T3` scheduler scaling read from the selective stage timing breakdown:
+  - the modeled Hydra compute pieces do **not** blow up with concurrency
+  - `t3_hydra_verify_forward_s` and `t3_hydra_replay_forward_s` actually improve with batching
+  - the red-flag `T3` runtime signal is instead `t3_wait_s`, which rises sharply by `c8`
+  - current read:
+    - Hydra math is not the main scaling failure
+    - scheduler/orchestration overhead is a real next target
+    - `S3` is now large enough to justify focused tracing as the next branch
+- added a selective `S3`-only trace mode to the concurrency benchmark:
+  - new CLI switch: `--trace-s3-shapes`
+  - this leaves `T3` shape tracing off while still logging the `S3` contract
+- restored the important `S3` shape outputs in a non-spammy way:
+  - `token2mel.output`
+  - `hift.input`
+  - `hift.output`
+  - `inference.output`
+  - these are now logged once per run instead of flooding every request
+- added [s3_shape_contract.md](/Users/hisham/Code/Bahraini_TTS/architecture/s3_shape_contract.md) as the first dedicated `S3` contract note with the canonical selective trace command and the current expected stage list
+- threaded `Hydra` into the real `scheduled` runtime path instead of leaving it as a planner-only prototype:
+  - scheduled runtime can now load a Hydra checkpoint and run speculative `T3` rounds inside the real scheduler
+  - scheduler can split one cohort into successor cohorts when different requests accept different token counts
+  - concurrency/runtime benchmark entrypoints now accept `--hydra-checkpoint-dir` and `--hydra-speculate-k`
+- fixed the first scheduled+Hydra runtime bug:
+  - cached Hydra verify/replay was incorrectly going through the HuggingFace backend wrapper
+  - scheduled Hydra verify now uses the raw cached `T3` transformer path, matching the working single-request prototype contract
+- completed the first end-to-end scheduled+Hydra concurrency run on the newer cloud GPU box:
+  - `errors=[]` through `concurrency=8`
+  - `stage_t3_acceptance_rate_mean` stayed at `0.6078` across `1/2/4/8`
+  - `stage_t3_rounds_mean` stayed at `34`
+- completed the first same-machine A/B against the current scheduled baseline on that newer cloud GPU box:
+  - scheduled+Hydra `k3`:
+    - `c1`: `audio_seconds_per_second=0.4685`, `stage_t3_s_mean=3.3776`, `stage_audio_ready_s_mean=6.9015`
+    - `c2`: `audio_seconds_per_second=1.6016`, `stage_t3_s_mean=2.6818`, `stage_audio_ready_s_mean=4.2148`
+    - `c4`: `audio_seconds_per_second=2.2456`, `stage_t3_s_mean=3.0249`, `stage_audio_ready_s_mean=5.9999`
+    - `c8`: `audio_seconds_per_second=1.8320`, `stage_t3_s_mean=6.4019`, `stage_audio_ready_s_mean=14.5041`
+  - scheduled baseline on the same box:
+    - `c1`: `audio_seconds_per_second=0.4491`, `stage_t3_s_mean=6.6579`, `stage_audio_ready_s_mean=11.0511`
+    - `c2`: `audio_seconds_per_second=1.2611`, `stage_t3_s_mean=5.9476`, `stage_audio_ready_s_mean=8.0791`
+    - `c4`: `audio_seconds_per_second=1.4037`, `stage_t3_s_mean=11.3521`, `stage_audio_ready_s_mean=14.2960`
+    - `c8`: `audio_seconds_per_second=1.9478`, `stage_t3_s_mean=12.2031`, `stage_audio_ready_s_mean=20.6349`
+- updated the runtime read after the same-machine A/B:
+  - scheduled+Hydra clearly reduces measured `T3` time on the new box
+  - it improves total throughput at `c1/c2/c4`
+  - it loses total throughput at `c8`
+  - but the run is **not yet apples-to-apples correct**, because scheduled+Hydra produced shorter outputs on this prompt:
+    - Hydra run: `81600` samples per request
+    - scheduled baseline: `122880` samples per request
+  - current interpretation:
+    - runtime integration is now stable
+    - performance looks promising
+    - but output-length / decode-contract equivalence must be resolved before treating this as a final serving win
 - built the first `Hydra` dataset on top of the best greedy Medusa corpus:
   - source dataset: [t3_medusa_distill_ar_short_40000_384_v5_greedy](/Users/hisham/Code/Bahraini_TTS/data/t3_medusa_distill_ar_short_40000_384_v5_greedy)
   - Hydra dataset: `data/t3_hydra_distill_ar_short_40000_v1`
@@ -75,6 +126,7 @@ _Last updated: 2026-03-18_
 - expanded and later trimmed [chatterbox_serving_shape_current_vs_target.html](/Users/hisham/Code/Bahraini_TTS/architecture/chatterbox_serving_shape_current_vs_target.html) into a self-contained engineering diagram with current end-to-end flow, trace shapes, concurrency hazards, the current `scheduled` runtime checkpoint, and the target shared-vs-request-local boundary
 - added [chatterbox_runtime_evolution.html](/Users/hisham/Code/Bahraini_TTS/architecture/chatterbox_runtime_evolution.html) as the chronological runtime change log showing each serving change, its code anchors, and the measured improvement it produced
 - updated [chatterbox_runtime_evolution.html](/Users/hisham/Code/Bahraini_TTS/architecture/chatterbox_runtime_evolution.html) with the GPU-local scheduled alignment-state milestone and its measured `c8` improvement over the prior scheduled guard implementation
+- updated [chatterbox_runtime_evolution.html](/Users/hisham/Code/Bahraini_TTS/architecture/chatterbox_runtime_evolution.html) again to include the new Hydra planner milestone, benchmark deltas (`k2/k3`), and the runtime-integration next step
 - added a baseline-to-current concurrency performance ladder to [chatterbox_runtime_evolution.html](/Users/hisham/Code/Bahraini_TTS/architecture/chatterbox_runtime_evolution.html) so the starting point and each later serving gain stay visible in one place
 - added [t3_shape_contract_flow.html](/Users/hisham/Code/Bahraini_TTS/architecture/t3_shape_contract_flow.html) as a simple T3-only flow board showing request-in, CFG row expansion, prefill shape, cached decode step, request-local state, CFG logit combine, and speech-token output
 - synced [t3_shape_contract_flow.html](/Users/hisham/Code/Bahraini_TTS/architecture/t3_shape_contract_flow.html) to the latest traced contract so it now includes confirmed prefill logits, BOS positional shapes, speech-token vocab size, and first-layer prefill KV-cache shape
