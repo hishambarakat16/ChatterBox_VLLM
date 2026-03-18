@@ -47,6 +47,10 @@ Status:
   - `eval_base_top1 = 0.6808`
   - `eval_hydra_head_0_top1 = 0.4787`
   - `eval_hydra_head_1_top1 = 0.3756`
+- the current best Hydra checkpoint is now uploaded as a reference artifact:
+  - private Hugging Face model repo: `Hishambarakat/hydra-chatterbox-t3-enhancement`
+  - uploaded payload: `README.md`, `t3_hydra_config.json`, `t3_hydra_heads.safetensors`
+  - `CLOUD_GPU_QUICKSTART.md` now includes the canonical `HYDRA_CHECKPOINT_DIR` download flow using `huggingface_hub.snapshot_download(...)` from the `chatterbox-s3` env
 - the first Hydra speculative benchmarks are complete:
   - `k2`: `speedup = 18.88%`, `acceptance = 0.7907`, `exact_token_match = true`, `rebuild_count = 0`
   - `k3`: `speedup = 24.34%`, `acceptance = 0.6078`, `exact_token_match = true`, `rebuild_count = 0`

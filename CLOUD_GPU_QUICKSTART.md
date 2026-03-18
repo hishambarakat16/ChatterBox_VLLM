@@ -424,9 +424,38 @@ Current best completed Hydra checkpoint:
 - `eval_hydra_head_0_top1 = 0.4787`
 - `eval_hydra_head_1_top1 = 0.3756`
 
+Published Hydra checkpoint repo:
+
+- `Hishambarakat/hydra-chatterbox-t3-enhancement`
+
 ## Appendix C. Run Hydra Speculative Benchmarks
 
 Hydra is now the current best planner path in this repo.
+
+Use the same `HF_TOKEN` you use for private repo access, then download the published checkpoint into a
+local folder that can be passed directly as `--hydra-checkpoint-dir`:
+
+```bash
+export HF_TOKEN=YOUR_HF_TOKEN
+export HYDRA_CHECKPOINT_DIR=$PWD/models/t3_hydra_ar_short_40k_h2_checkpoint_step_022910
+mkdir -p "$HYDRA_CHECKPOINT_DIR"
+/home/ubuntu/miniconda3/envs/chatterbox-s3/bin/python - <<'PY'
+import os
+from huggingface_hub import snapshot_download
+snapshot_download(
+    repo_id='Hishambarakat/hydra-chatterbox-t3-enhancement',
+    repo_type='model',
+    local_dir=os.environ['HYDRA_CHECKPOINT_DIR'],
+    local_dir_use_symlinks=False,
+    token=os.environ['HF_TOKEN'],
+    allow_patterns=['README.md', 't3_hydra_config.json', 't3_hydra_heads.safetensors'],
+)
+print(os.environ['HYDRA_CHECKPOINT_DIR'])
+PY
+```
+
+You can point `--hydra-checkpoint-dir` either at the local training checkpoint directory or at
+`$HYDRA_CHECKPOINT_DIR` from the download step above.
 
 Best current `k3` command:
 
@@ -438,7 +467,7 @@ PYTHONPATH=external/chatterbox/src python external/chatterbox/benchmark_t3_hydra
   --text "مرحبا، هذا اختبار للبنية الحالية." \
   --max-new-tokens 128 \
   --speculate-k 3 \
-  --hydra-checkpoint-dir runs/t3_hydra_ar_short_40k_h2_run1/checkpoint_step_022910 \
+  --hydra-checkpoint-dir "$HYDRA_CHECKPOINT_DIR" \
   --warmup-runs 2 \
   --runs 6 \
   --output-dir benchmark_hydra_k3
@@ -454,7 +483,7 @@ PYTHONPATH=external/chatterbox/src python external/chatterbox/benchmark_t3_hydra
   --text "مرحبا، هذا اختبار للبنية الحالية." \
   --max-new-tokens 128 \
   --speculate-k 2 \
-  --hydra-checkpoint-dir runs/t3_hydra_ar_short_40k_h2_run1/checkpoint_step_022910 \
+  --hydra-checkpoint-dir "$HYDRA_CHECKPOINT_DIR" \
   --warmup-runs 2 \
   --runs 6 \
   --output-dir benchmark_hydra_k2

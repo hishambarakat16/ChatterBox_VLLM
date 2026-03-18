@@ -49,6 +49,13 @@ _Last updated: 2026-03-18_
   - current read:
     - Hydra is now ahead of the best Medusa result on this single-request planner benchmark
     - current best overall speculative setting is `Hydra h2` trained, infer with `k3`
+- uploaded the current best Hydra checkpoint to the private Hugging Face model repo `Hishambarakat/hydra-chatterbox-t3-enhancement`
+- kept the uploaded Hydra payload minimal so the downloaded snapshot can be used directly as `--hydra-checkpoint-dir`:
+  - `README.md`
+  - `t3_hydra_config.json`
+  - `t3_hydra_heads.safetensors`
+- updated [CLOUD_GPU_QUICKSTART.md](/Users/hisham/Code/Bahraini_TTS/CLOUD_GPU_QUICKSTART.md) with the canonical private-download flow for Hydra using `HYDRA_CHECKPOINT_DIR` and `huggingface_hub.snapshot_download(...)` from the `chatterbox-s3` env
+- updated [CONTEXT.md](/Users/hisham/Code/Bahraini_TTS/CONTEXT.md) so later agents see the uploaded Hydra reference artifact and where to download it
 - uploaded the current best Medusa checkpoint to the private Hugging Face model repo `Hishambarakat/TTS_Optimization`
 - kept the uploaded payload minimal so the downloaded snapshot can be used directly as `--medusa-checkpoint-dir`:
   - `README.md`
