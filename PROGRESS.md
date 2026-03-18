@@ -4,6 +4,24 @@ _Last updated: 2026-03-18_
 
 ## Done
 
+- added the first separate `Hydra` path for multilingual `T3`, split cleanly from `Medusa`:
+  - dataset builder: [build_t3_hydra_distill_dataset.py](/Users/hisham/Code/Bahraini_TTS/external/chatterbox/build_t3_hydra_distill_dataset.py)
+  - trainer: [hydra_distill.py](/Users/hisham/Code/Bahraini_TTS/external/chatterbox/src/chatterbox/models/t3/train/hydra_distill.py)
+  - train entrypoint: [train_t3_hydra.py](/Users/hisham/Code/Bahraini_TTS/external/chatterbox/train_t3_hydra.py)
+  - inference helper: [hydra_decode.py](/Users/hisham/Code/Bahraini_TTS/external/chatterbox/src/chatterbox/models/t3/inference/hydra_decode.py)
+  - prototype benchmark: [benchmark_t3_hydra_prototype.py](/Users/hisham/Code/Bahraini_TTS/external/chatterbox/benchmark_t3_hydra_prototype.py)
+- kept the Hydra implementation `T3`-native instead of forcing the official text-LM Hydra dataset format:
+  - Hydra dataset extends an existing Medusa-style corpus
+  - builder emits per-sample planner hidden-state sidecars at the shifted teacher-forced `T3` boundary
+  - trainer consumes logical planner hidden states shaped `(decode_len, 1024)`
+  - benchmark stays separate from the Medusa prototype
+- aligned the Hydra contract across builder, trainer, and inference after integration:
+  - builder writes `safetensors` sidecars under `hydra_base_hidden_states/`
+  - trainer reads those sidecars directly
+  - grounded offsets now match the intended semantics:
+    - base head predicts the current next token
+    - Hydra head `0` predicts the token after that
+    - later Hydra heads continue sequentially
 - uploaded the current best Medusa checkpoint to the private Hugging Face model repo `Hishambarakat/TTS_Optimization`
 - kept the uploaded payload minimal so the downloaded snapshot can be used directly as `--medusa-checkpoint-dir`:
   - `README.md`
@@ -222,7 +240,14 @@ _Last updated: 2026-03-18_
 
 ## Current Focus
 
-Only this:
+Immediate branch:
+
+- run the new Hydra dataset builder on top of the best greedy Medusa corpus
+- train the first Hydra `h2/l1` checkpoint
+- benchmark Hydra at `k2` and `k3`
+- compare Hydra acceptance / speedup against the current best Medusa result
+
+Broader project objective:
 
 - streaming concurrency per GPU
 

@@ -2,7 +2,16 @@
 
 ## Current Goal
 
-The project is currently focused on one thing only:
+Immediate active branch:
+
+- test whether `Hydra` can beat the current best `Medusa` speculative path for multilingual `T3`
+- keep the implementation `T3`-native:
+  - reuse the Medusa-style teacher corpus
+  - extend it with Hydra hidden-state sidecars
+  - train separate Hydra future heads
+  - benchmark Hydra separately from Medusa
+
+Broader project goal:
 
 - make the `Chatterbox`-style stack better for `streaming concurrency`
 
@@ -16,13 +25,23 @@ Support metrics:
 - `p95 inter-chunk latency`
 - `VRAM per active stream`
 
-Immediate milestone:
+Immediate Hydra milestone:
+
+- build the Hydra dataset from the best greedy Medusa corpus
+- train the first Hydra `h2/l1` checkpoint
+- benchmark `k2` and `k3`
+- compare against the current best Medusa checkpoint before any serving integration
+
+Broader serving milestone:
 
 - make `2` simultaneous requests complete correctly on one shared model instance
 - treat truncated outputs and silent early-stop outputs as failures, even if Python does not raise
 
 Status:
 
+- the separate Hydra build/train/inference scaffolding now exists locally in `external/chatterbox`
+- it has only been syntax-checked so far
+- the next execution step is to build a Hydra-ready dataset from the existing greedy Medusa corpus and then run the first Hydra training/benchmark cycle
 - achieved first in the `concurrent` A/B runtime path using request-local `T3` decode state plus a coarse full-decode `T3` lock
 - improved further in the new `scheduled` A/B runtime path using batched `T3` cohorts
 - validated as correct through `concurrency=4`
