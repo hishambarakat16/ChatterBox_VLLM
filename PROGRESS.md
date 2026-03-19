@@ -669,6 +669,12 @@ Interpretation:
     - `99 -> 99` works
     - `99 -> 82` works
     - so the next test is whether disabling `vLLM` chunked prefill removes the upward shape-transition failure
+  - `chunked_prefill` is now ruled out for the minimal repro:
+    - `82 -> 99` still fails with `enable_chunked_prefill=False`
+  - the next narrowing step is direct engine replay:
+    - replay the prepared `prompt_embeds` directly into `vLLM`
+    - then replay the same shapes with zeroed embeddings
+    - if zeroed `82 -> 99` still fails, the bug is shape-transition state in the `vLLM` prompt-embeds path, not Chatterbox embed contents
 
 ## Not Current Work
 

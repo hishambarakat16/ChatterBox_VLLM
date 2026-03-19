@@ -343,6 +343,47 @@ PYTHONPATH=external/chatterbox/src python external/chatterbox/diagnose_vllm_prom
   --output-json prompt_embed_short_long_no_chunked_prefill.json
 ```
 
+- if that still fails, replay the prepared prompts directly through `vLLM` without the Chatterbox wrapper:
+
+```bash
+SHORT='مرحبا، هذا اختبار قصير لقياس سرعة الاستجابة.'
+LONG='كيف يمكننا تحسين جودة الصوت مع الحفاظ على زمن استجابة منخفض؟'
+
+PYTHONPATH=external/chatterbox/src python external/chatterbox/diagnose_vllm_prompt_embeds.py \
+  --mode engine_replay_singletons \
+  --device cuda \
+  --language-id ar \
+  --audio-prompt-path "$PROMPT_AUDIO" \
+  --text "$SHORT" \
+  --text "$LONG" \
+  --vllm-model-dir runs/t3_vllm_export \
+  --vllm-gpu-memory-utilization 0.45 \
+  --vllm-max-model-len 2048 \
+  --no-vllm-prefix-caching \
+  --no-vllm-chunked-prefill \
+  --vllm-enforce-eager \
+  --output-json prompt_embed_short_long_engine_replay.json
+```
+
+- then repeat with the same shapes but zeroed embeddings:
+
+```bash
+PYTHONPATH=external/chatterbox/src python external/chatterbox/diagnose_vllm_prompt_embeds.py \
+  --mode engine_replay_zero_singletons \
+  --device cuda \
+  --language-id ar \
+  --audio-prompt-path "$PROMPT_AUDIO" \
+  --text "$SHORT" \
+  --text "$LONG" \
+  --vllm-model-dir runs/t3_vllm_export \
+  --vllm-gpu-memory-utilization 0.45 \
+  --vllm-max-model-len 2048 \
+  --no-vllm-prefix-caching \
+  --no-vllm-chunked-prefill \
+  --vllm-enforce-eager \
+  --output-json prompt_embed_short_long_engine_replay_zero.json
+```
+
 ## Common Failures
 
 `No module named 'vllm'`
