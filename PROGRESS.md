@@ -85,6 +85,14 @@ _Last updated: 2026-03-19_
       - added a direct diagnostic bridge between the simulator and the working benchmark:
         - the simulator now accepts `--fixed-text`
         - that makes it possible to run the streaming shim with the same repeated text shape as the healthy benchmark and isolate whether failures come from mixed-text formatting versus the service wrapper itself
+      - latest mixed-shape diagnosis and mitigation:
+        - the custom prompt-embed `vLLM` path is stable for same-shape reuse and for larger-to-smaller transitions
+        - the reproducible crash is the opposite direction: smaller prompt-embed sequence length followed by a larger one on the same reused engine
+        - disabling chunked prefill did not change that failure
+        - current service-side mitigation in the `vLLM` worker:
+          - sort each request batch by prompt-embed length descending
+          - recycle the shared `vLLM` engine before any upward prompt-embed growth
+        - this is a containment fix around the current prompt-embed path, not proof that generic `vLLM` text batching is broken
   - tightened the `vLLM` benchmark/save path to avoid unnecessary env churn:
     - benchmark / compare / simulator WAV outputs now save through `soundfile`
     - `torchcodec` is not required for the current `vLLM` migration workflow
