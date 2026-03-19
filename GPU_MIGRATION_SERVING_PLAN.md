@@ -235,6 +235,35 @@ PYTHONPATH=external/chatterbox/src python external/chatterbox/simulate_streaming
   --output-dir streaming_service_sim_vllm
 ```
 
+Benchmark-vs-simulator comparison points for `vllm_turbo_s3`:
+
+- the working benchmark path in [benchmark_multilingual_concurrency.py](/Users/hisham/Code/Bahraini_TTS/external/chatterbox/benchmark_multilingual_concurrency.py) sends one call shaped like:
+  - `generate_many_with_sessions(sessions, [text] * concurrency, ...)`
+- the simulator path in [simulate_streaming_service.py](/Users/hisham/Code/Bahraini_TTS/external/chatterbox/simulate_streaming_service.py) is intentionally different:
+  - it can stagger arrivals
+  - it can rotate through different sentences
+  - it can group ready arrivals into cohorts before calling `generate_many_with_sessions(...)`
+- if you want to make the simulator look much closer to the benchmark for diagnosis, run it with a fixed text:
+
+```bash
+PYTHONPATH=external/chatterbox/src python external/chatterbox/simulate_streaming_service.py \
+  --impl vllm_turbo_s3 \
+  --device cuda \
+  --language-id ar \
+  --audio-prompt-path "$PROMPT_AUDIO" \
+  --fixed-text "مرحبا، هذا اختبار لمسار vllm الجديد." \
+  --vllm-model-dir runs/t3_vllm_export \
+  --vllm-gpu-memory-utilization 0.5 \
+  --vllm-max-model-len 2048 \
+  --no-vllm-prefix-caching \
+  --vllm-enforce-eager \
+  --concurrency-levels 8 \
+  --rounds-per-level 2 \
+  --stagger-ms 250 \
+  --save-mode representative \
+  --output-dir streaming_service_sim_vllm_fixed_text
+```
+
 ## Common Failures
 
 `No module named 'vllm'`
