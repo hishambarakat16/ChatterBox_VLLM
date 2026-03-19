@@ -46,6 +46,11 @@ python -m pip install -e external/chatterbox --no-deps
 Plain editable install downgrades `torch`, `torchaudio`, `transformers`, `tokenizers`, and `pydantic` and breaks `vLLM`.
 The `--no-deps` editable install is the safe path here because it exposes the local `chatterbox` package and
 its `vLLM` plugin entry point without pulling the pinned Chatterbox dependency stack into the env.
+If you pull new code that changes the plugin entry point, rerun:
+
+```bash
+python -m pip install -e external/chatterbox --no-deps
+```
 
 Required additive runtime deps for `vllm_turbo_s3`:
 
@@ -192,6 +197,17 @@ export PYTHONPATH=$PWD/external/chatterbox/src
 ```bash
 conda activate chatterbox-vllm
 python -m pip install conformer==0.3.2 diffusers==0.29.0 omegaconf s3tokenizer
+export PYTHONPATH=$PWD/external/chatterbox/src
+```
+
+`No module named 'chatterbox.vllm_plugin'`
+
+```bash
+git pull
+git submodule sync -- external/chatterbox
+git submodule update --init external/chatterbox
+conda activate chatterbox-vllm
+python -m pip install -e external/chatterbox --no-deps
 export PYTHONPATH=$PWD/external/chatterbox/src
 ```
 
