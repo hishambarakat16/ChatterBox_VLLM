@@ -122,6 +122,8 @@ PYTHONPATH=external/chatterbox/src python external/chatterbox/compare_multilingu
   --audio-prompt-path "$PROMPT_AUDIO" \
   --text "مرحبا، هذا اختبار لمسار vllm الجديد." \
   --vllm-model-dir runs/t3_vllm_export \
+  --vllm-gpu-memory-utilization 0.5 \
+  --vllm-max-model-len 2048 \
   --cfg-weight 0 \
   --temperature 0 \
   --max-new-tokens 128
@@ -137,6 +139,8 @@ PYTHONPATH=external/chatterbox/src python external/chatterbox/benchmark_multilin
   --audio-prompt-path "$PROMPT_AUDIO" \
   --text "مرحبا، هذا اختبار لمسار vllm الجديد." \
   --vllm-model-dir runs/t3_vllm_export \
+  --vllm-gpu-memory-utilization 0.5 \
+  --vllm-max-model-len 2048 \
   --cfg-weight 0 \
   --temperature 0 \
   --max-new-tokens 128 \
@@ -152,6 +156,8 @@ PYTHONPATH=external/chatterbox/src python external/chatterbox/simulate_streaming
   --language-id ar \
   --audio-prompt-path "$PROMPT_AUDIO" \
   --vllm-model-dir runs/t3_vllm_export \
+  --vllm-gpu-memory-utilization 0.5 \
+  --vllm-max-model-len 2048 \
   --cfg-weight 0 \
   --temperature 0 \
   --max-new-tokens 128 \
@@ -217,6 +223,13 @@ export PYTHONPATH=$PWD/external/chatterbox/src
 - pass the base multilingual checkpoint dir instead
 - on Thunder, that is most likely:
   `~/.cache/huggingface/hub/models--ResembleAI--chatterbox/snapshots/05e904af2b5c7f8e482687a9d7336c5c824467d9`
+
+`GPU memory looks "full" or benchmark appears frozen after concurrency 1`
+
+- `vLLM` reserves KV cache aggressively based on `--vllm-gpu-memory-utilization`
+- older commands used `0.9`, which can reserve almost the whole A6000 and look like a leak
+- use `--vllm-gpu-memory-utilization 0.5` and `--vllm-max-model-len 2048` for this spike
+- the single-request path already works; if this still stalls after lowering both values, the next suspect is the threaded benchmark pattern rather than raw model loading
 
 `vLLM` command still using Hydra flags
 
