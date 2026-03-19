@@ -11,6 +11,96 @@ _Last updated: 2026-03-19_
   - install local Chatterbox into `chatterbox-vllm` with `python -m pip install -e external/chatterbox --no-deps`
   - register the custom `ChatterboxT3ForCausalLM` architecture through a `vLLM` general plugin so spawned workers see it too
 - revalidated `external/chatterbox/vllm_t3_preflight.py` against `runs/t3_hydra_ar_short_40k_h2_run1/vllm_t3_export` and reached `engine_init=ok`
+- merged the missing engine-migration state from the older alternate-machine progress snapshot so this repo keeps that history too
+- added [t3_engine_migration_memo.md](/Users/hisham/Code/Bahraini_TTS/architecture/t3_engine_migration_memo.md) as the current engine-migration decision memo for the multilingual `T3 + Hydra + turbo S3` stack:
+  - mapped the current `T3` boundary into `thin adapter`, `scheduler/runtime replacement`, `model boundary`, `Hydra`, `CFG`, and `speech-token / multilingual` concerns
+  - compared `vLLM`, `SGLang`, and `TensorRT-LLM` against the actual local `T3` contract instead of treating them as generic LLM engines
+  - made the recommendation explicit:
+    - `vLLM` = first feasibility target
+    - `SGLang` = later optimization target
+    - `TensorRT-LLM` = not recommended at the current migration stage
+  - recorded a concrete minimal first spike:
+    - externalize only `T3` scheduling/runtime
+    - keep app/session + tokenizer + `turbo S3`
+    - defer `Hydra`
+    - defer `CFG`
+    - benchmark mixed-traffic behavior directly
+- added [t3_mixed_traffic_scheduler_research_memo.md](/Users/hisham/Code/Bahraini_TTS/architecture/t3_mixed_traffic_scheduler_research_memo.md) with a focused research pass on staggered mixed-length `T3` traffic:
+  - continuous batching / dynamic batching / rebatching best practices
+  - admission-window and bucketing guidance
+  - active-cohort cap and fairness guidance
+  - decode-priority / chunked-prefill guidance
+  - guidance on when `vLLM`, `SGLang`, `TensorRT-LLM`, `Triton`, `DistServe`, and `Llumnix` are relevant versus overkill
+  - later expanded it into a fuller standalone findings document with:
+    - executive summary
+    - local problem statement
+    - ranked recommendation order
+    - anti-patterns to avoid
+    - suggested scheduler metrics
+    - practical engineering sequence
+    - local paper/repo bundle references
+- downloaded the primary scheduler-serving papers into [References/scheduler_serving](/Users/hisham/Code/Bahraini_TTS/References/scheduler_serving):
+  - `Orca`
+  - `vLLM`
+  - `Sarathi-Serve`
+  - `FastServe`
+  - `SGLang`
+  - `DistServe`
+  - `Llumnix`
+- cloned the main serving-system reference repos into `external/`:
+  - [vllm](/Users/hisham/Code/Bahraini_TTS/external/vllm)
+  - [sglang](/Users/hisham/Code/Bahraini_TTS/external/sglang)
+  - [sarathi-serve](/Users/hisham/Code/Bahraini_TTS/external/sarathi-serve)
+  - [FastServe](/Users/hisham/Code/Bahraini_TTS/external/FastServe)
+  - [TensorRT-LLM](/Users/hisham/Code/Bahraini_TTS/external/TensorRT-LLM)
+  - [DistServe](/Users/hisham/Code/Bahraini_TTS/external/DistServe)
+  - [llumnix-ray](/Users/hisham/Code/Bahraini_TTS/external/llumnix-ray)
+  - [triton-server](/Users/hisham/Code/Bahraini_TTS/external/triton-server)
+- completed the first isolated `turbo S3` experiment while keeping the multilingual scheduled `T3 + Hydra` path unchanged:
+  - added a separate experimental runtime path instead of threading turbo behavior through the main scheduled implementation
+  - new runtime entrypoint:
+    - [mtl_tts_scheduled_turbo_s3.py](/Users/hisham/Code/Bahraini_TTS/external/chatterbox/src/chatterbox/mtl_tts_scheduled_turbo_s3.py)
+  - benchmark entrypoints now accept:
+    - `--impl scheduled_turbo_s3`
+    - optional `--turbo-s3-checkpoint-dir`
+- completed the first same-stack benchmark for `scheduled + Hydra + turbo S3` on the newer cloud GPU box:
+  - `c1`:
+    - `audio_seconds_per_second=0.4147`
+    - `stage_s3_s_mean=3.6241`
+    - `stage_s3_token2mel_s_mean=2.2916`
+    - `stage_audio_ready_s_mean=7.8628`
+  - `c2`:
+    - `audio_seconds_per_second=1.9271`
+    - `stage_s3_s_mean=0.8822`
+    - `stage_s3_token2mel_s_mean=0.6590`
+    - `stage_audio_ready_s_mean=3.4680`
+  - `c4`:
+    - `audio_seconds_per_second=3.2184`
+    - `stage_s3_s_mean=0.9584`
+    - `stage_s3_token2mel_s_mean=0.6778`
+    - `stage_audio_ready_s_mean=4.1290`
+  - `c8`:
+    - `audio_seconds_per_second=2.8878`
+    - `stage_s3_s_mean=2.2461`
+    - `stage_s3_token2mel_s_mean=1.7863`
+    - `stage_audio_ready_s_mean=9.0648`
+- recorded the main turbo `S3` read:
+  - the major win is exactly where we expected it:
+    - `token2mel`
+  - `HiFT` stays a secondary cost
+  - `turbo S3` materially reduces the downstream `S3` bottleneck without changing the current multilingual scheduled `T3 + Hydra` planner path
+  - the strongest serving win is at `c2/c4`
+  - `c8` still degrades relative to `c4`, but remains far better than the old non-turbo `S3`
+- updated the current direction after the turbo `S3` experiments:
+  - move forward with the scheduled `T3 + Hydra + turbo S3` stack as the main optimization branch
+  - keep the old non-turbo `S3` numbers documented as the comparison baseline
+  - later work should focus on:
+    - audio-quality / contract validation for turbo `S3`
+    - whether `c8` can be stabilized further
+    - any remaining `T3` scheduler/orchestration overhead once the `S3` renderer is cheaper
+- added [s3_shape_contract_flow.html](/Users/hisham/Code/Bahraini_TTS/architecture/s3_shape_contract_flow.html) to document the current `S3` contract shapes, Hydra-aware token flow, and `stage_s3_s` benchmarks
+- updated [chatterbox_runtime_evolution.html](/Users/hisham/Code/Bahraini_TTS/architecture/chatterbox_runtime_evolution.html) to surface the new `TRACE_RUN_RESULTS` / tested-throughput numbers and the latest scheduled+Hydra+turbo-`S3` chapter
+- created [t3_serving_stack_layering_memo_flow.html](/Users/hisham/Code/Bahraini_TTS/architecture/t3_serving_stack_layering_memo_flow.html) so the memo's layer model, current path, and option grid can be seen in a structured report format
 - recorded the current `T3` scheduler scaling read from the selective stage timing breakdown:
   - the modeled Hydra compute pieces do **not** blow up with concurrency
   - `t3_hydra_verify_forward_s` and `t3_hydra_replay_forward_s` actually improve with batching
