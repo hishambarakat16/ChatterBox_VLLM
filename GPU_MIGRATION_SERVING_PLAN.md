@@ -167,11 +167,27 @@ The migration spike adds:
 
 Run this on the GPU server, not on the local edit machine.
 
-Before using `vLLM`, export a `vLLM`-friendly model directory from the current T3 checkpoint:
+Important:
+
+- a Hydra run directory that only contains `t3_hydra_heads.safetensors` is not a valid base `T3` checkpoint for `vLLM`
+- the `vLLM` spike is Hydra-free and needs the base multilingual `T3` weights file `t3_mtl23ls_v2.safetensors`
+- if you do not have a local base checkpoint dir, use `--from-pretrained` in the exporter
+
+Before using `vLLM`, export a `vLLM`-friendly model directory from the base multilingual `T3` checkpoint.
+
+If you want the exporter to fetch the base model from the standard Chatterbox pretrained source:
 
 ```bash
 PYTHONPATH=external/chatterbox/src python external/chatterbox/export_vllm_t3_model.py \
-  --checkpoint-dir runs/t3_hydra_ar_short_40k_h2_run1/checkpoint_step_022910 \
+  --from-pretrained \
+  --output-dir runs/t3_hydra_ar_short_40k_h2_run1/vllm_t3_export
+```
+
+If you already have the base multilingual checkpoint locally:
+
+```bash
+PYTHONPATH=external/chatterbox/src python external/chatterbox/export_vllm_t3_model.py \
+  --base-checkpoint-dir /path/to/base_multilingual_chatterbox_ckpt \
   --output-dir runs/t3_hydra_ar_short_40k_h2_run1/vllm_t3_export
 ```
 
@@ -217,7 +233,6 @@ PYTHONPATH=external/chatterbox/src python external/chatterbox/compare_multilingu
   --language-id ar \
   --audio-prompt-path "$PROMPT_AUDIO" \
   --text "مرحبا، هذا اختبار لمسار vllm الجديد." \
-  --checkpoint-dir runs/t3_hydra_ar_short_40k_h2_run1/checkpoint_step_022910 \
   --vllm-model-dir runs/t3_hydra_ar_short_40k_h2_run1/vllm_t3_export \
   --turbo-s3-checkpoint-dir ~/.cache/huggingface/hub/models--ResembleAI--chatterbox-turbo/snapshots/<snapshot> \
   --cfg-weight 0 \
@@ -235,7 +250,6 @@ PYTHONPATH=external/chatterbox/src python external/chatterbox/benchmark_multilin
   --language-id ar \
   --audio-prompt-path "$PROMPT_AUDIO" \
   --text "مرحبا، هذا اختبار لمسار vllm الجديد." \
-  --checkpoint-dir runs/t3_hydra_ar_short_40k_h2_run1/checkpoint_step_022910 \
   --vllm-model-dir runs/t3_hydra_ar_short_40k_h2_run1/vllm_t3_export \
   --cfg-weight 0 \
   --temperature 0 \
@@ -251,7 +265,6 @@ PYTHONPATH=external/chatterbox/src python external/chatterbox/simulate_streaming
   --device cuda \
   --language-id ar \
   --audio-prompt-path "$PROMPT_AUDIO" \
-  --checkpoint-dir runs/t3_hydra_ar_short_40k_h2_run1/checkpoint_step_022910 \
   --vllm-model-dir runs/t3_hydra_ar_short_40k_h2_run1/vllm_t3_export \
   --cfg-weight 0 \
   --temperature 0 \
