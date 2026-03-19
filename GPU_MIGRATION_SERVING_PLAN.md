@@ -161,10 +161,17 @@ Important:
   - the present `vLLM` spike does not yet replicate the original multilingual alignment-based EOS controller
   - that means throughput can look excellent while some saved WAVs still show lingering noisy tails
   - the current code only adds diagnostics plus a conservative repetitive-tail trim for length-capped rows; this is mitigation, not full parity
-  - the strongest bad-case pattern seen so far is batch-position-specific:
-    - row `0` emits a real stop token and sounds correct
-    - rows `1..N` often hit `max_new_tokens` exactly and produce the lingering tail
-  - if you see that pattern, rerun the same command with `--no-vllm-prefix-caching` before changing model weights or packages
+  - confirmed current constraint:
+    - `vllm_turbo_s3` should run with prefix caching disabled by default
+    - with prefix caching enabled, the strongest bad-case pattern was batch-position-specific:
+      - row `0` emitted a real stop token and sounded correct
+      - rows `1..N` often hit `max_new_tokens` exactly and produced the lingering tail
+    - with prefix caching disabled, the same `c16` batch produced:
+      - `stage_t3_finish_reason_stop_mean=1.0`
+      - `stage_t3_finish_reason_length_mean=0.0`
+      - `stage_t3_output_has_stop_token_mean=1.0`
+  - because the bad tails disappear, `audio_seconds_total` also drops
+    - that is expected and is a quality win, not a regression
 
 Prefix-caching A/B for the batch-stop issue:
 
@@ -188,8 +195,10 @@ PYTHONPATH=external/chatterbox/src python external/chatterbox/benchmark_multilin
 
 Interpretation:
 
-- if the nonzero rows stop cleanly after disabling prefix caching, the likely issue is in how the custom prompt-embed `T3` path interacts with `vLLM` prefix-cache reads
-- if they still length-cap, the next real fix is deeper stop-control parity, not caching
+- this experiment is now effectively resolved for the current spike:
+  - the custom prompt-embed `T3` path is not safe with prefix caching enabled
+  - keep prefix caching disabled unless you are explicitly re-testing this interaction
+- the remaining quality gap after that is deeper stop-control parity with the original alignment-based EOS controller
 
 ## 7. Mixed-Traffic Simulator
 
@@ -290,8 +299,8 @@ export PYTHONPATH=$PWD/external/chatterbox/src
   - `stage_t3_finish_reason_length_mean ~= 0.9375`
   - `stage_t3_generated_tokens=[89,128,128,...]`
 - that means row `0` stopped naturally and later rows length-capped
-- first rerun with `--no-vllm-prefix-caching`
-- if the problem persists, the remaining gap is the missing alignment-based EOS controller in the `vLLM` path
+- for the current spike, treat that as a prefix-caching incompatibility and keep prefix caching disabled
+- if the problem persists even with prefix caching disabled, the remaining gap is the missing alignment-based EOS controller in the `vLLM` path
 
 `vLLM` command still using Hydra flags
 

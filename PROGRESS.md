@@ -29,6 +29,17 @@ _Last updated: 2026-03-19_
     - `wall_s=8.1052`
     - `audio_seconds_total=80.32`
     - `audio_seconds_per_second=9.9096`
+  - then isolated the first real batch-quality bug and confirmed the fix:
+    - root cause for the batch-stop failure was `vLLM` prefix caching in the custom prompt-embed `T3` path
+    - with prefix caching disabled on the same `c16` test:
+      - `stage_t3_finish_reason_stop_mean=1.0`
+      - `stage_t3_finish_reason_length_mean=0.0`
+      - `stage_t3_output_has_stop_token_mean=1.0`
+      - `wall_s=7.4000`
+      - `mean_latency_s=5.8158`
+    - the lower `audio_seconds_total=62.56` after the fix is expected because the bad lingering tails are no longer inflating output duration
+    - updated operating rule:
+      - keep prefix caching disabled by default for `vllm_turbo_s3`
   - updated read:
     - `vLLM` is using one shared engine, not one model copy per request
     - the large `VRAM` reservation is mostly shared KV/cache reservation, not request duplication
@@ -41,9 +52,8 @@ _Last updated: 2026-03-19_
       - in the problematic `c16` run, only row `0` emitted a real stop token
       - rows `1..15` all hit `max_new_tokens=128`
       - that means the current issue is not just "some random tails"; it is a repeatable batch-row stop failure
-    - current working hypothesis:
-      - prefix-cache reads may be interacting badly with the custom prompt-embed `T3` path for later rows in an otherwise identical batch
-      - the next A/B is to rerun the batched benchmark with `--no-vllm-prefix-caching`
+    - confirmed cause for this specific failure mode:
+      - prefix-cache reads were interacting badly with the custom prompt-embed `T3` path for later rows in an otherwise identical batch
     - current mitigation:
       - record per-row stop diagnostics (`stop` vs `length` cap)
       - conservatively trim clearly repetitive suffixes only when a row ends by length cap

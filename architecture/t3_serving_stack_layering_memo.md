@@ -169,6 +169,11 @@ Current local evidence from the `vLLM` spike:
   - `stage_t3_s_mean=1.0512`
   - `wall_s=8.1052`
   - `audio_seconds_per_second=9.9096`
+- after disabling prefix caching for the custom prompt-embed `vLLM` path:
+  - all `c16` rows emitted a stop token instead of length-capping
+  - `wall_s` improved to `7.4000`
+  - `mean_latency_s` improved to `5.8158`
+  - the lower total audio duration reflected removal of hallucinated tails, not a useful-throughput loss
 
 So the current read is:
 
@@ -177,10 +182,9 @@ So the current read is:
 - but quality parity is not done yet:
   - the current `vLLM` path does not carry over the original multilingual alignment-based EOS controller
   - some batched rows therefore run into the token cap and produce lingering noisy tails
-  - the strongest observed failure shape is batch-position-specific:
-    - row `0` stops naturally
-    - later rows in the same identical batch hit the token cap
-  - that makes prefix-cache interaction in the custom prompt-embed path a concrete next suspect
+  - the first concrete batch-stop failure was traced to prefix caching in the custom prompt-embed path
+  - current operating rule:
+    - keep prefix caching disabled by default for `vllm_turbo_s3`
   - the current code now exposes stop diagnostics and applies a conservative repetitive-tail trim for length-capped rows, but that is still a mitigation rather than true parity
 
 ## Option C: Replace T3 Serving Layer With SGLang

@@ -92,6 +92,13 @@ New migration-spike conclusion:
   - `stage_t3_s_mean=1.0512`
   - `wall_s=8.1052`
   - `audio_seconds_per_second=9.9096`
+- the later `c16` A/B clarified a crucial nuance:
+  - part of that earlier throughput number was inflated by bad lingering tail audio
+  - once prefix caching was disabled for the custom prompt-embed path:
+    - all rows emitted a real stop token
+    - `wall_s` improved to `7.4000`
+    - `mean_latency_s` improved to `5.8158`
+    - `audio_seconds_total` dropped because the hallucinated tails disappeared
 - updated local read:
   - one shared `vLLM` engine can express logical request concurrency through admission batching
   - this does **not** mean one model copy per request
@@ -104,8 +111,10 @@ New migration-spike conclusion:
       - row `0` stopped naturally
       - rows `1..15` hit the `128` token cap
       - so the current failure pattern is batch-position-specific, not just generic decode drift
-    - current working hypothesis:
-      - the custom prompt-embed path may not be interacting correctly with `vLLM` prefix-cache reads for later identical rows
+    - confirmed cause for this specific batch-row failure:
+      - the custom prompt-embed path was not interacting correctly with `vLLM` prefix-cache reads for later identical rows
+    - current operating rule:
+      - keep prefix caching disabled by default for this `vLLM` path
     - current mitigation is only a fallback:
       - expose stop diagnostics per row
       - trim clearly repetitive suffixes when a row ends by length cap
