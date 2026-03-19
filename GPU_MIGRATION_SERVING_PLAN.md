@@ -25,6 +25,7 @@ export UV_TORCH_BACKEND=cu128
 uv pip install vllm --torch-backend=auto
 python -m pip install huggingface_hub safetensors librosa soundfile sentencepiece
 python -m pip install -e external/chatterbox --no-deps
+python -m pip install conformer==0.3.2 diffusers==0.29.0 omegaconf s3tokenizer
 export LD_LIBRARY_PATH=/usr/local/cuda/lib64${LD_LIBRARY_PATH:+:$LD_LIBRARY_PATH}
 export VLLM_WORKER_MULTIPROC_METHOD=spawn
 export PYTHONPATH=$PWD/external/chatterbox/src
@@ -45,6 +46,19 @@ python -m pip install -e external/chatterbox --no-deps
 Plain editable install downgrades `torch`, `torchaudio`, `transformers`, `tokenizers`, and `pydantic` and breaks `vLLM`.
 The `--no-deps` editable install is the safe path here because it exposes the local `chatterbox` package and
 its `vLLM` plugin entry point without pulling the pinned Chatterbox dependency stack into the env.
+
+Required additive runtime deps for `vllm_turbo_s3`:
+
+- `conformer==0.3.2`
+- `diffusers==0.29.0`
+- `omegaconf`
+- `s3tokenizer`
+
+Usually not required for Arabic:
+
+- `pykakasi` only matters for Japanese text normalization
+- `spacy-pkuseg` only matters for Chinese segmentation
+- `perth` is now optional and falls back to a passthrough watermarker if missing
 
 ## 2. Pull Latest Code
 
@@ -167,8 +181,17 @@ export UV_TORCH_BACKEND=cu128
 uv pip install vllm --torch-backend=auto
 python -m pip install huggingface_hub safetensors librosa soundfile sentencepiece
 python -m pip install -e external/chatterbox --no-deps
+python -m pip install conformer==0.3.2 diffusers==0.29.0 omegaconf s3tokenizer
 export LD_LIBRARY_PATH=/usr/local/cuda/lib64${LD_LIBRARY_PATH:+:$LD_LIBRARY_PATH}
 export VLLM_WORKER_MULTIPROC_METHOD=spawn
+export PYTHONPATH=$PWD/external/chatterbox/src
+```
+
+`No module named 'conformer'`
+
+```bash
+conda activate chatterbox-vllm
+python -m pip install conformer==0.3.2 diffusers==0.29.0 omegaconf s3tokenizer
 export PYTHONPATH=$PWD/external/chatterbox/src
 ```
 
