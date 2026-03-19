@@ -174,6 +174,9 @@ Current local evidence from the `vLLM` spike:
   - `wall_s` improved to `7.4000`
   - `mean_latency_s` improved to `5.8158`
   - the lower total audio duration reflected removal of hallucinated tails, not a useful-throughput loss
+- the mixed-traffic simulator exposed a second integration rule:
+  - even with prefix caching disabled, calling `generate_with_session(...)` concurrently on the same offline engine is invalid
+  - the correct simulator shape is admission-batched `generate_many_with_sessions(...)` cohorts
 
 So the current read is:
 

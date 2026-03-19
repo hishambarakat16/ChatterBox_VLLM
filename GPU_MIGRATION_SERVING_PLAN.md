@@ -202,6 +202,13 @@ Interpretation:
 
 ## 7. Mixed-Traffic Simulator
 
+Important:
+
+- for `vllm_turbo_s3`, the mixed-traffic simulator must also use admission-batched `generate_many_with_sessions(...)`
+- older threaded simulator behavior called `generate_with_session(...)` concurrently on the same offline `vLLM` engine and could crash with a CUDA device-side assert
+- current code batches queued arrivals into cohorts using the simulator's batching window and text-bucket settings
+- keep prefix caching disabled for this path as well
+
 ```bash
 PYTHONPATH=external/chatterbox/src python external/chatterbox/simulate_streaming_service.py \
   --impl vllm_turbo_s3 \

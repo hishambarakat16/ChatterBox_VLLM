@@ -103,6 +103,9 @@ New migration-spike conclusion:
   - one shared `vLLM` engine can express logical request concurrency through admission batching
   - this does **not** mean one model copy per request
   - after batched `T3` worked, downstream `S3` became the larger remaining wall-time stage on the tested `c4` run
+  - the same admission rule also applies to the mixed-traffic simulator:
+    - threaded `generate_with_session(...)` calls against the same offline engine are invalid
+    - the simulator must queue arrivals and issue batched `generate_many_with_sessions(...)` cohorts instead
   - however, stop-quality parity is still incomplete:
     - the current `vLLM` spike does not implement the original multilingual `AlignmentStreamAnalyzer`
     - that means some rows can hit the `max_new_tokens` cap instead of emitting a clean stop token
