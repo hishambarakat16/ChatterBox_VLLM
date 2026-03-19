@@ -177,6 +177,10 @@ So the current read is:
 - but quality parity is not done yet:
   - the current `vLLM` path does not carry over the original multilingual alignment-based EOS controller
   - some batched rows therefore run into the token cap and produce lingering noisy tails
+  - the strongest observed failure shape is batch-position-specific:
+    - row `0` stops naturally
+    - later rows in the same identical batch hit the token cap
+  - that makes prefix-cache interaction in the custom prompt-embed path a concrete next suspect
   - the current code now exposes stop diagnostics and applies a conservative repetitive-tail trim for length-capped rows, but that is still a mitigation rather than true parity
 
 ## Option C: Replace T3 Serving Layer With SGLang

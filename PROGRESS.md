@@ -37,6 +37,13 @@ _Last updated: 2026-03-19_
     - some batched `vLLM` outputs linger past the intended speech ending with noisy tails
     - the main reason is that the current `vLLM` spike does not yet have parity with the original multilingual `AlignmentStreamAnalyzer` stop controller
     - `drop_invalid_tokens()` is only post-generation cleanup and cannot replace the decode-time EOS controller
+    - stronger batch-pattern finding from later diagnostics:
+      - in the problematic `c16` run, only row `0` emitted a real stop token
+      - rows `1..15` all hit `max_new_tokens=128`
+      - that means the current issue is not just "some random tails"; it is a repeatable batch-row stop failure
+    - current working hypothesis:
+      - prefix-cache reads may be interacting badly with the custom prompt-embed `T3` path for later rows in an otherwise identical batch
+      - the next A/B is to rerun the batched benchmark with `--no-vllm-prefix-caching`
     - current mitigation:
       - record per-row stop diagnostics (`stop` vs `length` cap)
       - conservatively trim clearly repetitive suffixes only when a row ends by length cap

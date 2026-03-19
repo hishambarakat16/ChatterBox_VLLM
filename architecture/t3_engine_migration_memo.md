@@ -100,6 +100,12 @@ New migration-spike conclusion:
     - the current `vLLM` spike does not implement the original multilingual `AlignmentStreamAnalyzer`
     - that means some rows can hit the `max_new_tokens` cap instead of emitting a clean stop token
     - saved WAVs showed lingering noisy tails on some batched outputs
+    - the later `c16` diagnostics narrowed that down further:
+      - row `0` stopped naturally
+      - rows `1..15` hit the `128` token cap
+      - so the current failure pattern is batch-position-specific, not just generic decode drift
+    - current working hypothesis:
+      - the custom prompt-embed path may not be interacting correctly with `vLLM` prefix-cache reads for later identical rows
     - current mitigation is only a fallback:
       - expose stop diagnostics per row
       - trim clearly repetitive suffixes when a row ends by length cap

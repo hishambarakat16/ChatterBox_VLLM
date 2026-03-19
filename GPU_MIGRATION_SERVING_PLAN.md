@@ -161,6 +161,35 @@ Important:
   - the present `vLLM` spike does not yet replicate the original multilingual alignment-based EOS controller
   - that means throughput can look excellent while some saved WAVs still show lingering noisy tails
   - the current code only adds diagnostics plus a conservative repetitive-tail trim for length-capped rows; this is mitigation, not full parity
+  - the strongest bad-case pattern seen so far is batch-position-specific:
+    - row `0` emits a real stop token and sounds correct
+    - rows `1..N` often hit `max_new_tokens` exactly and produce the lingering tail
+  - if you see that pattern, rerun the same command with `--no-vllm-prefix-caching` before changing model weights or packages
+
+Prefix-caching A/B for the batch-stop issue:
+
+```bash
+PYTHONPATH=external/chatterbox/src python external/chatterbox/benchmark_multilingual_concurrency.py \
+  --impl vllm_turbo_s3 \
+  --device cuda \
+  --language-id ar \
+  --audio-prompt-path "$PROMPT_AUDIO" \
+  --text "مرحبا، هذا اختبار لمسار vllm الجديد." \
+  --vllm-model-dir runs/t3_vllm_export \
+  --vllm-gpu-memory-utilization 0.5 \
+  --vllm-max-model-len 2048 \
+  --no-vllm-prefix-caching \
+  --cfg-weight 0 \
+  --temperature 0 \
+  --max-new-tokens 128 \
+  --concurrency-levels 16 \
+  --output-dir benchmark_vllm_c16_no_prefix_cache
+```
+
+Interpretation:
+
+- if the nonzero rows stop cleanly after disabling prefix caching, the likely issue is in how the custom prompt-embed `T3` path interacts with `vLLM` prefix-cache reads
+- if they still length-cap, the next real fix is deeper stop-control parity, not caching
 
 ## 7. Mixed-Traffic Simulator
 
@@ -252,6 +281,17 @@ export PYTHONPATH=$PWD/external/chatterbox/src
 - older commands used `0.9`, which can reserve almost the whole A6000 and look like a leak
 - use `--vllm-gpu-memory-utilization 0.5` and `--vllm-max-model-len 2048` for this spike
 - the single-request path already works; if this still stalls after lowering both values, the next suspect is the threaded benchmark pattern rather than raw model loading
+
+`Only the first row in a batched run sounds right; later rows linger`
+
+- check the benchmark diagnostics first
+- if you see something like:
+  - `stage_t3_finish_reason_stop_mean ~= 0.0625`
+  - `stage_t3_finish_reason_length_mean ~= 0.9375`
+  - `stage_t3_generated_tokens=[89,128,128,...]`
+- that means row `0` stopped naturally and later rows length-capped
+- first rerun with `--no-vllm-prefix-caching`
+- if the problem persists, the remaining gap is the missing alignment-based EOS controller in the `vLLM` path
 
 `vLLM` command still using Hydra flags
 
