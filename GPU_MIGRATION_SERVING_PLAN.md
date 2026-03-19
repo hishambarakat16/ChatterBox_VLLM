@@ -17,12 +17,11 @@ Recommended clean env:
 conda create -n chatterbox-vllm python=3.11 -y
 conda activate chatterbox-vllm
 python -m pip install -U pip uv
+export UV_TORCH_BACKEND=cu128
 uv pip install vllm --torch-backend=auto
-uv pip install torchaudio librosa safetensors huggingface_hub transformers sentencepiece soundfile
+python -m pip install huggingface_hub safetensors librosa soundfile sentencepiece
 export PYTHONPATH=$PWD/external/chatterbox/src
 ```
-
-If `vLLM` is already installed in another env, just activate that env and set `PYTHONPATH`.
 
 Do not do this in the `chatterbox-vllm` env:
 
@@ -30,9 +29,7 @@ Do not do this in the `chatterbox-vllm` env:
 pip install -e external/chatterbox
 ```
 
-That package path pins older `torch`, `torchaudio`, `transformers`, `tokenizers`, and `pydantic` versions that conflict with current `vLLM`.
-
-If you need extra Chatterbox-side runtime deps later, install them additively without reinstalling the whole pinned package.
+That downgrades `torch`, `torchaudio`, `transformers`, `tokenizers`, and `pydantic` and breaks `vLLM`.
 
 ## 2. Pull Latest Code
 
@@ -76,7 +73,7 @@ PYTHONPATH=external/chatterbox/src python external/chatterbox/vllm_t3_preflight.
 Expected direction:
 
 - if this says `No module named 'vllm'`, your active env is wrong or `vllm` is not installed yet
-- fix that before trying runtime commands
+- if this says `libcudart.so.12`, your env pulled the wrong CUDA stack; recreate it and use `UV_TORCH_BACKEND=cu128`
 
 ## 5. Single-Request Check
 
@@ -135,7 +132,22 @@ PYTHONPATH=external/chatterbox/src python external/chatterbox/simulate_streaming
 ```bash
 conda activate chatterbox-vllm
 python -m pip install -U pip uv
+export UV_TORCH_BACKEND=cu128
 uv pip install vllm --torch-backend=auto
+export PYTHONPATH=$PWD/external/chatterbox/src
+```
+
+`libcudart.so.12: cannot open shared object file`
+
+```bash
+conda deactivate
+conda remove -n chatterbox-vllm --all -y
+conda create -n chatterbox-vllm python=3.11 -y
+conda activate chatterbox-vllm
+python -m pip install -U pip uv
+export UV_TORCH_BACKEND=cu128
+uv pip install vllm --torch-backend=auto
+python -m pip install huggingface_hub safetensors librosa soundfile sentencepiece
 export PYTHONPATH=$PWD/external/chatterbox/src
 ```
 
