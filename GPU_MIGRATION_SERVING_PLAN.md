@@ -206,10 +206,14 @@ Important:
 
 - for `vllm_turbo_s3`, the mixed-traffic simulator must also use admission-batched `generate_many_with_sessions(...)`
 - older threaded simulator behavior called `generate_with_session(...)` concurrently on the same offline `vLLM` engine and could crash with a CUDA device-side assert
-- current code batches queued arrivals into cohorts using the simulator's batching window and text-bucket settings
+- current code batches queued arrivals into cohorts using the simulator's batching window and a `vLLM`-oriented grouping policy
 - keep prefix caching disabled for this path as well
 - current mixed-shape prompt-embed traffic is not yet stable on the compiled / CUDA-graph `vLLM` path
 - for the simulator, use eager mode unless you are explicitly re-testing the compiled path
+- current simulator default for `vllm_turbo_s3`:
+  - group by prompt length only
+  - prefer the largest ready cohort
+  - do not force exact text-length singleton buckets unless you explicitly opt back into that older behavior
 
 ```bash
 PYTHONPATH=external/chatterbox/src python external/chatterbox/simulate_streaming_service.py \
@@ -318,10 +322,13 @@ export PYTHONPATH=$PWD/external/chatterbox/src
 - for the current spike, the safe simulator settings are:
   - `vllm_enable_prefix_caching=False`
   - `vllm_enforce_eager=True`
+- and the safe simulator grouping defaults are:
+  - prompt-length-only grouping
+  - largest-ready-cohort selection
 - current local read:
   - prefix caching was one separate incompatibility
-  - after that was fixed, the mixed-shape service simulator still showed compiled-path instability
-  - the current safe path is admission-batched cohorts plus eager mode
+  - after that was fixed, the old exact text-length bucketing still produced singleton sequential requests that did not match the working benchmark shape
+  - the current safe path is admission-batched cohorts plus eager mode, with grouping shaped around `vLLM` rather than the legacy custom scheduler
 
 `vLLM` command still using Hydra flags
 

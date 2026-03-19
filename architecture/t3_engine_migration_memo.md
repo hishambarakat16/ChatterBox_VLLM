@@ -113,6 +113,13 @@ New migration-spike conclusion:
       - keep prefix caching disabled
       - use eager mode for mixed-traffic `vllm_turbo_s3` simulation
       - treat the compiled path as a fixed-shape benchmark path for now
+  - and one more simulator-design correction:
+    - exact text-length bucketing was carrying over a custom-scheduler assumption that does not fit the current `vLLM` spike
+    - it produced singleton sequential service requests instead of real `vLLM`-style ready cohorts
+    - the simulator now defaults to:
+      - prompt-length-only grouping
+      - largest-ready-cohort selection
+      - old text-bucketing only as an explicit opt-in
   - however, stop-quality parity is still incomplete:
     - the current `vLLM` spike does not implement the original multilingual `AlignmentStreamAnalyzer`
     - that means some rows can hit the `max_new_tokens` cap instead of emitting a clean stop token

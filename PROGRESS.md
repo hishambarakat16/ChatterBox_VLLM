@@ -75,6 +75,13 @@ _Last updated: 2026-03-19_
         - keep prefix caching disabled
         - use eager mode for `vllm_turbo_s3` mixed-traffic simulation
         - treat the compiled path as a fixed-shape benchmark path for now, not the safe default for varied-text service simulation
+      - the next simulator read was that our service shim was still imposing the wrong batching policy around `vLLM`:
+        - exact text-length bucketing produced `singleton_request_fraction=1.0`
+        - so the "streaming" run was really a sequence of different-shape singleton requests, not a `vLLM`-friendly cohort scheduler
+      - updated simulator policy for `vllm_turbo_s3`:
+        - default to prompt-length-only grouping
+        - pick the largest ready cohort
+        - keep the old text-bucketing path only as an explicit opt-in
   - tightened the `vLLM` benchmark/save path to avoid unnecessary env churn:
     - benchmark / compare / simulator WAV outputs now save through `soundfile`
     - `torchcodec` is not required for the current `vLLM` migration workflow

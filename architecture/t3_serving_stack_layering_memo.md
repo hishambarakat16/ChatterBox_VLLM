@@ -184,6 +184,10 @@ Current local evidence from the `vLLM` spike:
     - keep prefix caching disabled
     - use eager mode for mixed-traffic `vllm_turbo_s3` simulation
     - treat the compiled path as a fixed-shape benchmark mode for now
+- and a fourth integration correction:
+  - exact text-length bucketing was overfitting the simulator to the old custom scheduler instead of to `vLLM`
+  - that policy produced `singleton_request_fraction=1.0` even when many requests were already queued
+  - the simulator now defaults to prompt-length-only grouping and chooses the largest ready cohort for `vllm_turbo_s3`
 
 So the current read is:
 
