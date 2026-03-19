@@ -40,6 +40,14 @@ Broader serving milestone:
 
 Status:
 
+- the `vLLM` cloud-env incident is now understood and documented in:
+  - [VLLM_ENV_INCIDENT.md](/home/ubuntu/ChatterBox_S3_Concurrency/VLLM_ENV_INCIDENT.md)
+  - current fix path is:
+    - `python -m pip install -e external/chatterbox --no-deps`
+    - `LD_LIBRARY_PATH=/usr/local/cuda/lib64...`
+    - `VLLM_WORKER_MULTIPROC_METHOD=spawn`
+    - custom `T3` registration through a `vLLM` worker plugin
+  - `vllm_t3_preflight.py` now reaches `engine_init=ok` on the cloud `RTX A6000` box against `runs/t3_hydra_ar_short_40k_h2_run1/vllm_t3_export`
 - the separate Hydra build/train/inference scaffolding exists locally in `external/chatterbox`
 - the first Hydra dataset has already been built from the best greedy Medusa corpus
 - the first Hydra `h2/l1` checkpoint has already been trained:

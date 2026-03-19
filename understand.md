@@ -49,6 +49,7 @@ Only log items that are clearly confirmed in discussion.
 - HM wants multiple agents to coordinate through shared repo docs rather than assume they are working alone.
 - HM wants agents to pick up from each other's latest notes when possible instead of restarting from stale context.
 - HM wants agents to leave short identity-based handoff notes such as `Agent 1`, `Agent 2`, and `Agent 3` when that identity is assigned.
+- HM wants serious environment/runtime incidents documented in the parent repo so later agents do not repeat them.
 
 ### Major Risks
 

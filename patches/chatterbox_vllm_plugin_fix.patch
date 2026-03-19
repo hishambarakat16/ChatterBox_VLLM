@@ -1,0 +1,47 @@
+From d222e536b3c1c4ddbbaf9bd0a61c51f658db111f Mon Sep 17 00:00:00 2001
+From: Hisham <hishambarakat16@gmail.com>
+Date: Thu, 19 Mar 2026 01:51:11 +0000
+Subject: [PATCH] register chatterbox t3 vllm plugin
+
+---
+ pyproject.toml                |  3 +++
+ src/chatterbox/vllm_plugin.py | 13 +++++++++++++
+ 2 files changed, 16 insertions(+)
+ create mode 100644 src/chatterbox/vllm_plugin.py
+
+diff --git a/pyproject.toml b/pyproject.toml
+index 999739f..9fcab25 100644
+--- a/pyproject.toml
++++ b/pyproject.toml
+@@ -26,6 +26,9 @@ dependencies = [
+     "omegaconf"
+ ]
+ 
++
++[project.entry-points."vllm.general_plugins"]
++chatterbox_t3 = "chatterbox.vllm_plugin:register_vllm_models"
+ [project.urls]
+ Homepage = "https://github.com/resemble-ai/chatterbox"
+ Repository = "https://github.com/resemble-ai/chatterbox"
+diff --git a/src/chatterbox/vllm_plugin.py b/src/chatterbox/vllm_plugin.py
+new file mode 100644
+index 0000000..77a1e5f
+--- /dev/null
++++ b/src/chatterbox/vllm_plugin.py
+@@ -0,0 +1,13 @@
++from __future__ import annotations
++
++from vllm import ModelRegistry
++
++from .vllm_t3_bridge import VLLM_T3_ARCHITECTURE
++
++
++def register_vllm_models() -> None:
++    """Register Chatterbox custom vLLM models in every spawned worker process."""
++    ModelRegistry.register_model(
++        VLLM_T3_ARCHITECTURE,
++        "chatterbox.vllm_t3_model:ChatterboxT3ForCausalLM",
++    )
+-- 
+2.34.1
+

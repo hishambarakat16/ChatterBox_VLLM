@@ -8,6 +8,7 @@ _Last updated: 2026-03-19_
 - do not use `--hydra-checkpoint-dir`
 - keep `--cfg-weight 0`
 - run these commands on the GPU server, not on the local edit machine
+- if preflight fails, read [VLLM_ENV_INCIDENT.md](/home/ubuntu/ChatterBox_S3_Concurrency/VLLM_ENV_INCIDENT.md) before changing packages or rebuilding the env
 
 ## 1. Create The `vLLM` Environment
 
@@ -20,6 +21,9 @@ python -m pip install -U pip uv
 export UV_TORCH_BACKEND=cu128
 uv pip install vllm --torch-backend=auto
 python -m pip install huggingface_hub safetensors librosa soundfile sentencepiece
+python -m pip install -e external/chatterbox --no-deps
+export LD_LIBRARY_PATH=/usr/local/cuda/lib64${LD_LIBRARY_PATH:+:$LD_LIBRARY_PATH}
+export VLLM_WORKER_MULTIPROC_METHOD=spawn
 export PYTHONPATH=$PWD/external/chatterbox/src
 ```
 
@@ -29,7 +33,15 @@ Do not do this in the `chatterbox-vllm` env:
 pip install -e external/chatterbox
 ```
 
-That downgrades `torch`, `torchaudio`, `transformers`, `tokenizers`, and `pydantic` and breaks `vLLM`.
+Use this instead:
+
+```bash
+python -m pip install -e external/chatterbox --no-deps
+```
+
+Plain editable install downgrades `torch`, `torchaudio`, `transformers`, `tokenizers`, and `pydantic` and breaks `vLLM`.
+The `--no-deps` editable install is the safe path here because it exposes the local `chatterbox` package and
+its `vLLM` plugin entry point without pulling the pinned Chatterbox dependency stack into the env.
 
 ## 2. Pull Latest Code
 
@@ -73,7 +85,9 @@ PYTHONPATH=external/chatterbox/src python external/chatterbox/vllm_t3_preflight.
 Expected direction:
 
 - if this says `No module named 'vllm'`, your active env is wrong or `vllm` is not installed yet
-- if this says `libcudart.so.12`, your env pulled the wrong CUDA stack; recreate it and use `UV_TORCH_BACKEND=cu128`
+- if this says `libcudart.so.12`, first export `LD_LIBRARY_PATH=/usr/local/cuda/lib64${LD_LIBRARY_PATH:+:$LD_LIBRARY_PATH}` and retry
+- if this says Thunder does not support `fork()`, export `VLLM_WORKER_MULTIPROC_METHOD=spawn` and retry
+- if this says `Model architectures ['ChatterboxT3ForCausalLM'] are not supported for now`, the local `chatterbox` package is not installed into the env with `--no-deps`, so the spawned vLLM worker did not load the custom model plugin
 
 ## 5. Single-Request Check
 
@@ -148,6 +162,9 @@ python -m pip install -U pip uv
 export UV_TORCH_BACKEND=cu128
 uv pip install vllm --torch-backend=auto
 python -m pip install huggingface_hub safetensors librosa soundfile sentencepiece
+python -m pip install -e external/chatterbox --no-deps
+export LD_LIBRARY_PATH=/usr/local/cuda/lib64${LD_LIBRARY_PATH:+:$LD_LIBRARY_PATH}
+export VLLM_WORKER_MULTIPROC_METHOD=spawn
 export PYTHONPATH=$PWD/external/chatterbox/src
 ```
 

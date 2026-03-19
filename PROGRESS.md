@@ -4,6 +4,13 @@ _Last updated: 2026-03-19_
 
 ## Done
 
+- documented the serious `vLLM` environment incident in [VLLM_ENV_INCIDENT.md](/home/ubuntu/ChatterBox_S3_Concurrency/VLLM_ENV_INCIDENT.md) so later agents do not repeat the same multi-cause failure
+- fixed the cloud `vLLM` preflight path end to end on the `RTX A6000` box:
+  - export `LD_LIBRARY_PATH=/usr/local/cuda/lib64${LD_LIBRARY_PATH:+:$LD_LIBRARY_PATH}`
+  - export `VLLM_WORKER_MULTIPROC_METHOD=spawn`
+  - install local Chatterbox into `chatterbox-vllm` with `python -m pip install -e external/chatterbox --no-deps`
+  - register the custom `ChatterboxT3ForCausalLM` architecture through a `vLLM` general plugin so spawned workers see it too
+- revalidated `external/chatterbox/vllm_t3_preflight.py` against `runs/t3_hydra_ar_short_40k_h2_run1/vllm_t3_export` and reached `engine_init=ok`
 - recorded the current `T3` scheduler scaling read from the selective stage timing breakdown:
   - the modeled Hydra compute pieces do **not** blow up with concurrency
   - `t3_hydra_verify_forward_s` and `t3_hydra_replay_forward_s` actually improve with batching
