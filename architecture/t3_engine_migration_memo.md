@@ -76,6 +76,22 @@ Most important conclusion:
   - Hydra verify/replay
   - speech-token EOS / filtering / multilingual setup
 
+New migration-spike conclusion:
+
+- `vLLM` is now proven as a feasible first engine target for the base multilingual `T3` path
+- the first apparent multi-request `vLLM` failure was an integration-shape mistake:
+  - we initially called the same offline `LLM.generate()` from multiple Python threads
+  - the correct offline `vLLM` pattern is one batched `generate(...)` call containing many prompts
+- once that was fixed, the `T3` stage batched correctly on the `RTX A6000` box:
+  - `stage_t3_batch_size_mean=4.0`
+  - `stage_t3_s_mean=0.9728`
+  - `wall_s=5.6751`
+  - `audio_seconds_per_second=3.3057`
+- updated local read:
+  - one shared `vLLM` engine can express logical request concurrency through admission batching
+  - this does **not** mean one model copy per request
+  - after batched `T3` worked, downstream `S3` became the larger remaining wall-time stage on the tested `c4` run
+
 ## Current Local T3 Boundary
 
 ## Current request path
@@ -230,6 +246,7 @@ That last point is decisive for Hydra planning.
 ```text
 Client
   -> custom session/app adapter
+     -> short admission/batching window
      -> build request-local T3 conditioning
      -> build prefill prompt_embeds
   -> vLLM engine
@@ -243,6 +260,16 @@ Client
   -> turbo S3
   -> waveform
 ```
+
+Important clarification:
+
+- for the offline `LLM` API, service-style concurrency should be expressed as:
+  - many independent requests arrive
+  - the adapter groups them into one batch
+  - the batch is sent through one shared `vLLM` engine
+  - outputs are then split back to the individual requests
+- this is still legitimate customer-visible concurrency
+- it is just implemented through admission batching rather than “N Python threads directly calling the same engine method at once”
 
 ## Thin adapter work
 
@@ -258,6 +285,10 @@ Keep:
 Add:
 
 - `vLLM` request builder for `T3`
+- admission batching in front of the shared engine
+- later, either:
+  - a custom request queue around one shared engine, or
+  - a move to `AsyncLLMEngine` / server-style integration for a true staggered online path
 - precompute `prompt_embeds` for the prefill path
 - output adapter from `vLLM` tokens back to current `speech_tokens`
 
@@ -839,4 +870,3 @@ What does not need to be true yet:
   - no CFG
   - `turbo S3` unchanged
   - benchmark mixed-traffic behavior directly
-

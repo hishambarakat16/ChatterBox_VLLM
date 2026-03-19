@@ -122,7 +122,8 @@ Client
 What the adapter does:
 
 - build request inputs
-- submit request to `vLLM`
+- collect compatible requests over a short admission window
+- submit the resulting batch to one shared `vLLM` engine
 - receive generated speech tokens
 - call `turbo S3`
 
@@ -134,11 +135,40 @@ Pros:
 
 - most mature general serving reference
 - continuous batching, chunked prefill, KV management, streaming lifecycle already built
+- the current local spike now confirms that this can work with the multilingual base `T3` path when the benchmark expresses concurrency as one batched `generate(...)` call
 
 Cons:
 
 - `T3` is not a standard text-only LLM path
 - Hydra speculative flow and `CFG` duplication may require nontrivial engine work
+- a true staggered online service still needs an admission queue or async-server style integration, not just the offline `LLM` class
+
+## What Concurrency Means On vLLM
+
+For this repo, the practical service meaning is:
+
+- many customer requests can arrive independently
+- each request still keeps its own session/state
+- a front-side adapter catches arrivals over a short window
+- it groups compatible requests into one batch
+- that batch goes to one shared `vLLM` engine
+- outputs are split back to the individual requests
+
+That is still real logical concurrency from the product perspective.
+
+It is just not “one separate model instance per customer request.”
+
+Current local evidence from the `vLLM` spike:
+
+- the shared `T3/vLLM` batch reached `stage_t3_batch_size_mean=4.0`
+- `stage_t3_s_mean=0.9728`
+- `wall_s=5.6751`
+- `audio_seconds_per_second=3.3057`
+
+So the current read is:
+
+- one shared engine can already serve multiple logical requests efficiently
+- after `T3` batching is fixed, the next larger remaining cost is downstream `S3`
 
 ## Option C: Replace T3 Serving Layer With SGLang
 

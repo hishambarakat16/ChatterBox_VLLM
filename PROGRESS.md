@@ -11,6 +11,26 @@ _Last updated: 2026-03-19_
   - install local Chatterbox into `chatterbox-vllm` with `python -m pip install -e external/chatterbox --no-deps`
   - register the custom `ChatterboxT3ForCausalLM` architecture through a `vLLM` general plugin so spawned workers see it too
 - revalidated `external/chatterbox/vllm_t3_preflight.py` against `runs/t3_hydra_ar_short_40k_h2_run1/vllm_t3_export` and reached `engine_init=ok`
+- completed the first working Hydra-free `vLLM + turbo S3` spike on the `RTX A6000` box:
+  - single-request `vllm_turbo_s3` now runs end to end with base multilingual `T3` weights and `turbo S3`
+  - the first apparent multi-request `vLLM` "freeze" was traced to an integration-shape bug, not a fundamental `vLLM` failure:
+    - we were incorrectly simulating concurrency by calling the same offline `LLM.generate()` from multiple Python threads
+    - the correct offline `vLLM` pattern is one batched `generate(...)` call containing many prompts
+  - fixed the benchmark so the `vLLM` path now batches independent request-local sessions into one prompt-embed batch before calling the shared engine
+  - confirmed on `concurrency=4` that the shared `T3/vLLM` stage is now truly batched:
+    - `stage_t3_batch_size_mean=4.0`
+    - `stage_t3_s_mean=0.9728`
+    - `wall_s=5.6751`
+    - `audio_seconds_total=18.76`
+    - `audio_seconds_per_second=3.3057`
+  - updated read:
+    - `vLLM` is using one shared engine, not one model copy per request
+    - the large `VRAM` reservation is mostly shared KV/cache reservation, not request duplication
+    - after batching `T3` correctly, the next dominant end-to-end cost is downstream `S3`
+  - new service-design read:
+    - logical customer concurrency can be implemented as an admission/batching layer in front of one shared `vLLM` engine
+    - the current offline benchmark now demonstrates that shape
+    - a true staggered online service path is still a separate next step and likely needs either `AsyncLLMEngine` or an explicit custom request queue around the shared engine
 - merged the missing engine-migration state from the older alternate-machine progress snapshot so this repo keeps that history too
 - added [t3_engine_migration_memo.md](/Users/hisham/Code/Bahraini_TTS/architecture/t3_engine_migration_memo.md) as the current engine-migration decision memo for the multilingual `T3 + Hydra + turbo S3` stack:
   - mapped the current `T3` boundary into `thin adapter`, `scheduler/runtime replacement`, `model boundary`, `Hydra`, `CFG`, and `speech-token / multilingual` concerns
@@ -425,10 +445,10 @@ _Last updated: 2026-03-19_
 
 Immediate branch:
 
-- carry the new Hydra win into the real runtime path
-- compare scheduled baseline vs scheduled + Hydra on the same machine
-- verify whether the single-request `24.34%` planner win produces a real concurrency/runtime gain
-- keep Medusa as the secondary baseline, not the leading candidate
+- keep the working Hydra-free `vLLM` spike as the active serving-migration branch
+- validate quality on saved benchmark WAVs
+- move from offline batched benchmarking toward a real staggered service-admission shape
+- keep scheduled `T3 + Hydra + turbo S3` as the main custom-runtime comparison baseline
 
 Broader project objective:
 
@@ -440,17 +460,21 @@ Main KPI:
 
 Immediate milestone:
 
-- make `2` simultaneous requests complete correctly on one shared model instance
+- make shared-engine service concurrency explicit and production-shaped on one GPU
 
 Status:
 
 - achieved in the `concurrent` A/B path first
 - improved further in the `scheduled` A/B path
 - correctness holds through `concurrency=4`
+- correctness now also holds for the first batched `vLLM` spike at `concurrency=4`
 - the scheduler has now been hardened and `VRAM` is measured
 - per-stage timing now exists and shows `T3` is still the larger current limiter
+- but the new `vLLM` spike changes the local read:
+  - once `T3` is handed to a shared batched `vLLM` engine correctly, `T3` is no longer the dominant wall-time stage on the tested `c4` run
+  - `S3` becomes the larger remaining end-to-end cost
 - the new latency KPIs show `T3` first-token time is much better than full audio-ready time
-- next target is to validate staggered arrivals, profile `T3` further, and then add true first-audio-chunk measurement
+- next target is to validate staggered arrivals with a real admission queue around the shared engine, then add true first-audio-chunk measurement
 - the alignment guard stays enabled while this profiling continues, because the recent experiments showed it is necessary for quality
 - the current best analyzer implementation is now the GPU-local scheduled version, but the attention-output fallback is still likely the next guard-path tax
 - the latest isolated A/B also says the next architecture work should look beyond the guard alone and into the base `T3` decode shape
@@ -474,8 +498,13 @@ More precise current read:
 - the old coarse `T3` lock is no longer the best path
 - the new `scheduled` path now proves batched `T3` serving improves performance without retraining
 - the hardened `scheduled` path now pushes GPU utilization materially higher than before
-- stage timing says active `T3` is still the larger current hot path
+- stage timing still says active `T3` is the larger hot path on the custom scheduled branch
+- the new `vLLM` spike refines that:
+  - the earlier `vLLM` stall was not “one model per request”
+  - it was the wrong offline API shape
+  - after switching to one batched `generate(...)` call, `T3` became much cheaper than before on the tested `c4` run
 - `S3` is still a secondary cost worth tracking, but not the first measured limiter
+- on the current `vLLM c4` spike, `S3` is now the larger remaining wall-time stage
 - the new latency-KPI read refines that:
   - `T3` first token is already decent at `c2` and still near target at `c4`
   - the bigger product gap is that audio is still only ready seconds later
@@ -492,16 +521,19 @@ More precise current read:
 4. make `concurrency=2` correct on one shared worker
 5. verify correctness beyond `2`
 6. keep the new scheduler path as the main runtime branch
-7. validate the hardened scheduler under staggered arrivals
-8. profile deeper inside `T3`, then add true first-audio-chunk measurement before shifting focus to `S3`
+7. keep the `vLLM` spike as the main engine-migration feasibility branch
+8. validate a staggered admission queue shape for the shared `vLLM` engine
+9. profile deeper inside the downstream `S3` path now that batched `T3` is working
+10. add true first-audio-chunk measurement before treating this as a production serving win
 
 ## Current Execution Path
 
 - use [CLOUD_GPU_QUICKSTART.md](/Users/hisham/Code/Bahraini_TTS/CLOUD_GPU_QUICKSTART.md)
+- use [GPU_MIGRATION_SERVING_PLAN.md](/Users/hisham/Code/Bahraini_TTS/GPU_MIGRATION_SERVING_PLAN.md) for the current `vLLM` spike path
 - initialize only `external/chatterbox`
 - use the forked `external/chatterbox` submodule directly
 - replace PyPI Perth with Perth from source
-- run [benchmark_multilingual_concurrency.py](/Users/hisham/Code/Bahraini_TTS/external/chatterbox/benchmark_multilingual_concurrency.py) for `baseline`, `streaming`, `concurrent`, and `scheduled`
+- run [benchmark_multilingual_concurrency.py](/Users/hisham/Code/Bahraini_TTS/external/chatterbox/benchmark_multilingual_concurrency.py) for `baseline`, `streaming`, `concurrent`, `scheduled`, and `vllm_turbo_s3`
 
 ## Current Baseline Note
 
@@ -535,11 +567,25 @@ Interpretation:
 - the new `concurrent` runtime confirms the short-term `T3` fix is enough to restore correctness at `concurrency=2`
 - the `concurrent` runtime also remains correct at `concurrency=4`
 - the new `scheduled` runtime proves multiple separate requests can be batched together for `T3`
+- the new `vLLM` spike now proves the same higher-level service idea with a shared external engine:
+  - independent request-local sessions can be admitted together
+  - the benchmark can batch them into one shared `vLLM` `generate(...)` call
+  - `stage_t3_batch_size_mean=4.0` on the tested `c4` run confirms the batch shape is real
+- the first `vLLM` stall taught an important architecture lesson:
+  - offline `vLLM` concurrency should be expressed as one batched request list
+  - it should not be simulated by multiple Python threads calling the same offline `LLM.generate()` independently
+- the current `vLLM` `c4` result is encouraging:
+  - `wall_s=5.6751`
+  - `audio_seconds_total=18.76`
+  - `audio_seconds_per_second=3.3057`
+  - `stage_t3_s_mean=0.9728`
+  - current read: shared batched `T3` is working, and downstream `S3` is now the bigger remaining stage
 - the remaining issue is now efficiency:
   - the scheduler now supports active-cohort rotation, but that still needs staggered-arrival validation
   - throughput now improves materially through `concurrency=4`
   - `VRAM` increase is now measured and not just guessed
-  - per-stage timing says active `T3` still dominates `S3`
+  - on the custom scheduled branch, active `T3` still dominates `S3`
+  - on the batched `vLLM` spike, the remaining large cost is `S3`
   - the new latency KPIs say the first-token story is much better than the audio-ready story
 - current best systems direction:
   - adapt an LLM-serving style `prefill + step + scheduler` design for `T3`

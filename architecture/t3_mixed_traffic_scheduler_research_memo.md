@@ -70,6 +70,26 @@ If forced into one sentence:
 
 > Keep the custom `T3` scheduler, make it behave more like `Orca/vLLM/Sarathi`, and only consider deeper runtime/backend replacement later if the improved scheduler policy still leaves large losses.
 
+New addendum from the current `vLLM` spike:
+
+- the first working `vLLM` benchmark confirms that the scheduler mental model is correct
+- “concurrency” for a shared engine should be understood as:
+  - many independent arrivals
+  - short admission window
+  - grouped batch into one shared engine
+  - split outputs back to the individual requests
+- the first apparent `vLLM` multi-request failure was caused by the wrong offline API shape:
+  - multiple Python threads calling the same offline `LLM.generate()` independently
+  - instead of one batched `generate(...)` call
+- once corrected, the tested `c4` batch produced:
+  - `stage_t3_batch_size_mean=4.0`
+  - `stage_t3_s_mean=0.9728`
+  - `wall_s=5.6751`
+  - `audio_seconds_per_second=3.3057`
+- updated local read:
+  - the shared-engine batching idea is valid
+  - the next remaining system bottleneck on that spike is downstream `S3`, not `T3`
+
 ## Local Problem Statement
 
 Current production-shaped problem:
