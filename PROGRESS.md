@@ -663,6 +663,12 @@ Interpretation:
     - embed-build shape issues
     - singleton shape transitions on one reused engine
     - mixed-shape batches inside one `generate_many_with_sessions(...)` call
+  - the current strongest follow-up suspect is `chunked_prefill`:
+    - `82 -> 99` on one reused engine fails
+    - `99` alone works
+    - `99 -> 99` works
+    - `99 -> 82` works
+    - so the next test is whether disabling `vLLM` chunked prefill removes the upward shape-transition failure
 
 ## Not Current Work
 
