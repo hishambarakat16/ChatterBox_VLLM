@@ -24,6 +24,16 @@ export PYTHONPATH=$PWD/external/chatterbox/src
 
 If `vLLM` is already installed in another env, just activate that env and set `PYTHONPATH`.
 
+Do not do this in the `chatterbox-vllm` env:
+
+```bash
+pip install -e external/chatterbox
+```
+
+That package path pins older `torch`, `torchaudio`, `transformers`, `tokenizers`, and `pydantic` versions that conflict with current `vLLM`.
+
+If you need extra Chatterbox-side runtime deps later, install them additively without reinstalling the whole pinned package.
+
 ## 2. Pull Latest Code
 
 ```bash
