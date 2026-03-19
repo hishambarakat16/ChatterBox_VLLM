@@ -5,10 +5,13 @@ _Last updated: 2026-03-19_
 ## Rules
 
 - this `vLLM` spike is Hydra-free
+- use the base multilingual `T3` weights, not Hydra heads
 - do not use `--hydra-checkpoint-dir`
 - keep `--cfg-weight 0`
 - run these commands on the GPU server, not on the local edit machine
 - if preflight fails, read [VLLM_ENV_INCIDENT.md](/home/ubuntu/ChatterBox_S3_Concurrency/VLLM_ENV_INCIDENT.md) before changing packages or rebuilding the env
+- the most likely base checkpoint dir on Thunder is:
+  `~/.cache/huggingface/hub/models--ResembleAI--chatterbox/snapshots/05e904af2b5c7f8e482687a9d7336c5c824467d9`
 
 ## 1. Create The `vLLM` Environment
 
@@ -53,32 +56,33 @@ git submodule update --init external/chatterbox
 
 ## 3. Export The `vLLM` Model Package
 
-If you do not have a local base multilingual `T3` checkpoint dir, use pretrained fallback:
+Recommended if the base multilingual checkpoint is already cached on the server:
+
+```bash
+PYTHONPATH=external/chatterbox/src python external/chatterbox/export_vllm_t3_model.py \
+  --base-checkpoint-dir ~/.cache/huggingface/hub/models--ResembleAI--chatterbox/snapshots/05e904af2b5c7f8e482687a9d7336c5c824467d9 \
+  --output-dir runs/t3_vllm_export
+```
+
+Fallback if that cache path does not exist:
 
 ```bash
 PYTHONPATH=external/chatterbox/src python external/chatterbox/export_vllm_t3_model.py \
   --from-pretrained \
-  --output-dir runs/t3_hydra_ar_short_40k_h2_run1/vllm_t3_export
-```
-
-If you do have the base multilingual checkpoint locally:
-
-```bash
-PYTHONPATH=external/chatterbox/src python external/chatterbox/export_vllm_t3_model.py \
-  --base-checkpoint-dir /path/to/base_multilingual_chatterbox_ckpt \
-  --output-dir runs/t3_hydra_ar_short_40k_h2_run1/vllm_t3_export
+  --output-dir runs/t3_vllm_export
 ```
 
 Important:
 
 - a Hydra run dir that only contains `t3_hydra_heads.safetensors` is not a valid base `T3` checkpoint for `vLLM`
 - `vLLM` needs the base multilingual `T3` weights file `t3_mtl23ls_v2.safetensors`
+- older examples used `runs/t3_hydra_*` only as folder names; that was historical naming, not Hydra runtime usage
 
 ## 4. Preflight
 
 ```bash
 PYTHONPATH=external/chatterbox/src python external/chatterbox/vllm_t3_preflight.py \
-  --model-dir runs/t3_hydra_ar_short_40k_h2_run1/vllm_t3_export \
+  --model-dir runs/t3_vllm_export \
   --gpu-memory-utilization 0.85
 ```
 
@@ -98,7 +102,7 @@ PYTHONPATH=external/chatterbox/src python external/chatterbox/compare_multilingu
   --language-id ar \
   --audio-prompt-path "$PROMPT_AUDIO" \
   --text "مرحبا، هذا اختبار لمسار vllm الجديد." \
-  --vllm-model-dir runs/t3_hydra_ar_short_40k_h2_run1/vllm_t3_export \
+  --vllm-model-dir runs/t3_vllm_export \
   --cfg-weight 0 \
   --temperature 0 \
   --max-new-tokens 128
@@ -113,7 +117,7 @@ PYTHONPATH=external/chatterbox/src python external/chatterbox/benchmark_multilin
   --language-id ar \
   --audio-prompt-path "$PROMPT_AUDIO" \
   --text "مرحبا، هذا اختبار لمسار vllm الجديد." \
-  --vllm-model-dir runs/t3_hydra_ar_short_40k_h2_run1/vllm_t3_export \
+  --vllm-model-dir runs/t3_vllm_export \
   --cfg-weight 0 \
   --temperature 0 \
   --max-new-tokens 128 \
@@ -128,7 +132,7 @@ PYTHONPATH=external/chatterbox/src python external/chatterbox/simulate_streaming
   --device cuda \
   --language-id ar \
   --audio-prompt-path "$PROMPT_AUDIO" \
-  --vllm-model-dir runs/t3_hydra_ar_short_40k_h2_run1/vllm_t3_export \
+  --vllm-model-dir runs/t3_vllm_export \
   --cfg-weight 0 \
   --temperature 0 \
   --max-new-tokens 128 \
@@ -171,8 +175,9 @@ export PYTHONPATH=$PWD/external/chatterbox/src
 `Received a Hydra-head checkpoint directory`
 
 - you pointed at a Hydra-only run dir
-- rerun export with `--from-pretrained`
-- or pass `--base-checkpoint-dir /path/to/base_multilingual_chatterbox_ckpt`
+- pass the base multilingual checkpoint dir instead
+- on Thunder, that is most likely:
+  `~/.cache/huggingface/hub/models--ResembleAI--chatterbox/snapshots/05e904af2b5c7f8e482687a9d7336c5c824467d9`
 
 `vLLM` command still using Hydra flags
 
