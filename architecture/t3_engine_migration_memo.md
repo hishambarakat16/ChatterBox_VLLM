@@ -106,6 +106,13 @@ New migration-spike conclusion:
   - the same admission rule also applies to the mixed-traffic simulator:
     - threaded `generate_with_session(...)` calls against the same offline engine are invalid
     - the simulator must queue arrivals and issue batched `generate_many_with_sessions(...)` cohorts instead
+  - later simulator debugging exposed one more rule for the current spike:
+    - mixed-shape prompt-embed service traffic is not yet stable on the compiled / CUDA-graph `vLLM` path
+    - even after disabling prefix caching and fixing the threaded-call bug, a later singleton request with a different prompt/text shape could still trigger a CUDA device-side assert
+    - current safe operating rule:
+      - keep prefix caching disabled
+      - use eager mode for mixed-traffic `vllm_turbo_s3` simulation
+      - treat the compiled path as a fixed-shape benchmark path for now
   - however, stop-quality parity is still incomplete:
     - the current `vLLM` spike does not implement the original multilingual `AlignmentStreamAnalyzer`
     - that means some rows can hit the `max_new_tokens` cap instead of emitting a clean stop token

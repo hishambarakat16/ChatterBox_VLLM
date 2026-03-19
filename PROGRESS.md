@@ -68,6 +68,13 @@ _Last updated: 2026-03-19_
       - the simulator also had to stop calling `generate_with_session(...)` concurrently on the same offline engine
       - `vllm_turbo_s3` simulator traffic now goes through an admission-batched `generate_many_with_sessions(...)` path
     - a true staggered online service path is still a separate next step and likely needs either `AsyncLLMEngine` or an explicit custom request queue around the shared engine
+    - later mixed-traffic simulator debugging exposed another distinct runtime rule:
+      - even with prefix caching disabled and admission batching fixed, the compiled / CUDA-graph `vLLM` path is not yet stable for varied prompt-embed shapes across successive service requests
+      - the first request can succeed and a later singleton request with a different text/prompt shape can still die with a CUDA device-side assert
+      - current operating rule:
+        - keep prefix caching disabled
+        - use eager mode for `vllm_turbo_s3` mixed-traffic simulation
+        - treat the compiled path as a fixed-shape benchmark path for now, not the safe default for varied-text service simulation
   - tightened the `vLLM` benchmark/save path to avoid unnecessary env churn:
     - benchmark / compare / simulator WAV outputs now save through `soundfile`
     - `torchcodec` is not required for the current `vLLM` migration workflow

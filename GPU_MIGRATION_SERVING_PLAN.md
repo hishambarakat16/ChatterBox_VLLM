@@ -208,6 +208,8 @@ Important:
 - older threaded simulator behavior called `generate_with_session(...)` concurrently on the same offline `vLLM` engine and could crash with a CUDA device-side assert
 - current code batches queued arrivals into cohorts using the simulator's batching window and text-bucket settings
 - keep prefix caching disabled for this path as well
+- current mixed-shape prompt-embed traffic is not yet stable on the compiled / CUDA-graph `vLLM` path
+- for the simulator, use eager mode unless you are explicitly re-testing the compiled path
 
 ```bash
 PYTHONPATH=external/chatterbox/src python external/chatterbox/simulate_streaming_service.py \
@@ -218,6 +220,7 @@ PYTHONPATH=external/chatterbox/src python external/chatterbox/simulate_streaming
   --vllm-model-dir runs/t3_vllm_export \
   --vllm-gpu-memory-utilization 0.5 \
   --vllm-max-model-len 2048 \
+  --vllm-enforce-eager \
   --cfg-weight 0 \
   --temperature 0 \
   --max-new-tokens 128 \
@@ -308,6 +311,17 @@ export PYTHONPATH=$PWD/external/chatterbox/src
 - that means row `0` stopped naturally and later rows length-capped
 - for the current spike, treat that as a prefix-caching incompatibility and keep prefix caching disabled
 - if the problem persists even with prefix caching disabled, the remaining gap is the missing alignment-based EOS controller in the `vLLM` path
+
+`torch.AcceleratorError: CUDA error: device-side assert triggered` in mixed-traffic simulation
+
+- if this happens after one or a few successful `vllm_turbo_s3` requests, check the printed runtime flags first
+- for the current spike, the safe simulator settings are:
+  - `vllm_enable_prefix_caching=False`
+  - `vllm_enforce_eager=True`
+- current local read:
+  - prefix caching was one separate incompatibility
+  - after that was fixed, the mixed-shape service simulator still showed compiled-path instability
+  - the current safe path is admission-batched cohorts plus eager mode
 
 `vLLM` command still using Hydra flags
 

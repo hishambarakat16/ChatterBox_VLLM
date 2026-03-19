@@ -177,6 +177,13 @@ Current local evidence from the `vLLM` spike:
 - the mixed-traffic simulator exposed a second integration rule:
   - even with prefix caching disabled, calling `generate_with_session(...)` concurrently on the same offline engine is invalid
   - the correct simulator shape is admission-batched `generate_many_with_sessions(...)` cohorts
+- and a third current constraint:
+  - mixed-shape prompt-embed traffic is not yet stable on the compiled / CUDA-graph `vLLM` path
+  - after the threading and prefix-cache fixes, a later singleton request with a different request shape could still trigger a CUDA device-side assert
+  - current operating rule:
+    - keep prefix caching disabled
+    - use eager mode for mixed-traffic `vllm_turbo_s3` simulation
+    - treat the compiled path as a fixed-shape benchmark mode for now
 
 So the current read is:
 
