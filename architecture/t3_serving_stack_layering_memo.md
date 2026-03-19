@@ -164,11 +164,20 @@ Current local evidence from the `vLLM` spike:
 - `stage_t3_s_mean=0.9728`
 - `wall_s=5.6751`
 - `audio_seconds_per_second=3.3057`
+- the same pattern continued at `c16`:
+  - `stage_t3_batch_size_mean=16.0`
+  - `stage_t3_s_mean=1.0512`
+  - `wall_s=8.1052`
+  - `audio_seconds_per_second=9.9096`
 
 So the current read is:
 
 - one shared engine can already serve multiple logical requests efficiently
 - after `T3` batching is fixed, the next larger remaining cost is downstream `S3`
+- but quality parity is not done yet:
+  - the current `vLLM` path does not carry over the original multilingual alignment-based EOS controller
+  - some batched rows therefore run into the token cap and produce lingering noisy tails
+  - the current code now exposes stop diagnostics and applies a conservative repetitive-tail trim for length-capped rows, but that is still a mitigation rather than true parity
 
 ## Option C: Replace T3 Serving Layer With SGLang
 

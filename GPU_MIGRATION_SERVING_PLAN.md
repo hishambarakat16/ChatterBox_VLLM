@@ -154,6 +154,13 @@ Important:
 - for `vllm_turbo_s3`, this benchmark should use one batched offline `generate(...)` call per concurrency level, not multiple Python threads each calling `generate()` on the same `LLM`
 - that is the correct shape for the offline `vLLM` API
 - a staggered real-service simulation is a different problem and likely needs `AsyncLLMEngine` or an explicit admission queue around a shared engine
+- inspect the stop diagnostics in the benchmark output:
+  - `stage_t3_finish_reason_length_mean > 0` means some rows hit the token cap instead of stopping cleanly
+  - `stage_t3_tail_trimmed_mean > 0` means the fallback repetitive-tail trim activated on length-capped rows
+- current quality caveat:
+  - the present `vLLM` spike does not yet replicate the original multilingual alignment-based EOS controller
+  - that means throughput can look excellent while some saved WAVs still show lingering noisy tails
+  - the current code only adds diagnostics plus a conservative repetitive-tail trim for length-capped rows; this is mitigation, not full parity
 
 ## 7. Mixed-Traffic Simulator
 

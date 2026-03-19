@@ -87,10 +87,23 @@ New migration-spike conclusion:
   - `stage_t3_s_mean=0.9728`
   - `wall_s=5.6751`
   - `audio_seconds_per_second=3.3057`
+- the batching shape still holds at larger batch sizes:
+  - `stage_t3_batch_size_mean=16.0`
+  - `stage_t3_s_mean=1.0512`
+  - `wall_s=8.1052`
+  - `audio_seconds_per_second=9.9096`
 - updated local read:
   - one shared `vLLM` engine can express logical request concurrency through admission batching
   - this does **not** mean one model copy per request
   - after batched `T3` worked, downstream `S3` became the larger remaining wall-time stage on the tested `c4` run
+  - however, stop-quality parity is still incomplete:
+    - the current `vLLM` spike does not implement the original multilingual `AlignmentStreamAnalyzer`
+    - that means some rows can hit the `max_new_tokens` cap instead of emitting a clean stop token
+    - saved WAVs showed lingering noisy tails on some batched outputs
+    - current mitigation is only a fallback:
+      - expose stop diagnostics per row
+      - trim clearly repetitive suffixes when a row ends by length cap
+    - this is not equivalent to full decode-time alignment-stop control
 
 ## Current Local T3 Boundary
 

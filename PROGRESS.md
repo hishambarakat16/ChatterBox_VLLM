@@ -23,10 +23,26 @@ _Last updated: 2026-03-19_
     - `wall_s=5.6751`
     - `audio_seconds_total=18.76`
     - `audio_seconds_per_second=3.3057`
+  - pushed the same batching shape to `concurrency=16`:
+    - `stage_t3_batch_size_mean=16.0`
+    - `stage_t3_s_mean=1.0512`
+    - `wall_s=8.1052`
+    - `audio_seconds_total=80.32`
+    - `audio_seconds_per_second=9.9096`
   - updated read:
     - `vLLM` is using one shared engine, not one model copy per request
     - the large `VRAM` reservation is mostly shared KV/cache reservation, not request duplication
     - after batching `T3` correctly, the next dominant end-to-end cost is downstream `S3`
+  - quality caveat discovered from saved WAV inspection:
+    - some batched `vLLM` outputs linger past the intended speech ending with noisy tails
+    - the main reason is that the current `vLLM` spike does not yet have parity with the original multilingual `AlignmentStreamAnalyzer` stop controller
+    - `drop_invalid_tokens()` is only post-generation cleanup and cannot replace the decode-time EOS controller
+    - current mitigation:
+      - record per-row stop diagnostics (`stop` vs `length` cap)
+      - conservatively trim clearly repetitive suffixes only when a row ends by length cap
+    - current read:
+      - throughput is very strong
+      - quality / stop-control parity is the main remaining blocker before treating this as a production-ready migration
   - new service-design read:
     - logical customer concurrency can be implemented as an admission/batching layer in front of one shared `vLLM` engine
     - the current offline benchmark now demonstrates that shape
