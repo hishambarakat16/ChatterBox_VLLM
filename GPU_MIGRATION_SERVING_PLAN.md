@@ -1,4 +1,4 @@
-# GPU Migration Serving Plan
+# GPU MIGRATION SERVING PLAN
 
 _Last updated: 2026-03-19_
 
@@ -155,7 +155,7 @@ This is good enough for a first feasibility spike, but not yet a production-corr
 
 The migration spike adds:
 
-- [gpu_migration_serving_plan.md](/Users/hisham/Code/Bahraini_TTS/architecture/gpu_migration_serving_plan.md)
+- [GPU_MIGRATION_SERVING_PLAN.md](/Users/hisham/Code/Bahraini_TTS/GPU_MIGRATION_SERVING_PLAN.md)
 - [vllm_t3_model.py](/Users/hisham/Code/Bahraini_TTS/external/chatterbox/src/chatterbox/vllm_t3_model.py)
 - [vllm_t3_bridge.py](/Users/hisham/Code/Bahraini_TTS/external/chatterbox/src/chatterbox/vllm_t3_bridge.py)
 - [worker_vllm.py](/Users/hisham/Code/Bahraini_TTS/external/chatterbox/src/chatterbox/runtime/worker_vllm.py)
