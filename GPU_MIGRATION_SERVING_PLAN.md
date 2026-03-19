@@ -64,6 +64,8 @@ Usually not required for Arabic:
 - `pykakasi` only matters for Japanese text normalization
 - `spacy-pkuseg` only matters for Chinese segmentation
 - `perth` is now optional and falls back to a passthrough watermarker if missing
+- `torchcodec` is not required for the benchmark/save flow on current code because WAV outputs are written through `soundfile`
+  - do not add `torchcodec` unless you intentionally move the workflow back to `torchaudio.save()`
 
 ## 2. Pull Latest Code
 
@@ -211,6 +213,13 @@ conda activate chatterbox-vllm
 python -m pip install conformer==0.3.2 diffusers==0.29.0 omegaconf s3tokenizer
 export PYTHONPATH=$PWD/external/chatterbox/src
 ```
+
+`TorchCodec is required for save_with_torchcodec`
+
+- pull latest code first
+- current benchmark and simulator save WAVs through `soundfile`, not `torchaudio.save()`
+- no extra package should be needed if you are on the latest repo state
+- avoid installing `torchcodec` into the working `vLLM` env unless you have a separate reason to depend on the torchaudio codec path
 
 `No module named 'chatterbox.vllm_plugin'`
 

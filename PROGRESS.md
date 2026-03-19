@@ -31,6 +31,10 @@ _Last updated: 2026-03-19_
     - logical customer concurrency can be implemented as an admission/batching layer in front of one shared `vLLM` engine
     - the current offline benchmark now demonstrates that shape
     - a true staggered online service path is still a separate next step and likely needs either `AsyncLLMEngine` or an explicit custom request queue around the shared engine
+  - tightened the `vLLM` benchmark/save path to avoid unnecessary env churn:
+    - benchmark / compare / simulator WAV outputs now save through `soundfile`
+    - `torchcodec` is not required for the current `vLLM` migration workflow
+    - this keeps the dedicated `chatterbox-vllm` env leaner and avoids a new media-codec dependency just for artifact export
 - merged the missing engine-migration state from the older alternate-machine progress snapshot so this repo keeps that history too
 - added [t3_engine_migration_memo.md](/Users/hisham/Code/Bahraini_TTS/architecture/t3_engine_migration_memo.md) as the current engine-migration decision memo for the multilingual `T3 + Hydra + turbo S3` stack:
   - mapped the current `T3` boundary into `thin adapter`, `scheduler/runtime replacement`, `model boundary`, `Hydra`, `CFG`, and `speech-token / multilingual` concerns
