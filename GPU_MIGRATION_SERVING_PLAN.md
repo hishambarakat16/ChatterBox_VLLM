@@ -147,6 +147,12 @@ PYTHONPATH=external/chatterbox/src python external/chatterbox/benchmark_multilin
   --concurrency-levels 1 2 4 8
 ```
 
+Important:
+
+- for `vllm_turbo_s3`, this benchmark should use one batched offline `generate(...)` call per concurrency level, not multiple Python threads each calling `generate()` on the same `LLM`
+- that is the correct shape for the offline `vLLM` API
+- a staggered real-service simulation is a different problem and likely needs `AsyncLLMEngine` or an explicit admission queue around a shared engine
+
 ## 7. Mixed-Traffic Simulator
 
 ```bash
