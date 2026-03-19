@@ -264,6 +264,63 @@ PYTHONPATH=external/chatterbox/src python external/chatterbox/simulate_streaming
   --output-dir streaming_service_sim_vllm_fixed_text
 ```
 
+Prompt-embed diagnosis commands:
+
+- inspect the real prompt-embed contract without calling `vLLM.generate(...)`:
+
+```bash
+PYTHONPATH=external/chatterbox/src python external/chatterbox/diagnose_vllm_prompt_embeds.py \
+  --mode inspect \
+  --device cuda \
+  --language-id ar \
+  --audio-prompt-path "$PROMPT_AUDIO" \
+  --texts-file external/chatterbox/arabic_streaming_sentences.txt \
+  --text-limit 8 \
+  --vllm-model-dir runs/t3_vllm_export \
+  --vllm-gpu-memory-utilization 0.5 \
+  --vllm-max-model-len 2048 \
+  --no-vllm-prefix-caching \
+  --vllm-enforce-eager \
+  --output-json prompt_embed_inspect.json
+```
+
+- test whether singleton requests with changing prompt-embed shapes kill a reused engine:
+
+```bash
+PYTHONPATH=external/chatterbox/src python external/chatterbox/diagnose_vllm_prompt_embeds.py \
+  --mode sequential_singletons \
+  --device cuda \
+  --language-id ar \
+  --audio-prompt-path "$PROMPT_AUDIO" \
+  --texts-file external/chatterbox/arabic_streaming_sentences.txt \
+  --text-limit 8 \
+  --vllm-model-dir runs/t3_vllm_export \
+  --vllm-gpu-memory-utilization 0.5 \
+  --vllm-max-model-len 2048 \
+  --no-vllm-prefix-caching \
+  --vllm-enforce-eager \
+  --output-json prompt_embed_singletons.json
+```
+
+- test whether mixed shapes already fail inside one batched `generate_many_with_sessions(...)` call:
+
+```bash
+PYTHONPATH=external/chatterbox/src python external/chatterbox/diagnose_vllm_prompt_embeds.py \
+  --mode batched \
+  --device cuda \
+  --language-id ar \
+  --audio-prompt-path "$PROMPT_AUDIO" \
+  --texts-file external/chatterbox/arabic_streaming_sentences.txt \
+  --text-limit 8 \
+  --batch-size 2 \
+  --vllm-model-dir runs/t3_vllm_export \
+  --vllm-gpu-memory-utilization 0.5 \
+  --vllm-max-model-len 2048 \
+  --no-vllm-prefix-caching \
+  --vllm-enforce-eager \
+  --output-json prompt_embed_batched.json
+```
+
 ## Common Failures
 
 `No module named 'vllm'`

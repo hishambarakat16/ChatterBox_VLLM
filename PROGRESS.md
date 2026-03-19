@@ -649,6 +649,20 @@ Interpretation:
   - adapt an LLM-serving style `prefill + step + scheduler` design for `T3`
   - do not treat the core scheduler idea itself as novel
   - treat the speech-specific adaptation and evaluation as the real opportunity
+- current `vLLM` prompt-embed read is now narrower than "streaming is broken":
+  - fixed-text simulator traffic succeeds on the same shared `vLLM` engine
+  - rotating-text simulator traffic still crashes
+  - the remaining suspect is the custom `prompt_embeds` integration under changing request shapes
+  - new prompt-embed diagnostics now expose the real per-request contract:
+    - `t3_text_token_len`
+    - `t3_prompt_speech_token_len`
+    - `t3_cond_seq_len`
+    - `t3_prompt_embed_seq_len`
+    - `t3_prompt_embed_hidden_size`
+  - use [diagnose_vllm_prompt_embeds.py](/Users/hisham/Code/Bahraini_TTS/external/chatterbox/diagnose_vllm_prompt_embeds.py) to separate:
+    - embed-build shape issues
+    - singleton shape transitions on one reused engine
+    - mixed-shape batches inside one `generate_many_with_sessions(...)` call
 
 ## Not Current Work
 
