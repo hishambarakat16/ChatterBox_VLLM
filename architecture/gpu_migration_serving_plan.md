@@ -14,6 +14,11 @@ This plan is intentionally narrow:
 - defer `Hydra` and `CFG` for the first `vLLM` spike
 - isolate package risk with a separate Python environment first
 
+Decision for this spike:
+
+- the `vLLM` path is explicitly Hydra-free
+- keep Hydra only on the existing scheduled runtime while the `vLLM` migration is validated
+
 Primary local references:
 
 - [t3_engine_migration_memo.md](/Users/hisham/Code/Bahraini_TTS/architecture/t3_engine_migration_memo.md)
