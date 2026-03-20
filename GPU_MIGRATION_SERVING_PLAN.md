@@ -135,8 +135,44 @@ PYTHONPATH=external/chatterbox/src python external/chatterbox/compare_multilingu
   --vllm-max-model-len 2048 \
   --cfg-weight 0 \
   --temperature 0 \
+  --repetition-penalty 1.0 \
   --max-new-tokens 128
 ```
+
+Current safest rerun shape after the internal-prompt debugging pass:
+
+```bash
+conda activate chatterbox-vllm
+export HF_TOKEN=...
+export LD_LIBRARY_PATH=/usr/local/cuda/lib64${LD_LIBRARY_PATH:+:$LD_LIBRARY_PATH}
+export VLLM_WORKER_MULTIPROC_METHOD=spawn
+cd /home/ubuntu/ChatterBox_S3_Concurrency
+
+PYTHONPATH=external/chatterbox/src \
+python external/chatterbox/compare_multilingual_runtime.py \
+  --impl vllm_turbo_s3 \
+  --device cuda \
+  --language-id ar \
+  --audio-prompt-path "$PROMPT_AUDIO" \
+  --text "مرحبا، هذا اختبار لمسار vllm الجديد." \
+  --vllm-model-dir runs/t3_vllm_export \
+  --vllm-gpu-memory-utilization 0.45 \
+  --vllm-max-model-len 2048 \
+  --no-vllm-prefix-caching \
+  --vllm-enforce-eager \
+  --cfg-weight 0 \
+  --temperature 0 \
+  --repetition-penalty 1.0 \
+  --max-new-tokens 128
+```
+
+Why this exact shape:
+
+- `--no-vllm-prefix-caching` stays on because prefix caching previously caused batch-row-specific stop failures on this path
+- `--vllm-enforce-eager` stays on because mixed-shape traffic is not yet stable on the compiled / CUDA-graph path
+- `--repetition-penalty 1.0` is important on this internal-prompt `vLLM` path because the default penalty kernels are not safe with the mixed prompt-token id space
+- the repo now defaults `vllm_turbo_s3` to `repetition_penalty=1.0`, but keeping it explicit in bring-up commands is still the safest choice
+- if you intentionally raise repetition penalty above `1.0`, expect the old sampler crash to reappear unless that kernel-level incompatibility is fixed
 
 ## 6. Concurrency Benchmark
 
@@ -152,6 +188,7 @@ PYTHONPATH=external/chatterbox/src python external/chatterbox/benchmark_multilin
   --vllm-max-model-len 2048 \
   --cfg-weight 0 \
   --temperature 0 \
+  --repetition-penalty 1.0 \
   --max-new-tokens 128 \
   --concurrency-levels 1 2 4 8
 ```
@@ -195,6 +232,7 @@ PYTHONPATH=external/chatterbox/src python external/chatterbox/benchmark_multilin
   --no-vllm-prefix-caching \
   --cfg-weight 0 \
   --temperature 0 \
+  --repetition-penalty 1.0 \
   --max-new-tokens 128 \
   --concurrency-levels 16 \
   --output-dir benchmark_vllm_c16_no_prefix_cache
@@ -242,6 +280,7 @@ PYTHONPATH=external/chatterbox/src python external/chatterbox/simulate_streaming
   --vllm-enforce-eager \
   --cfg-weight 0 \
   --temperature 0 \
+  --repetition-penalty 1.0 \
   --max-new-tokens 128 \
   --concurrency-levels 1 2 4 8 \
   --rounds-per-level 2 \

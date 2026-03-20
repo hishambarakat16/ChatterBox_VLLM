@@ -127,6 +127,30 @@ _Last updated: 2026-03-20_
     - benchmark / compare / simulator WAV outputs now save through `soundfile`
     - `torchcodec` is not required for the current `vLLM` migration workflow
     - this keeps the dedicated `chatterbox-vllm` env leaner and avoids a new media-codec dependency just for artifact export
+- validated the first non-breaking fixed-text staggered `vllm_turbo_s3` service-simulator run after the internal-prompt penalty fix:
+  - command shape used:
+    - `simulate_streaming_service.py`
+    - `--impl vllm_turbo_s3`
+    - `--fixed-text "مرحبا، هذا اختبار لمسار vllm الجديد."`
+    - `--no-vllm-prefix-caching`
+    - `--vllm-enforce-eager`
+    - `--repetition-penalty 1.0`
+    - `--warmup-runs 1`
+    - `--rounds-per-level 1`
+    - `--stagger-ms 250`
+  - representative saved audio sounded fine on manual listening
+  - stability held through `concurrency=8` with `errors=[]`
+
+| concurrency | num_success | mean_audio_ready_s | p95_audio_ready_s | audio_seconds_per_second | mean_t3_wait_s | mean_t3_active_s | mean_s3_s | errors |
+| --- | ---: | ---: | ---: | ---: | ---: | ---: | ---: | --- |
+| 4 | 4 | 7.9140 | 9.3288 | 0.3206 | 2.4776 | 5.0876 | 0.1933 | `[]` |
+| 8 | 8 | 11.3861 | 12.5681 | 0.4542 | 2.4855 | 8.1048 | 0.2094 | `[]` |
+
+  - current read:
+    - the path is finally stable under staggered service-style load for this fixed-text test
+    - `c8` still improves throughput over `c4`
+    - but audio-ready latency also rises materially, so this is a throughput-vs-latency tradeoff rather than a free win
+
 - merged the missing engine-migration state from the older alternate-machine progress snapshot so this repo keeps that history too
 - added [t3_engine_migration_memo.md](/Users/hisham/Code/Bahraini_TTS/architecture/t3_engine_migration_memo.md) as the current engine-migration decision memo for the multilingual `T3 + Hydra + turbo S3` stack:
   - mapped the current `T3` boundary into `thin adapter`, `scheduler/runtime replacement`, `model boundary`, `Hydra`, `CFG`, and `speech-token / multilingual` concerns
