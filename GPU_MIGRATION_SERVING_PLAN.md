@@ -1,6 +1,6 @@
 # GPU MIGRATION SERVING PLAN
 
-_Last updated: 2026-03-19_
+_Last updated: 2026-03-20_
 
 ## Rules
 
@@ -9,6 +9,8 @@ _Last updated: 2026-03-19_
 - do not use `--hydra-checkpoint-dir`
 - keep `--cfg-weight 0`
 - run these commands on the GPU server, not on the local edit machine
+- current branch no longer feeds full external `prompt_embeds` into `vLLM`
+- current branch sends token ids plus conditioning tensors and lets the served custom model rebuild the `T3` prompt internally
 - if preflight fails, read [VLLM_ENV_INCIDENT.md](/home/ubuntu/ChatterBox_S3_Concurrency/VLLM_ENV_INCIDENT.md) before changing packages or rebuilding the env
 - the most likely base checkpoint dir on Thunder is:
   `~/.cache/huggingface/hub/models--ResembleAI--chatterbox/snapshots/05e904af2b5c7f8e482687a9d7336c5c824467d9`
@@ -98,6 +100,7 @@ Important:
 - a Hydra run dir that only contains `t3_hydra_heads.safetensors` is not a valid base `T3` checkpoint for `vLLM`
 - `vLLM` needs the base multilingual `T3` weights file `t3_mtl23ls_v2.safetensors`
 - older examples used `runs/t3_hydra_*` only as folder names; that was historical naming, not Hydra runtime usage
+- current export also writes a lightweight tokenizer package because the served model now enters through token ids plus multimodal conditioning, not external `prompt_embeds`
 
 ## 4. Preflight
 
@@ -214,13 +217,14 @@ Important:
   - group by prompt length only
   - prefer the largest ready cohort
   - do not force exact text-length singleton buckets unless you explicitly opt back into that older behavior
-- current worker-side mitigation for the reproduced upward prompt-shape crash:
-  - request rows are sent to `vLLM` in descending prompt-embed length order
-  - prompt-embed growth is bucketed before that decision
-  - default prompt-embed bucket size is `4`
-  - if a new request would increase the engine's bucketed prompt-embed high-water mark, the worker recycles the `vLLM` engine before serving that request
-  - set `--vllm-prompt-embed-bucket-size 1` if you want to fall back to exact per-length growth tracking
-  - this keeps the observed unsafe transition (`smaller -> larger` prompt-embed length on one reused engine) away from live traffic while the deeper prompt-embed path remains under investigation
+- previous bucket/recycle workaround:
+  - fixed a narrow singleton repro
+  - failed under realistic staggered mixed-text traffic
+  - has been removed from the codebase rather than left as stale mitigation
+- current architectural direction:
+  - worker sends token ids plus conditioning tensors
+  - served `ChatterboxT3ForCausalLM` reconstructs the `T3` prompt internally
+  - the next job is to revalidate the simulator on this cleaner boundary
 
 ```bash
 PYTHONPATH=external/chatterbox/src python external/chatterbox/simulate_streaming_service.py \
@@ -271,9 +275,13 @@ PYTHONPATH=external/chatterbox/src python external/chatterbox/simulate_streaming
   --output-dir streaming_service_sim_vllm_fixed_text
 ```
 
-Prompt-embed diagnosis commands:
+Input-path diagnosis commands:
 
-- inspect the real prompt-embed contract without calling `vLLM.generate(...)`:
+Note:
+
+- the diagnostic script name is still `diagnose_vllm_prompt_embeds.py` for continuity, but it now inspects the internal `T3` prompt/input path rather than replaying raw external `prompt_embeds`
+
+- inspect the real `T3` prompt/input contract without calling `vLLM.generate(...)`:
 
 ```bash
 PYTHONPATH=external/chatterbox/src python external/chatterbox/diagnose_vllm_prompt_embeds.py \
@@ -291,7 +299,7 @@ PYTHONPATH=external/chatterbox/src python external/chatterbox/diagnose_vllm_prom
   --output-json prompt_embed_inspect.json
 ```
 
-- test whether singleton requests with changing prompt-embed shapes kill a reused engine:
+- test whether singleton requests with changing prompt sequence shapes kill a reused engine:
 
 ```bash
 PYTHONPATH=external/chatterbox/src python external/chatterbox/diagnose_vllm_prompt_embeds.py \
@@ -326,69 +334,6 @@ PYTHONPATH=external/chatterbox/src python external/chatterbox/diagnose_vllm_prom
   --no-vllm-prefix-caching \
   --vllm-enforce-eager \
   --output-json prompt_embed_batched.json
-```
-
-- test the current strongest engine-level suspect by disabling `chunked_prefill`:
-
-```bash
-SHORT='مرحبا، هذا اختبار قصير لقياس سرعة الاستجابة.'
-LONG='كيف يمكننا تحسين جودة الصوت مع الحفاظ على زمن استجابة منخفض؟'
-
-PYTHONPATH=external/chatterbox/src python external/chatterbox/diagnose_vllm_prompt_embeds.py \
-  --mode sequential_singletons \
-  --device cuda \
-  --language-id ar \
-  --audio-prompt-path "$PROMPT_AUDIO" \
-  --text "$SHORT" \
-  --text "$LONG" \
-  --vllm-model-dir runs/t3_vllm_export \
-  --vllm-gpu-memory-utilization 0.45 \
-  --vllm-max-model-len 2048 \
-  --no-vllm-prefix-caching \
-  --no-vllm-chunked-prefill \
-  --vllm-enforce-eager \
-  --output-json prompt_embed_short_long_no_chunked_prefill.json
-```
-
-- if that still fails, replay the prepared prompts directly through `vLLM` without the Chatterbox wrapper:
-
-```bash
-SHORT='مرحبا، هذا اختبار قصير لقياس سرعة الاستجابة.'
-LONG='كيف يمكننا تحسين جودة الصوت مع الحفاظ على زمن استجابة منخفض؟'
-
-PYTHONPATH=external/chatterbox/src python external/chatterbox/diagnose_vllm_prompt_embeds.py \
-  --mode engine_replay_singletons \
-  --device cuda \
-  --language-id ar \
-  --audio-prompt-path "$PROMPT_AUDIO" \
-  --text "$SHORT" \
-  --text "$LONG" \
-  --vllm-model-dir runs/t3_vllm_export \
-  --vllm-gpu-memory-utilization 0.45 \
-  --vllm-max-model-len 2048 \
-  --no-vllm-prefix-caching \
-  --no-vllm-chunked-prefill \
-  --vllm-enforce-eager \
-  --output-json prompt_embed_short_long_engine_replay.json
-```
-
-- then repeat with the same shapes but zeroed embeddings:
-
-```bash
-PYTHONPATH=external/chatterbox/src python external/chatterbox/diagnose_vllm_prompt_embeds.py \
-  --mode engine_replay_zero_singletons \
-  --device cuda \
-  --language-id ar \
-  --audio-prompt-path "$PROMPT_AUDIO" \
-  --text "$SHORT" \
-  --text "$LONG" \
-  --vllm-model-dir runs/t3_vllm_export \
-  --vllm-gpu-memory-utilization 0.45 \
-  --vllm-max-model-len 2048 \
-  --no-vllm-prefix-caching \
-  --no-vllm-chunked-prefill \
-  --vllm-enforce-eager \
-  --output-json prompt_embed_short_long_engine_replay_zero.json
 ```
 
 ## Common Failures

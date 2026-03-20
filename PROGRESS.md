@@ -1,6 +1,6 @@
 # Progress
 
-_Last updated: 2026-03-19_
+_Last updated: 2026-03-20_
 
 ## Done
 
@@ -97,6 +97,22 @@ _Last updated: 2026-03-19_
           - default bucket width is `4`
           - this is intentionally engine-policy bucketing, not tensor-padding of the actual prompt embeddings
         - this is a containment fix around the current prompt-embed path, not proof that generic `vLLM` text batching is broken
+  - latest architectural update after the bucketed workaround failed under realistic streaming traffic:
+    - the bucket/recycle workaround fixed the narrow singleton repro but did not survive mixed-text staggered service traffic
+    - removed the bucket-growth workaround code instead of keeping stale mitigations in tree
+    - moved the `vLLM` boundary from external full `prompt_embeds` to internal prompt reconstruction inside the served custom model
+    - the worker now sends:
+      - token ids in a joint input vocabulary
+      - conditioning tensors through `multi_modal_data`
+    - the served `ChatterboxT3ForCausalLM` now does:
+      - conditioning encoding
+      - text embedding lookup
+      - speech embedding lookup
+      - `T3` prompt assembly inside the model
+    - export now writes a dummy tokenizer alongside the model package so `vLLM` can ingest the structured prompt path without `skip_tokenizer_init=True`
+    - current status:
+      - local syntax check passes
+      - GPU/server revalidation is the next required step
   - tightened the `vLLM` benchmark/save path to avoid unnecessary env churn:
     - benchmark / compare / simulator WAV outputs now save through `soundfile`
     - `torchcodec` is not required for the current `vLLM` migration workflow
@@ -516,6 +532,7 @@ _Last updated: 2026-03-19_
 Immediate branch:
 
 - keep the working Hydra-free `vLLM` spike as the active serving-migration branch
+- revalidate the new served-model prompt-construction path on the GPU server
 - validate quality on saved benchmark WAVs
 - move from offline batched benchmarking toward a real staggered service-admission shape
 - keep scheduled `T3 + Hydra + turbo S3` as the main custom-runtime comparison baseline
@@ -592,9 +609,10 @@ More precise current read:
 5. verify correctness beyond `2`
 6. keep the new scheduler path as the main runtime branch
 7. keep the `vLLM` spike as the main engine-migration feasibility branch
-8. validate a staggered admission queue shape for the shared `vLLM` engine
-9. profile deeper inside the downstream `S3` path now that batched `T3` is working
-10. add true first-audio-chunk measurement before treating this as a production serving win
+8. revalidate the new internal `T3` prompt-construction boundary on the shared `vLLM` engine
+9. validate a staggered admission queue shape for the shared `vLLM` engine
+10. profile deeper inside the downstream `S3` path now that batched `T3` is working
+11. add true first-audio-chunk measurement before treating this as a production serving win
 
 ## Current Execution Path
 
