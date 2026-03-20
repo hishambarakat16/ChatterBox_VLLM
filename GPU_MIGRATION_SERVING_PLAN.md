@@ -116,6 +116,10 @@ Expected direction:
 - if this says `libcudart.so.12`, first export `LD_LIBRARY_PATH=/usr/local/cuda/lib64${LD_LIBRARY_PATH:+:$LD_LIBRARY_PATH}` and retry
 - if this says Thunder does not support `fork()`, export `VLLM_WORKER_MULTIPROC_METHOD=spawn` and retry
 - if this says `Model architectures ['ChatterboxT3ForCausalLM'] are not supported for now`, the local `chatterbox` package is not installed into the env with `--no-deps`, so the spawned vLLM worker did not load the custom model plugin
+- if this says `Error in inspecting model architecture 'ChatterboxT3ForCausalLM'` right after the internal-prompt migration:
+  - check the traceback for `MultiModalEmbeddings`
+  - on the deployed `vLLM 0.17.1` line, `MultiModalEmbeddings` must be imported from `vllm.model_executor.models.interfaces`, not `vllm.multimodal.inputs`
+  - current code has already been updated for that mismatch; pull latest code before debugging deeper runtime issues
 
 ## 5. Single-Request Check
 

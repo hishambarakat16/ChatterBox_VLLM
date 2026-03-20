@@ -113,6 +113,16 @@ _Last updated: 2026-03-20_
     - current status:
       - local syntax check passes
       - GPU/server revalidation is the next required step
+  - first server revalidation issue after the architectural shift:
+    - `vLLM 0.17.1` failed while inspecting `ChatterboxT3ForCausalLM` before engine startup
+    - the concrete error was an API mismatch:
+      - `MultiModalEmbeddings` was imported from `vllm.multimodal.inputs`
+      - on the deployed `vLLM` line it actually lives in `vllm.model_executor.models.interfaces`
+    - fix:
+      - update [vllm_t3_model.py](/Users/hisham/Code/Bahraini_TTS/external/chatterbox/src/chatterbox/vllm_t3_model.py) to import `MultiModalEmbeddings` from the model-interfaces module
+    - read:
+      - this was a versioned `vLLM` integration mismatch, not evidence that the new internal prompt-construction direction is wrong
+      - once this import-layer issue is cleared, the next server run can test the actual model boundary
   - tightened the `vLLM` benchmark/save path to avoid unnecessary env churn:
     - benchmark / compare / simulator WAV outputs now save through `soundfile`
     - `torchcodec` is not required for the current `vLLM` migration workflow
