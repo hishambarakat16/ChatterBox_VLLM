@@ -150,6 +150,34 @@ _Last updated: 2026-03-20_
     - the path is finally stable under staggered service-style load for this fixed-text test
     - `c8` still improves throughput over `c4`
     - but audio-ready latency also rises materially, so this is a throughput-vs-latency tradeoff rather than a free win
+- fixed the later `vllm_turbo_s3` "representative WAV only says hello" regression:
+  - this was **not** a WAV-save bug
+  - `representative` mode was already saving the full returned waveform for a successful request
+  - the real issues were inside the `vLLM` decode contract:
+    - the internal prompt path was missing the second speech `BOS` token
+    - the `vLLM` worker's repetitive-tail trimming heuristic was too aggressive and could clip a valid utterance down to a tiny prefix
+  - important terminology:
+    - `BOS` = `Beginning Of Sequence`
+    - `EOS` = `End Of Sequence`
+    - they matter because the multilingual `T3` planner uses them as structural boundary markers for where text ends, speech decoding starts, and speech decoding should stop
+    - in this local `T3` contract the production prefill path effectively starts speech decoding with two `BOS` rows, so omitting one changed the served `vLLM` prompt boundary
+  - fixes landed locally in the Chatterbox submodule:
+    - `build_vllm_prompt(...)` now appends the second speech `BOS`
+    - the served `vLLM` T3 model now mirrors that prompt shape in dummy inputs and speech-position handling
+    - length-capped repetitive tails are now trimmed conservatively so we do not throw away most of a valid utterance
+  - revalidation after the fix:
+    - single-request `vllm_turbo_s3` returned `122880` samples instead of the old `19200`
+    - fixed-text staggered `c12` simulation succeeded with `12/12` requests and `errors=[]`
+    - all successful `c12` requests returned `122880` samples
+    - representative saved WAV duration at `c12` is now `5.12s`, not the old `0.8s` clipped output
+    - current corrected `c12` summary:
+      - `audio_seconds_per_second=3.0902`
+      - `mean_audio_ready_s=15.7947`
+      - `p95_audio_ready_s=17.0969`
+  - current read:
+    - the old tiny "hello" outputs were a real `vLLM` decode/trim bug
+    - that specific bug is now fixed
+    - `mean_audio_ready_s` here is still full-audio-ready time, not true first-audio-chunk latency
 
 - merged the missing engine-migration state from the older alternate-machine progress snapshot so this repo keeps that history too
 - added [t3_engine_migration_memo.md](/Users/hisham/Code/Bahraini_TTS/architecture/t3_engine_migration_memo.md) as the current engine-migration decision memo for the multilingual `T3 + Hydra + turbo S3` stack:
