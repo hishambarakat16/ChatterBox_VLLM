@@ -92,6 +92,10 @@ _Last updated: 2026-03-19_
         - current service-side mitigation in the `vLLM` worker:
           - sort each request batch by prompt-embed length descending
           - recycle the shared `vLLM` engine before any upward prompt-embed growth
+        - first bucketed follow-up:
+          - the worker now buckets prompt-embed growth with a configurable width before deciding whether to recycle the engine
+          - default bucket width is `4`
+          - this is intentionally engine-policy bucketing, not tensor-padding of the actual prompt embeddings
         - this is a containment fix around the current prompt-embed path, not proof that generic `vLLM` text batching is broken
   - tightened the `vLLM` benchmark/save path to avoid unnecessary env churn:
     - benchmark / compare / simulator WAV outputs now save through `soundfile`

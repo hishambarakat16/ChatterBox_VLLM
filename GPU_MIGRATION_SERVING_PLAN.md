@@ -216,7 +216,10 @@ Important:
   - do not force exact text-length singleton buckets unless you explicitly opt back into that older behavior
 - current worker-side mitigation for the reproduced upward prompt-shape crash:
   - request rows are sent to `vLLM` in descending prompt-embed length order
-  - if a new request would increase the engine's prompt-embed high-water mark, the worker recycles the `vLLM` engine before serving that request
+  - prompt-embed growth is bucketed before that decision
+  - default prompt-embed bucket size is `4`
+  - if a new request would increase the engine's bucketed prompt-embed high-water mark, the worker recycles the `vLLM` engine before serving that request
+  - set `--vllm-prompt-embed-bucket-size 1` if you want to fall back to exact per-length growth tracking
   - this keeps the observed unsafe transition (`smaller -> larger` prompt-embed length on one reused engine) away from live traffic while the deeper prompt-embed path remains under investigation
 
 ```bash
