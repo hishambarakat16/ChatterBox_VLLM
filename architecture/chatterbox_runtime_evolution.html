@@ -194,7 +194,7 @@
       }
 
       .timeline {
-        min-width: 2810px;
+        min-width: 3240px;
         display: flex;
         align-items: stretch;
         gap: 10px;
@@ -413,6 +413,10 @@
           <li><code>external/chatterbox/src/chatterbox/runtime/t3_scheduler.py</code></li>
           <li><code>external/chatterbox/src/chatterbox/models/t3/inference/concurrent_decode.py</code></li>
           <li><code>external/chatterbox/src/chatterbox/models/t3/inference/scheduled_decode.py</code></li>
+          <li><code>external/chatterbox/src/chatterbox/models/t3/inference/hydra_decode.py</code></li>
+          <li><code>external/chatterbox/src/chatterbox/models/t3/train/hydra_distill.py</code></li>
+          <li><code>external/chatterbox/build_t3_hydra_distill_dataset.py</code></li>
+          <li><code>external/chatterbox/benchmark_t3_hydra_prototype.py</code></li>
           <li><code>external/chatterbox/benchmark_multilingual_concurrency.py</code></li>
         </ul>
       </div>
@@ -441,11 +445,20 @@
           </div>
         </div>
         <div class="summary-card">
-          <div class="summary-label">Latest Guard Cleanup</div>
-          <div class="summary-value">GPU-local scheduled alignment state removed a real chunk of guard overhead</div>
+          <div class="summary-label">Latest Planner Win</div>
+          <div class="summary-value">Hydra <code>h2</code> now leads Medusa in single-request speculative planner speed</div>
           <div class="summary-note">
-            Quality stayed clean, <code>errors=[]</code> held through <code>concurrency=8</code>, and the next likely
-            remaining guard cost is still the <code>output_attentions=True</code> attention fallback.
+            Current best measured setting is Hydra <code>k3</code> with <code>24.34%</code> planner speedup,
+            <code>acceptance=0.6078</code>, <code>exact_token_match=true</code>, and <code>rebuild_count=0</code>.
+            Next step is scheduled runtime integration and concurrency validation.
+          </div>
+        </div>
+        <div class="summary-card">
+          <div class="summary-label">New Turbo S3 Result</div>
+          <div class="summary-value">Scheduled + Hydra + turbo S3 dramatically shrinks `token2mel` cost</div>
+          <div class="summary-note">
+            The new runtime path is stable through `c8`; `stage_s3_token2mel_s` now stays below <code>1.8s</code>
+            while `stage_s3_s_mean` is <code>0.8822s</code> at <code>c2</code>.
           </div>
         </div>
       </div>
@@ -525,13 +538,32 @@
                 <td><code>3.4518</code><br /><code>wall 9.5139s</code></td>
                 <td>Directional <code>c8</code> win with quality preserved; remaining guard-path cost is still the attention-output fallback.</td>
               </tr>
+              <tr>
+                <td><strong>Hydra speculative planner component</strong><br />current planner leader</td>
+                <td>Added T3-native Hydra dataset + trainer + inference + benchmark path, trained <code>h2/l1</code> checkpoint</td>
+                <td>single-request planner benchmark only</td>
+                <td><code>k2 speedup +18.88%</code><br /><code>acceptance=0.7907</code></td>
+                <td><code>k3 speedup +24.34%</code><br /><code>acceptance=0.6078</code></td>
+                <td>runtime integration not measured yet</td>
+                <td>Hydra now beats best Medusa planner result; next test is scheduled baseline vs scheduled+Hydra on same hardware.</td>
+              </tr>
+              <tr>
+                <td><strong>Scheduled + Hydra + turbo S3</strong><br />current downstream tuning</td>
+                <td>New `scheduled_turbo_s3` runtime entrypoint and targeted benchmark harness</td>
+                <td><code>0.4147</code> throughput, <code>stage_s3_s=3.6241s</code></td>
+                <td><code>1.9271</code>, <code>stage_s3_s=0.8822s</code></td>
+                <td><code>3.2184</code>, <code>stage_s3_s=0.9584s</code></td>
+                <td><code>2.8878</code>, <code>stage_s3_s=2.2461s</code></td>
+                <td>Turbo S3 slashes `token2mel` waits; the remaining runtime task is scheduler / c8 stabilization.</td>
+              </tr>
             </tbody>
           </table>
         </div>
         <div class="footnote">
           Throughput cells are <code>audio_seconds_per_second</code> where available. The two earliest rows are historical
           single-request traces, not the later concurrency benchmark harness, so they are included for origin tracking
-          rather than strict benchmark comparability.
+          rather than strict benchmark comparability. The Hydra row is planner-only and intentionally separated from the
+          runtime concurrency rows.
         </div>
       </div>
 
@@ -943,13 +975,89 @@
                 </div>
               </div>
             </div>
+
+            <div class="arrow"><div class="arrow-label">add hydra planner path</div></div>
+
+            <div class="change-card">
+              <div class="card-head">
+                <div class="step-row">
+                  <div class="step-num">6</div>
+                  <div>
+                    <div class="step-kicker">Planner Upgrade</div>
+                    <h2 class="step-title">Add T3-Native Hydra Component And Beat Medusa Baseline</h2>
+                  </div>
+                </div>
+                <div class="tag-row">
+                  <div class="tag ok">planner speed gain</div>
+                  <div class="tag ok">exact token match</div>
+                  <div class="tag warn">runtime integration pending</div>
+                </div>
+              </div>
+              <div class="card-body">
+                <div class="box">
+                  <div class="mini-title">What Changed</div>
+                  <ul class="tight-list">
+                    <li>Built a separate Hydra path for multilingual <code>T3</code> instead of mixing with Medusa.</li>
+                    <li>Extended the Medusa-style teacher corpus with Hydra hidden-state sidecars and trained Hydra future heads.</li>
+                    <li>Kept Hydra inference contract compatible with scheduled runtime planner boundaries.</li>
+                  </ul>
+                </div>
+                <div class="box">
+                  <div class="mini-title">Code And Commit Anchors</div>
+                  <span class="code-ref"><code>build_t3_hydra_distill_dataset.py</code> Hydra dataset builder</span>
+                  <span class="code-ref"><code>src/chatterbox/models/t3/train/hydra_distill.py</code> Hydra trainer</span>
+                  <span class="code-ref"><code>src/chatterbox/models/t3/inference/hydra_decode.py</code> Hydra inference helper</span>
+                  <span class="code-ref"><code>benchmark_t3_hydra_prototype.py</code> planner benchmark harness</span>
+                  <span class="code-ref"><code>4dc259d</code> add Hydra prototype path</span>
+                  <span class="code-ref"><code>6a4318b</code> record Hydra benchmark results</span>
+                  <span class="code-ref"><code>00f05b3</code> publish Hydra checkpoint reference</span>
+                </div>
+                <div class="box">
+                  <div class="mini-title">Improvement Result</div>
+                  <table class="metric-table">
+                    <tr>
+                      <th>Metric</th>
+                      <th>Value</th>
+                    </tr>
+                    <tr>
+                      <td>checkpoint quality</td>
+                      <td><code>eval_base_top1=0.6808</code>, <code>head0_top1=0.4787</code>, <code>head1_top1=0.3756</code></td>
+                    </tr>
+                    <tr>
+                      <td><code>k2</code> planner result</td>
+                      <td><code>speedup=18.88%</code>, <code>acceptance=0.7907</code>, <code>exact_token_match=true</code>, <code>rebuild_count=0</code></td>
+                    </tr>
+                    <tr>
+                      <td><code>k3</code> planner result</td>
+                      <td><code>speedup=24.34%</code>, <code>acceptance=0.6078</code>, <code>exact_token_match=true</code>, <code>rebuild_count=0</code></td>
+                    </tr>
+                  </table>
+                </div>
+            <div class="box">
+              <div class="mini-title">What It Bought Us</div>
+              <div class="note">
+                Hydra is now the leading speculative planner candidate for this stack. The next evidence step is no
+                longer another planner-only run; it is end-to-end scheduled runtime integration and concurrency
+                measurement against the same baseline.
+              </div>
+            </div>
+            <div class="box">
+              <div class="mini-title">Turbo S3 Addition</div>
+              <div class="note">
+                Introduced the `scheduled_turbo_s3` runtime path and benchmark harness; c1–c8 throughput shifted because
+                `token2mel` now runs in the new turbo mode with per-stage metrics published in the trace run results.
+              </div>
+            </div>
+          </div>
+        </div>
           </div>
         </div>
         <div class="footnote">
           Latest interpretation: request-local runtime state is no longer the main unresolved issue, coarse full-decode
           locking is gone, real batched <code>T3</code> scheduling exists, and the newest alignment cleanup removed a
-          real chunk of guard overhead. The next technical question is deeper <code>T3</code> profiling, especially the
-          remaining attention-output fallback cost, plus staggered-arrival validation.
+          real chunk of guard overhead. Hydra now leads the planner benchmark, so the next technical question is
+          scheduled runtime integration and concurrency validation for Hydra, plus continued deeper <code>T3</code>
+          profiling on the remaining attention-output fallback cost.
         </div>
       </div>
 
@@ -961,11 +1069,13 @@
             <li>The first big correctness win came from making <code>T3</code> decode state request-local.</li>
             <li>The first big scaling win came from replacing the coarse lock with batched <code>T3</code> cohorts.</li>
             <li>The latest guard cleanup kept alignment on, moved rolling state back onto GPU, and cut a meaningful chunk of scheduled guard overhead.</li>
+            <li>The latest planner improvement is Hydra, which beats Medusa on single-request speculative planner speed.</li>
           </ul>
         </div>
         <div class="panel">
           <div class="panel-title">Still Open</div>
           <ul class="tight-list">
+            <li>integrate Hydra into scheduled runtime and measure baseline vs Hydra under the same concurrency harness</li>
             <li>validate staggered-arrival behavior under live load, not just simultaneous starts</li>
             <li>profile deeper inside <code>T3</code> prefill and decode compute</li>
             <li>measure how much of the remaining guard cost comes from the <code>output_attentions=True</code> fallback path</li>
@@ -976,8 +1086,8 @@
           <div class="panel-title">Best One-Line Summary</div>
           <div class="note">
             The runtime evolved from “shared mutable inference state breaks concurrency” to “batched <code>T3</code>
-            scheduling scales meaningfully through <code>concurrency=8</code>, with the latest GPU-local alignment-state
-            cleanup removing guard overhead while leaving the deeper attention-output fallback cost still on the table.”
+            scheduling scales meaningfully through <code>concurrency=8</code>; now Hydra is the leading speculative
+            planner component and the next proof target is scheduled-runtime integration with real concurrency gains.”
           </div>
         </div>
       </div>

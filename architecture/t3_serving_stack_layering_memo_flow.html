@@ -1,0 +1,296 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>T3 Serving Stack Layering Flow</title>
+    <style>
+      :root {
+        --bg: #f0f0f0;
+        --panel: #ffffff;
+        --ink: #1c1c1c;
+        --muted: #5c5c5c;
+        --line: #d4d4d4;
+        --accent: #143b55;
+      }
+      body {
+        margin: 0;
+        background: var(--bg);
+        font-family: "Inter", system-ui, -apple-system, sans-serif;
+        color: var(--ink);
+      }
+      .page {
+        width: 100%;
+        max-width: 1800px;
+        margin: 0 auto;
+        padding: 24px 20px 32px;
+      }
+      .hero {
+        padding: 18px 22px;
+        background: var(--panel);
+        border: 1px solid var(--line);
+        box-shadow: 0 1px 6px rgba(0, 0, 0, 0.06);
+        margin-bottom: 16px;
+      }
+      h1 {
+        margin: 0;
+        font-size: 30px;
+      }
+      .subtitle {
+        color: var(--muted);
+        margin-top: 8px;
+        font-size: 14px;
+        line-height: 1.5;
+      }
+      .summary-grid {
+        display: grid;
+        grid-template-columns: repeat(auto-fit, minmax(240px, 1fr));
+        gap: 12px;
+        margin-top: 18px;
+      }
+      .summary-card {
+        background: var(--panel);
+        border: 1px solid var(--line);
+        padding: 12px 14px;
+      }
+      .summary-label {
+        font-size: 11px;
+        text-transform: uppercase;
+        letter-spacing: 0.06em;
+        color: var(--muted);
+      }
+      .summary-value {
+        margin-top: 6px;
+        font-size: 17px;
+        font-weight: 600;
+        color: var(--accent);
+      }
+      .summary-note {
+        margin-top: 8px;
+        font-size: 12px;
+        color: var(--muted);
+        line-height: 1.4;
+      }
+      .section {
+        background: var(--panel);
+        border: 1px solid var(--line);
+        box-shadow: 0 1px 4px rgba(0, 0, 0, 0.05);
+        margin-bottom: 16px;
+        padding: 16px 20px 18px;
+      }
+      .section-title {
+        margin: 0;
+        font-size: 18px;
+      }
+      .section-subtitle {
+        margin-top: 6px;
+        font-size: 13px;
+        color: var(--muted);
+      }
+      .layers-table,
+      .options-table {
+        width: 100%;
+        border-collapse: collapse;
+        margin-top: 12px;
+      }
+      th,
+      td {
+        border: 1px solid var(--line);
+        padding: 8px 10px;
+        vertical-align: top;
+      }
+      th {
+        background: #f9f9f9;
+        font-size: 11px;
+        text-transform: uppercase;
+        letter-spacing: 0.08em;
+      }
+      .stack-chart {
+        display: grid;
+        grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+        gap: 12px;
+        margin-top: 16px;
+      }
+      .stack-card {
+        border: 1px solid var(--line);
+        background: linear-gradient(180deg, #fff, #fdfdfd);
+        padding: 12px 14px;
+      }
+      .stack-card h3 {
+        margin: 0;
+        font-size: 15px;
+      }
+      .stack-card p {
+        margin: 6px 0 0;
+        color: var(--muted);
+        font-size: 12px;
+        line-height: 1.4;
+      }
+      .note-list {
+        margin: 12px 0 0;
+        padding-left: 16px;
+        color: var(--muted);
+        font-size: 12px;
+      }
+    </style>
+  </head>
+  <body>
+    <div class="page">
+      <div class="hero">
+        <h1>T3 Serving Stack Layering</h1>
+        <div class="subtitle">
+          Visual companion to the memo: four-layer stack, valid serving combinations, current path, and the four future paths
+          (`keep custom scheduler`, `vLLM`, `SGLang`, `TensorRT-LLM`). Use this board to see where the new Hydra + turbo S3
+          stack sits relative to those alternatives.
+        </div>
+        <div class="summary-grid">
+          <div class="summary-card">
+            <div class="summary-label">Core message</div>
+            <div class="summary-value">Don’t layer all serving engines; pick one</div>
+            <div class="summary-note">
+              Hydra + turbo S3 keep the renderer fixed while you can swap the scheduler/runtime engine as a single block.
+            </div>
+          </div>
+          <div class="summary-card">
+            <div class="summary-label">Current weakness</div>
+            <div class="summary-value">T3 scheduler</div>
+            <div class="summary-note">
+              The memo highlights the custom scheduler as the main pain point, not the downstream turbo S3 renderer.
+            </div>
+          </div>
+          <div class="summary-card">
+            <div class="summary-label">Candidate replacements</div>
+            <div class="summary-value">vLLM / SGLang / TensorRT-LLM</div>
+            <div class="summary-note">
+              Each claims the scheduling layer; only TensorRT-LLM also overlaps with the execution backend.
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <div class="section">
+        <div class="section-title">Layer Model</div>
+        <div class="section-subtitle">Four layers, their responsibilities, and who currently owns each.</div>
+        <table class="layers-table">
+          <thead>
+            <tr>
+              <th>Layer</th>
+              <th>Responsibility</th>
+              <th>Current owner</th>
+              <th>Candidate replacements</th>
+            </tr>
+          </thead>
+          <tbody>
+            <tr>
+              <td>App / Adapter</td>
+              <td>Session setup, request reception, `T3->S3` handoff</td>
+              <td>Custom Chatterbox runtime</td>
+              <td>Keep custom</td>
+            </tr>
+            <tr>
+              <td>Scheduling / Serving Policy</td>
+              <td>Batching, admission, fairness, prefill/decode policy</td>
+              <td>Custom T3 scheduler</td>
+              <td>vLLM / SGLang / TensorRT-LLM</td>
+            </tr>
+            <tr>
+              <td>Execution Backend</td>
+              <td>Kernels, KV cache, CUDA overlap</td>
+              <td>PyTorch + custom runtime</td>
+              <td>TensorRT-LLM, parts of vLLM/SGLang</td>
+            </tr>
+            <tr>
+              <td>Renderer</td>
+              <td>Speech tokens -> mel -> waveform</td>
+              <td>Turbo S3</td>
+              <td>Keep current for now</td>
+            </tr>
+          </tbody>
+        </table>
+        <div class="note-list">
+          <li>TensorRT-LLM straddles both scheduling and execution, unlike vLLM/SGLang (primarily full serving engines).</li>
+          <li>Hydra + turbo S3 keep the renderer untouched while experimentation focuses on the scheduling layer.</li>
+        </div>
+      </div>
+
+      <div class="section">
+        <div class="section-title">Current Path</div>
+        <div class="section-subtitle">How a request flows today through the custom stack.</div>
+        <div class="stack-chart">
+          <div class="stack-card">
+            <h3>Client / Adapter</h3>
+            <p>Handles sessions, options, Hydra checkpoint selection, pyro logging.</p>
+          </div>
+          <div class="stack-card">
+            <h3>Custom T3 Scheduler</h3>
+            <p>Batching, hydra speculative rounds, alignment guard, request locking.</p>
+          </div>
+          <div class="stack-card">
+            <h3>T3 + Hydra Decode</h3>
+            <p>Generates CFG-duplicated tokens, Hydra future heads, speculative acceptance.</p>
+          </div>
+          <div class="stack-card">
+            <h3>Turbo S3 Renderer</h3>
+            <p>Token-to-mel flow + HiFT vocoder still untouched.</p>
+          </div>
+        </div>
+        <div class="note-list">
+          <li>The memo emphasizes that the scheduling layer is the current bottleneck, not turbo S3.</li>
+        </div>
+      </div>
+
+      <div class="section">
+        <div class="section-title">Future Options</div>
+        <div class="section-subtitle">Four clear paths for evolving the scheduler/runtime.</div>
+        <table class="options-table">
+          <thead>
+            <tr>
+              <th>Option</th>
+              <th>What changes</th>
+              <th>Pros</th>
+              <th>Cons</th>
+            </tr>
+          </thead>
+          <tbody>
+            <tr>
+              <td>Option A — Improve custom scheduler</td>
+              <td>Keep adapter + scheduler, tighten policy, better cohort merging</td>
+              <td>Lowest risk, Hydra/CFG semantics unchanged</td>
+              <td>More scheduler engineering, limited until runtime matures</td>
+            </tr>
+            <tr>
+              <td>Option B — Swap in vLLM</td>
+              <td>Thin adapter feeds vLLM; vLLM handles scheduling, Hydra decode ported</td>
+              <td>Mature serving engine, batching and KV management built-in</td>
+              <td>Nonstandard T3 path; Hydra/CFG work may require extra engine effort</td>
+            </tr>
+            <tr>
+              <td>Option C — Swap in SGLang</td>
+              <td>Adapter + SGLang runtime handle scheduling + decode</td>
+              <td>Modern serving features, router/PD ecosystem</td>
+              <td>Less conservative than vLLM; requires porting work</td>
+            </tr>
+            <tr>
+              <td>Option D — Swap in TensorRT-LLM</td>
+              <td>Adapter calls TensorRT-LLM; backend provides NV-optimized kernels + scheduling</td>
+              <td>Strongest NVIDIA performance, IFB, paged attention, overlap</td>
+              <td>Highest porting cost for Hydra + CFG; best later</td>
+            </tr>
+          </tbody>
+        </table>
+      </div>
+
+      <div class="section">
+        <div class="section-title">Combination Rules</div>
+        <div class="section-subtitle">
+          Which stacks are valid, and which mixes should be avoided.
+        </div>
+        <div class="note-list">
+          <li>Choose one serving engine per request path; don’t layer vLLM + SGLang or vLLM + TensorRT-LLM together.</li>
+          <li>Custom adapter + vLLM/SGLang/TensorRT-LLM is a valid pattern if you only replace the scheduling layer.</li>
+          <li>Keep turbo S3 downstream unless you plan an explicit renderer migration as well.</li>
+        </div>
+      </div>
+    </div>
+  </body>
+</html>

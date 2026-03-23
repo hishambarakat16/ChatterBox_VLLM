@@ -1,6 +1,13 @@
 # Trace Run Results
 
-_Last updated: 2026-03-14_
+_Last updated: 2026-03-19_
+
+Important note:
+
+- older sections below were captured on the `4060 Ti` cloud box
+- the new final section in this file comes from a newer cloud GPU box
+- compare numbers across those environments only directionally
+- the newest fair runtime A/B is the same-machine comparison inside the new-GPU section
 
 ## Purpose
 
@@ -709,6 +716,113 @@ Command shape:
 
 - `benchmark_t3_output_attentions.py --concurrency 8 --decode-steps 64 --warmup-runs 1 --runs 5`
 
+## Newer Cloud GPU: Scheduled Hydra Runtime Validation
+
+This section is the first end-to-end scheduled+Hydra runtime benchmark on the newer cloud GPU box.
+
+Important note:
+
+- the exact GPU model was not captured in the pasted terminal output
+- this section should therefore be treated as "new cloud GPU" rather than tied to a specific SKU
+- the key fair comparison is the same-machine A/B below, not the older `4060 Ti` sections above
+
+Prompt/text:
+
+- same prompt/audio and same text:
+  - `مرحبا، هذا اختبار للبنية الحالية.`
+
+### Scheduled + Hydra `k3`
+
+Command shape:
+
+- `benchmark_multilingual_concurrency.py --impl scheduled --hydra-checkpoint-dir runs/t3_hydra_ar_short_40k_h2_run1/checkpoint_step_022910 --hydra-speculate-k 3 --temperature 0 --max-new-tokens 128 --concurrency-levels 1 2 4 8 --output-dir benchmark_wavs`
+
+Key results:
+
+- `errors=[]` through `concurrency=8`
+- `stage_t3_acceptance_rate_mean = 0.6078` at every tested concurrency
+- `stage_t3_rounds_mean = 34` at every tested concurrency
+
+Recorded checkpoints:
+
+- `c1`
+  - `audio_seconds_per_second=0.4685`
+  - `stage_t3_s_mean=3.3776`
+  - `stage_audio_ready_s_mean=6.9015`
+  - `stage_t3_first_token_s_mean=1.19`
+  - `num_samples=[81600]`
+- `c2`
+  - `audio_seconds_per_second=1.6016`
+  - `stage_t3_s_mean=2.6818`
+  - `stage_audio_ready_s_mean=4.2148`
+  - `stage_t3_first_token_s_mean=0.1427`
+  - `num_samples=[81600, 81600]`
+- `c4`
+  - `audio_seconds_per_second=2.2456`
+  - `stage_t3_s_mean=3.0249`
+  - `stage_audio_ready_s_mean=5.9999`
+  - `stage_t3_first_token_s_mean=0.1669`
+  - `num_samples=[81600, 81600, 81600, 81600]`
+- `c8`
+  - `audio_seconds_per_second=1.8320`
+  - `stage_t3_s_mean=6.4019`
+  - `stage_audio_ready_s_mean=14.5041`
+  - `stage_t3_first_token_s_mean=0.2683`
+  - `num_samples=[81600, 81600, 81600, 81600, 81600, 81600, 81600, 81600]`
+
+### Same-Machine Scheduled Baseline
+
+Command shape:
+
+- `benchmark_multilingual_concurrency.py --impl scheduled --temperature 0 --max-new-tokens 128 --concurrency-levels 1 2 4 8 --output-dir benchmark_wavs_baseline`
+
+Recorded checkpoints:
+
+- `c1`
+  - `audio_seconds_per_second=0.4491`
+  - `stage_t3_s_mean=6.6579`
+  - `stage_audio_ready_s_mean=11.0511`
+  - `stage_t3_first_token_s_mean=1.7002`
+  - `num_samples=[122880]`
+- `c2`
+  - `audio_seconds_per_second=1.2611`
+  - `stage_t3_s_mean=5.9476`
+  - `stage_audio_ready_s_mean=8.0791`
+  - `stage_t3_first_token_s_mean=0.0576`
+  - `num_samples=[122880, 122880]`
+- `c4`
+  - `audio_seconds_per_second=1.4037`
+  - `stage_t3_s_mean=11.3521`
+  - `stage_audio_ready_s_mean=14.2960`
+  - `stage_t3_first_token_s_mean=0.1008`
+  - `num_samples=[122880, 122880, 122880, 122880]`
+- `c8`
+  - `audio_seconds_per_second=1.9478`
+  - `stage_t3_s_mean=12.2031`
+  - `stage_audio_ready_s_mean=20.6349`
+  - `stage_t3_first_token_s_mean=0.1323`
+  - `num_samples=[122880, 122880, 122880, 122880, 122880, 122880, 122880, 122880]`
+
+### Current Interpretation
+
+- scheduled+Hydra is now runtime-stable on the newer cloud GPU
+- measured `T3` time is clearly lower with Hydra than with same-machine scheduled baseline
+- total throughput also improves at `c1`, `c2`, and `c4`
+- total throughput regresses at `c8`
+
+But the key caution is:
+
+- this is not yet a clean apples-to-apples serving win
+- scheduled+Hydra emitted shorter outputs on this prompt:
+  - Hydra path: `81600` samples
+  - baseline path: `122880` samples
+
+So the current read is:
+
+- Hydra runtime integration looks promising
+- the scheduler path is stable
+- but decode-contract / output-equivalence debugging is still required before treating the new runtime numbers as final
+
 Important note:
 
 - this benchmark isolates the `T3` backend forward path
@@ -733,3 +847,74 @@ Interpretation:
     - tiny per-step query length
     - CFG doubling the effective rows
     - many small decode steps instead of one large GPU-friendly workload
+
+## Newer Cloud GPU: Scheduled Hydra Plus Turbo S3 Experiment
+
+This section is the first isolated `turbo S3` experiment where the multilingual scheduled `T3 + Hydra` path stayed the same and only the `S3` renderer changed.
+
+Command shape:
+
+- `benchmark_multilingual_concurrency.py --impl scheduled_turbo_s3 --hydra-checkpoint-dir runs/t3_hydra_ar_short_40k_h2_run1/checkpoint_step_022910 --hydra-speculate-k 3 --temperature 0 --max-new-tokens 128 --concurrency-levels 1 2 4 8`
+
+Important note:
+
+- this run downloaded the turbo `S3` meanflow weights automatically
+- it should be compared primarily against the latest non-turbo scheduled+Hydra `S3` run on the same newer cloud GPU box
+
+### Scheduled + Hydra + Turbo S3
+
+Recorded checkpoints:
+
+- `c1`
+  - `audio_seconds_per_second=0.4147`
+  - `stage_s3_s_mean=3.6241`
+  - `stage_s3_token2mel_s_mean=2.2916`
+  - `stage_s3_hift_s_mean=1.3197`
+  - `stage_audio_ready_s_mean=7.8628`
+- `c2`
+  - `audio_seconds_per_second=1.9271`
+  - `stage_s3_s_mean=0.8822`
+  - `stage_s3_token2mel_s_mean=0.6590`
+  - `stage_s3_hift_s_mean=0.2223`
+  - `stage_audio_ready_s_mean=3.4680`
+- `c4`
+  - `audio_seconds_per_second=3.2184`
+  - `stage_s3_s_mean=0.9584`
+  - `stage_s3_token2mel_s_mean=0.6778`
+  - `stage_s3_hift_s_mean=0.2774`
+  - `stage_audio_ready_s_mean=4.1290`
+- `c8`
+  - `audio_seconds_per_second=2.8878`
+  - `stage_s3_s_mean=2.2461`
+  - `stage_s3_token2mel_s_mean=1.7863`
+  - `stage_s3_hift_s_mean=0.4534`
+  - `stage_audio_ready_s_mean=9.0648`
+
+### Same-Machine Read Against The Latest Non-Turbo S3 Run
+
+The important comparisons are:
+
+- `c2`
+  - `stage_s3_s_mean`: `2.1098 -> 0.8822` about `-58.2%`
+  - `stage_s3_token2mel_s_mean`: `1.8980 -> 0.6590` about `-65.3%`
+  - `stage_audio_ready_s_mean`: `4.9376 -> 3.4680` about `-29.8%`
+- `c4`
+  - `stage_s3_s_mean`: `3.3746 -> 0.9584` about `-71.6%`
+  - `stage_s3_token2mel_s_mean`: `3.1110 -> 0.6778` about `-78.2%`
+  - `stage_audio_ready_s_mean`: `9.4711 -> 4.1290` about `-56.4%`
+- `c8`
+  - `stage_s3_s_mean`: `6.8995 -> 2.2461` about `-67.4%`
+  - `stage_s3_token2mel_s_mean`: `6.5268 -> 1.7863` about `-72.6%`
+  - `stage_audio_ready_s_mean`: `14.0846 -> 9.0648` about `-35.6%`
+
+### Current Interpretation
+
+- the turbo experiment worked
+- the major win is in `S3` token-to-mel, exactly where the earlier tracing said the bottleneck lived
+- `HiFT` did not become the new main problem
+- `c4` is now a much stronger operating point than before
+- `c8` still regresses relative to `c4`, but the absolute `S3` cost is still far below the old non-turbo renderer
+- current direction:
+  - keep the scheduled `T3 + Hydra` planner path
+  - move forward with `turbo S3` as the main downstream renderer branch
+  - validate quality / output-contract behavior before treating it as the final serving default

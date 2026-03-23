@@ -85,6 +85,8 @@ Then:
 
 ## File Map
 
+- [skills/diagram-html-skill.md](/Users/hisham/Code/Bahraini_TTS/skills/diagram-html-skill.md): plain guide for creating self-contained HTML diagrams
+- [skills/researcher-context-skill.md](/Users/hisham/Code/Bahraini_TTS/skills/researcher-context-skill.md): plain guide for context-first research memos tied to the current codebase
 - [CONTEXT.md](/Users/hisham/Code/Bahraini_TTS/CONTEXT.md): project architecture and scope
 - [PROGRESS.md](/Users/hisham/Code/Bahraini_TTS/PROGRESS.md): status and open questions
 - [CHATTERBOX_SCALING_PLAN.md](/Users/hisham/Code/Bahraini_TTS/CHATTERBOX_SCALING_PLAN.md): current execution direction for scaling work
@@ -94,6 +96,7 @@ Then:
 - [t3_concurrent_inference_findings.md](/Users/hisham/Code/Bahraini_TTS/architecture/t3_concurrent_inference_findings.md): focused T3 concurrent-inference hazard review and architecture recommendation
 - [t3_serving_research_memo.md](/Users/hisham/Code/Bahraini_TTS/architecture/t3_serving_research_memo.md): focused research memo on whether shared-instance `prefill + step + scheduler` serving is already solved in TTS
 - [t3_speculative_decoding_research_memo.md](/Users/hisham/Code/Bahraini_TTS/architecture/t3_speculative_decoding_research_memo.md): focused research memo on whether speculative decoding is a good fit for the current multilingual `T3` architecture
+- [t3_hydra_dataset_adaptation_plan.md](/Users/hisham/Code/Bahraini_TTS/architecture/t3_hydra_dataset_adaptation_plan.md): exact plan for reusing the current `Medusa` distill dataset as a `Hydra` starting corpus, including what must be added for planner-side supervision and which `T3` shape validations must remain fixed
 - [t3_planner_rearchitecture_prior_art_memo.md](/Users/hisham/Code/Bahraini_TTS/architecture/t3_planner_rearchitecture_prior_art_memo.md): focused prior-art memo on replacing only the planner while keeping the downstream renderer fixed or mostly fixed
 - [s3_origin_story.html](/Users/hisham/Code/Bahraini_TTS/architecture/s3_origin_story.html): lightweight visual explainer for the S3 lineage and current architecture
 - [References/speculative_decoding/README.md](/Users/hisham/Code/Bahraini_TTS/References/speculative_decoding/README.md): local primary-source bundle for speculative-decoding papers and supporting docs
@@ -119,6 +122,8 @@ Then:
 - Main result: speculative decoding looks promising here, but only if we train or obtain a verifier-compatible smaller multilingual draft `T3`; `Chatterbox Turbo` is useful as a speed reference, not as a drop-in draft/verifier pair.
 - I also created [t3_planner_rearchitecture_prior_art_memo.md](/Users/hisham/Code/Bahraini_TTS/architecture/t3_planner_rearchitecture_prior_art_memo.md) after checking whether people already replace only the planner while leaving the downstream renderer intact.
 - Main result: yes in broad form, especially in `SPEAR-TTS`, `VALL-E 2`, `VALL-E R`, `MaskGCT`, and `SoundStorm`; but an open-source multilingual `T3-only` swap into an existing `T3 -> S3` contract still looks relatively open.
+- I also created [t3_hydra_dataset_adaptation_plan.md](/Users/hisham/Code/Bahraini_TTS/architecture/t3_hydra_dataset_adaptation_plan.md) after checking whether the current `Medusa` distill dataset can be reused for `Hydra`.
+- Main result: yes as the base teacher corpus, no as a drop-in Hydra dataset; the next clean step is a `T3`-native Hydra builder that preserves the current JSONL corpus and adds planner-side hidden-state supervision plus shape checks tied to the traced `T3` contract.
 
 ## Update Rules
 

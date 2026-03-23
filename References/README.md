@@ -2,6 +2,11 @@
 
 This folder contains the primary references used to trace the `S3 token -> mel` lineage and scaling limits.
 
+It now also includes a scheduler-serving sub-bundle for the current `T3` mixed-traffic research:
+
+- `scheduler_serving/README.md`
+  - Why it matters: local bundle for `Orca`, `vLLM`, `Sarathi-Serve`, `FastServe`, `SGLang`, `DistServe`, and `Llumnix` as prior art for continuous batching and mixed-length real-time scheduling.
+
 ## Papers
 
 - `CosyVoice_v1.pdf`

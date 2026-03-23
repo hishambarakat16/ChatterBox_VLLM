@@ -190,6 +190,50 @@ How much each request-time component contributes to total `S3` time:
 | `c4` | `92.2%` | `7.6%` | almost entirely token-to-mel |
 | `c8` | `94.6%` | `5.3%` | bottleneck is clearly token-to-mel |
 
+## Turbo S3 Experiment
+
+We also ran an isolated `turbo S3` experiment while keeping the multilingual scheduled `T3 + Hydra` path unchanged.
+
+That runtime uses a separate experimental entrypoint and swaps only the renderer:
+
+- `scheduled`:
+  - multilingual scheduled `T3 + Hydra`
+  - regular `S3`
+- `scheduled_turbo_s3`:
+  - multilingual scheduled `T3 + Hydra`
+  - turbo meanflow `S3`
+
+### Measured Turbo S3 Performance
+
+| Concurrency | `stage_s3_s_mean` | `stage_s3_token2mel_s_mean` | `stage_s3_hift_s_mean` | `stage_audio_ready_s_mean` | Throughput (`audio_seconds_per_second`) |
+|---|---:|---:|---:|---:|---:|
+| `c1` | `3.6241s` | `2.2916s` | `1.3197s` | `7.8628s` | `0.4147` |
+| `c2` | `0.8822s` | `0.6590s` | `0.2223s` | `3.4680s` | `1.9271` |
+| `c4` | `0.9584s` | `0.6778s` | `0.2774s` | `4.1290s` | `3.2184` |
+| `c8` | `2.2461s` | `1.7863s` | `0.4534s` | `9.0648s` | `2.8878` |
+
+### Non-Turbo vs Turbo
+
+Using the earlier non-turbo `scheduled + Hydra` run as the comparison baseline:
+
+| Concurrency | `S3 total` old | `S3 total` turbo | Delta | `token2mel` old | `token2mel` turbo | Delta | `audio_ready` old | `audio_ready` turbo | Delta |
+|---|---:|---:|---:|---:|---:|---:|---:|---:|---:|
+| `c1` | `4.7602s` | `3.6241s` | `-23.9%` | `3.5140s` | `2.2916s` | `-34.8%` | `9.3834s` | `7.8628s` | `-16.2%` |
+| `c2` | `2.1098s` | `0.8822s` | `-58.2%` | `1.8980s` | `0.6590s` | `-65.3%` | `4.9376s` | `3.4680s` | `-29.8%` |
+| `c4` | `3.3746s` | `0.9584s` | `-71.6%` | `3.1110s` | `0.6778s` | `-78.2%` | `9.4711s` | `4.1290s` | `-56.4%` |
+| `c8` | `6.8995s` | `2.2461s` | `-67.4%` | `6.5268s` | `1.7863s` | `-72.6%` | `14.0846s` | `9.0648s` | `-35.6%` |
+
+### Turbo Read
+
+- the turbo experiment confirms that the earlier bottleneck diagnosis was correct
+- the main win is still inside `token2mel`
+- `HiFT` stays secondary
+- the strongest throughput win in this run is at `c4`
+- `c8` is still worse than `c4`, but it is much better than the old non-turbo renderer in absolute terms
+- current direction:
+  - keep the scheduled `T3 + Hydra` planner path
+  - move forward with `turbo S3` as the main renderer branch for the next serving experiments
+
 ### What This Suggests
 
 - `S3` scales well enough from `c1 -> c2`

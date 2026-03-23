@@ -1,0 +1,733 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>S3 Shape Contract Flow</title>
+    <style>
+      :root {
+        --bg: #ececec;
+        --panel: #ffffff;
+        --ink: #1a1a1a;
+        --muted: #5a5a5a;
+        --line: #d1d1d1;
+        --note-surface: #f7f7f7;
+      }
+      * {
+        box-sizing: border-box;
+      }
+      body {
+        margin: 0;
+        background: var(--bg);
+        font-family: ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+        color: var(--ink);
+      }
+      code,
+      .mono {
+        font-family: ui-monospace, "SFMono-Regular", Menlo, Consolas, monospace;
+      }
+      .page {
+        width: 100%;
+        max-width: 1880px;
+        margin: 0 auto;
+        padding: 22px 20px 32px;
+      }
+      .hero,
+      .section,
+      .panel {
+        background: var(--panel);
+        border: 1px solid var(--line);
+        box-shadow: 0 1px 0 rgba(0, 0, 0, 0.04);
+        margin-bottom: 14px;
+      }
+      .hero {
+        padding: 18px 20px;
+      }
+      .title {
+        margin: 0;
+        font-size: 28px;
+        line-height: 1.15;
+      }
+      .subtitle {
+        margin: 8px 0 0;
+        color: var(--muted);
+        font-size: 13px;
+        line-height: 1.45;
+      }
+      .source-list {
+        margin: 14px 0 0;
+        padding: 0;
+        list-style: none;
+        display: grid;
+        grid-template-columns: repeat(2, minmax(0, 1fr));
+        gap: 6px 14px;
+        font-size: 11px;
+        color: var(--muted);
+      }
+      .summary-grid {
+        display: grid;
+        grid-template-columns: repeat(3, minmax(0, 1fr));
+        gap: 12px;
+        padding: 12px 16px;
+      }
+      .summary-card {
+        border: 1px solid var(--line);
+        padding: 10px 11px;
+        background: #fff;
+      }
+      .summary-label {
+        font-size: 11px;
+        text-transform: uppercase;
+        letter-spacing: 0.08em;
+        color: var(--muted);
+      }
+      .summary-value {
+        font-size: 18px;
+        font-weight: 700;
+        margin-top: 6px;
+      }
+      .summary-note {
+        margin-top: 8px;
+        color: var(--muted);
+        font-size: 12px;
+        line-height: 1.4;
+      }
+      .section {
+        padding: 16px 18px 18px;
+      }
+      .section-title {
+        margin: 0 0 10px;
+        font-weight: 700;
+      }
+      .section-subtitle {
+        margin: -4px 0 12px;
+        color: var(--muted);
+        font-size: 12px;
+      }
+      .scroll {
+        overflow-x: auto;
+        overflow-y: hidden;
+        padding-bottom: 4px;
+      }
+      .pipeline {
+        min-width: 2100px;
+        display: flex;
+        gap: 10px;
+        align-items: stretch;
+      }
+      .stage {
+        width: 360px;
+        min-width: 360px;
+        border: 1px solid var(--line);
+        background: #fdfdfd;
+        display: grid;
+        grid-template-rows: auto 1fr;
+      }
+      .stage-head {
+        padding: 12px;
+        border-bottom: 1px solid var(--line);
+        background: rgba(255, 255, 255, 0.84);
+      }
+      .stage-title {
+        margin: 0;
+        font-size: 17px;
+        line-height: 1.22;
+      }
+      .stage-path {
+        margin-top: 6px;
+        font-size: 11px;
+        color: var(--muted);
+      }
+      .stage-body {
+        padding: 10px 12px 14px;
+        display: grid;
+        gap: 9px;
+      }
+      .cell {
+        border: 1px solid var(--line);
+        border-radius: 4px;
+        padding: 8px 9px;
+        background: var(--note-surface);
+      }
+      .cell-title {
+        font-size: 11px;
+        text-transform: uppercase;
+        letter-spacing: 0.08em;
+        color: var(--muted);
+        margin-bottom: 4px;
+      }
+      .shape-line {
+        font-size: 12px;
+      }
+      .legend-row {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 8px;
+        font-size: 11px;
+        color: var(--muted);
+      }
+      .legend-chip {
+        padding: 4px 7px;
+        border: 1px solid var(--line);
+        border-radius: 4px;
+        background: #fff;
+        text-transform: uppercase;
+        letter-spacing: 0.08em;
+      }
+      table {
+        width: 100%;
+        border-collapse: collapse;
+        font-size: 12px;
+      }
+      th,
+      td {
+        border: 1px solid var(--line);
+        padding: 6px 7px;
+        text-align: left;
+      }
+      th {
+        background: #efefef;
+        text-transform: uppercase;
+        letter-spacing: 0.08em;
+      }
+      .footnote {
+        margin-top: 8px;
+        font-size: 11px;
+        color: var(--muted);
+      }
+    </style>
+  </head>
+  <body>
+    <div class="page">
+      <div class="hero">
+        <h1 class="title">S3 Shape Contract Flow</h1>
+        <div class="subtitle">
+          Condensed, grayscale flow of the current S3 token-to-mel path, including Hydra runtime context, benchmark
+          ratios, and HiFT vocoder boundaries. Focused on the measured shapes from the scheduled+Hydra run.
+        </div>
+        <ul class="source-list">
+          <li><code>architecture/s3_shape_contract.md</code></li>
+          <li><code>external/chatterbox/src/chatterbox/models/s3gen/s3gen.py</code></li>
+          <li><code>external/chatterbox/src/chatterbox/runtime/worker.py</code></li>
+          <li><code>external/chatterbox/benchmark_multilingual_concurrency.py</code></li>
+          <li><code>external/chatterbox/external/chatterbox/src/chatterbox/models/t3/inference/hydra_decode.py</code></li>
+          <li><code>external/chatterbox/src/chatterbox/models/t3/t3.py</code></li>
+        </ul>
+      </div>
+
+      <div class="summary-grid">
+        <div class="summary-card">
+          <div class="summary-label">Token-to-mel contract</div>
+          <div class="summary-value"><code>(1, 85) -> (1, 80, 170)</code></div>
+          <div class="summary-note">
+            Filtered speech tokens from `T3` map to 170 mel frames, which go into HiFT. Hydra runtime ensures tokens
+            represent the current best planner output (k3).
+          </div>
+        </div>
+        <div class="summary-card">
+          <div class="summary-label">Vocoder contract</div>
+          <div class="summary-value"><code>(1, 80, 170) -> (1, 81600)</code></div>
+          <div class="summary-note">
+            HiFT sees a zero-length cache and always returns a full waveform sample tensor. GPU-local cache stays empty
+            in the synchronous scheduled path.
+          </div>
+        </div>
+        <div class="summary-card">
+          <div class="summary-label">Strongest performance read</div>
+          <div class="summary-value"><code>c2</code> is the `S3` sweet spot</div>
+          <div class="summary-note">
+            Throughput peaks at c2; c4/c8 show the downstream scaling stress that Hydra+scheduled T3 still feeds into.
+          </div>
+        </div>
+      </div>
+
+      <div class="section">
+        <div class="section-title">Flow Through S3</div>
+        <div class="section-subtitle">
+          Trace paths: reference embedding → token-to-mel → HiFT → exported waveform. Labels show how the new Hydra
+          planner context enters the flow.
+        </div>
+        <div class="scroll">
+          <div class="pipeline">
+            <div class="stage">
+              <div class="stage-head">
+                <h2 class="stage-title">1. Reference Conditioning</h2>
+                <div class="stage-path"><code>runtime/worker.py:112</code></div>
+              </div>
+              <div class="stage-body">
+                <div class="cell">
+                  <div class="cell-title">Inputs</div>
+                  <span class="shape-line"><code>speaker_emb (1, 256)</code></span>
+                  <span class="shape-line"><code>cond_prompt_speech_tokens (1, 150)</code> when provided</span>
+                  <span class="shape-line"><code>s3_ref.prompt_token (1, 157)</code></span>
+                  <span class="shape-line"><code>s3_ref.embedding (1, 192)</code></span>
+                </div>
+                <div class="cell">
+                  <div class="cell-title">Role</div>
+                  <div class="note">
+                    Hydra k3 outputs define `speech_tokens (1, 85)` that flow into this stage as the primary signal.
+                  </div>
+                </div>
+              </div>
+            </div>
+
+            <div class="arrow"><div class="arrow-label">prompt embedding</div></div>
+
+            <div class="stage wide">
+              <div class="stage-head">
+                <h2 class="stage-title">2. S3 Reference Dictionary</h2>
+                <div class="stage-path"><code>models/s3gen/s3gen.py:167</code></div>
+              </div>
+              <div class="stage-body">
+                <div class="cell">
+                  <div class="cell-title">Trace Shapes</div>
+                  <span class="shape-line"><code>prompt_token (1, 157)</code></span>
+                  <span class="shape-line"><code>prompt_token_len (1,)</code></span>
+                  <span class="shape-line"><code>prompt_feat (1, 314, 80)</code></span>
+                  <span class="shape-line"><code>embedding (1, 192)</code></span>
+                </div>
+                <div class="cell">
+                  <div class="cell-title">Meaning</div>
+                  <div class="note">
+                    These values are the direct conditioning inputs for every scheduled request, kept stable per request
+                    even under concurrency.
+                  </div>
+                </div>
+              </div>
+            </div>
+
+            <div class="arrow"><div class="arrow-label">token2mel input</div></div>
+
+            <div class="stage">
+              <div class="stage-head">
+                <h2 class="stage-title">3. Token-to-Mel Input</h2>
+                <div class="stage-path"><code>models/s3gen/s3gen.py:197</code></div>
+              </div>
+              <div class="stage-body">
+                <div class="cell">
+                  <div class="cell-title">Shape Contract</div>
+                  <span class="shape-line"><code>speech_tokens (1, 85)</code> <code>(patched Hydra tokens)</code></span>
+                  <span class="shape-line"><code>speech_token_lens (1,)</code></span>
+                  <span class="shape-line"><code>finalize=True</code></span>
+                  <span class="shape-line"><code>n_cfm_timesteps=10</code></span>
+                </div>
+                <div class="cell">
+                  <div class="cell-title">Meaning</div>
+                  <div class="note">
+                    Hydra k3 tokens are filtered with `speech_tokens (1, 85)` before entering the flow decoder.
+                  </div>
+                </div>
+              </div>
+            </div>
+
+            <div class="arrow"><div class="arrow-label">flow output</div></div>
+
+            <div class="stage wide">
+              <div class="stage-head">
+                <h2 class="stage-title">4. Token-to-Mel Output</h2>
+                <div class="stage-path"><code>models/s3gen/s3gen.py:222</code></div>
+              </div>
+              <div class="stage-body">
+                <div class="cell">
+                  <div class="cell-title">Output Shape</div>
+                  <span class="shape-line"><code>output_mels (1, 80, 170)</code></span>
+                </div>
+                <div class="cell">
+                  <div class="cell-title">Meaning</div>
+                  <div class="note">
+                    Mel frames keep the 80-bin spectrum but grow to 170 frames per request; downstream HiFT sees these
+                    values unchanged.
+                  </div>
+                </div>
+              </div>
+            </div>
+
+            <div class="arrow"><div class="arrow-label">hift input</div></div>
+
+            <div class="stage">
+              <div class="stage-head">
+                <h2 class="stage-title">5. HiFT Vocoder Input</h2>
+                <div class="stage-path"><code>models/s3gen/s3gen.py:251</code></div>
+              </div>
+              <div class="stage-body">
+                <div class="cell">
+                  <span class="shape-line"><code>speech_feat (1, 80, 170)</code></span>
+                  <span class="shape-line"><code>cache_source (1, 1, 0)</code></span>
+                </div>
+                <div class="cell">
+                  <div class="note">
+                    `cache_source` remains empty for synchronous scheduled runs; all cache state is inside the flow/mel
+                    generator.
+                  </div>
+                </div>
+              </div>
+            </div>
+
+            <div class="arrow"><div class="arrow-label">hift output</div></div>
+
+            <div class="stage">
+              <div class="stage-head">
+                <h2 class="stage-title">6. HiFT Output + Final Inference</h2>
+                <div class="stage-path"><code>models/s3gen/s3gen.py:308</code></div>
+              </div>
+              <div class="stage-body">
+                <div class="cell">
+                  <div class="cell-title">Output</div>
+                  <span class="shape-line"><code>output_wavs (1, 81600)</code></span>
+                  <span class="shape-line"><code>output_sources (1, 1, 81600)</code> when present</span>
+                </div>
+                <div class="cell">
+                  <div class="cell-title">Inference Return</div>
+                  <span class="shape-line"><code>output_mels (1, 80, 170)</code></span>
+                  <span class="shape-line"><code>output_wavs (1, 81600)</code></span>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <div class="section">
+        <div class="section-title">Measured Shape Table</div>
+        <div class="section-subtitle">
+          Pulls the verified table from the contract note, annotated with column meanings and Hydra integration context.
+        </div>
+        <table>
+          <thead>
+            <tr>
+              <th>Stage</th>
+              <th>Tensor</th>
+              <th>Shape</th>
+              <th>Meaning</th>
+            </tr>
+          </thead>
+          <tbody>
+            <tr>
+              <td>token2mel input</td>
+              <td>`speech_tokens`</td>
+              <td>`(1, 85)`</td>
+              <td>Hydra k3 filtered speech tokens into S3</td>
+            </tr>
+            <tr>
+              <td>token2mel input</td>
+              <td>`speech_token_lens`</td>
+              <td>`(1,)`</td>
+              <td>length per request</td>
+            </tr>
+            <tr>
+              <td>token2mel input</td>
+              <td>`ref.prompt_token`</td>
+              <td>`(1, 157)`</td>
+              <td>prompt token conditioning</td>
+            </tr>
+            <tr>
+              <td>token2mel input</td>
+              <td>`ref.prompt_feat`</td>
+              <td>`(1, 314, 80)`</td>
+              <td>prompt mel conditioning</td>
+            </tr>
+            <tr>
+              <td>token2mel input</td>
+              <td>`ref.embedding`</td>
+              <td>`(1, 192)`</td>
+              <td>speaker/reference embedding</td>
+            </tr>
+            <tr>
+              <td>token2mel output</td>
+              <td>`output_mels`</td>
+              <td>`(1, 80, 170)`</td>
+              <td>generated mel frames</td>
+            </tr>
+            <tr>
+              <td>HiFT input</td>
+              <td>`speech_feat`</td>
+              <td>`(1, 80, 170)`</td>
+              <td>input to vocoder</td>
+            </tr>
+            <tr>
+              <td>HiFT input</td>
+              <td>`cache_source`</td>
+              <td>`(1, 1, 0)`</td>
+              <td>empty placeholder in current path</td>
+            </tr>
+            <tr>
+              <td>HiFT output</td>
+              <td>`output_wavs`</td>
+              <td>`(1, 81600)`</td>
+              <td>waveform samples</td>
+            </tr>
+            <tr>
+              <td>HiFT output</td>
+              <td>`output_sources`</td>
+              <td>`(1, 1, 81600)`</td>
+              <td>optional source output</td>
+            </tr>
+            <tr>
+              <td>inference output</td>
+              <td>`output_mels`</td>
+              <td>`(1, 80, 170)`</td>
+              <td>mel return to caller</td>
+            </tr>
+            <tr>
+              <td>inference output</td>
+              <td>`output_wavs`</td>
+              <td>`(1, 81600)`</td>
+              <td>waveform return to caller</td>
+            </tr>
+          </tbody>
+        </table>
+        <div class="footnote">
+          Shapes were drawn from the latest scheduled+Hydra run (with `--trace-s3-shapes`). Hydra planner tokens feed the
+          `speech_tokens (1, 85)` input in these traces.
+        </div>
+      </div>
+
+      <div class="section">
+        <div class="section-title">Performance Snapshot</div>
+        <div class="section-subtitle">
+          The `stage_s3_s` and `stage_audio_ready_s` entries from the contract note, highlighted with Hydra/throughput context.
+        </div>
+        <div class="scroll">
+          <table>
+            <thead>
+              <tr>
+                <th>Concurrency</th>
+                <th>`stage_s3_s_mean`</th>
+                <th>`stage_audio_ready_s_mean`</th>
+                <th>Throughput</th>
+                <th>Read</th>
+              </tr>
+            </thead>
+            <tbody>
+              <tr>
+                <td>`c1`</td>
+                <td>`4.7602s`</td>
+                <td>`9.3834s`</td>
+                <td>`0.3494`</td>
+                <td>cold single-request baseline on this run</td>
+              </tr>
+              <tr>
+                <td>`c2`</td>
+                <td>`2.1098s`</td>
+                <td>`4.9376s`</td>
+                <td>`1.3356`</td>
+                <td>current best `S3` efficiency; Hydra token load is clean</td>
+              </tr>
+              <tr>
+                <td>`c4`</td>
+                <td>`3.3746s`</td>
+                <td>`9.4711s`</td>
+                <td>`1.4042`</td>
+                <td>`S3` latency grows again</td>
+              </tr>
+              <tr>
+                <td>`c8`</td>
+                <td>`6.8995s`</td>
+                <td>`14.0846s`</td>
+                <td>`1.8687`</td>
+                <td>`S3` becomes the dominant downstream bottleneck</td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
+        <div class="footnote">
+          Hydra k3 planner tokens maintained exact token matches, so the above throughput numbers are the current
+          sequential S3 costs once those tokens hit the generator.
+        </div>
+      </div>
+
+      <div class="section">
+        <div class="section-title">Internal Stage Breakdown</div>
+        <div class="section-subtitle">
+          New traced stages from the updates: reference preparation, token2mel, HiFT, and trim. Values now include c1–c8 plus delta percentages.
+        </div>
+        <div class="scroll">
+          <table>
+            <thead>
+              <tr>
+                <th>Stage</th>
+                <th>`c1`</th>
+                <th>`c2`</th>
+                <th>`c4`</th>
+                <th>`c8`</th>
+                <th>`c2 -> c4`</th>
+                <th>`c2 -> c8`</th>
+                <th>Read</th>
+              </tr>
+            </thead>
+            <tbody>
+              <tr>
+                <td>`s3_ref_prepare_s`</td>
+                <td>`0.0004s`</td>
+                <td>`0.0009s`</td>
+                <td>`0.0008s`</td>
+                <td>`0.0018s`</td>
+                <td>`-11.1%`</td>
+                <td>`+100.0%`</td>
+                <td>reference clipping; marginal</td>
+              </tr>
+              <tr>
+                <td>`s3_token2mel_s`</td>
+                <td>`3.5140s`</td>
+                <td>`1.8980s`</td>
+                <td>`3.1110s`</td>
+                <td>`6.5268s`</td>
+                <td>`+63.9%`</td>
+                <td>`+243.9%`</td>
+                <td>main `S3` bottleneck</td>
+              </tr>
+              <tr>
+                <td>`s3_hift_s`</td>
+                <td>`1.2437s`</td>
+                <td>`0.2093s`</td>
+                <td>`0.2581s`</td>
+                <td>`0.3661s`</td>
+                <td>`+23.3%`</td>
+                <td>`+74.9%`</td>
+                <td>secondary vocoder cost</td>
+              </tr>
+              <tr>
+                <td>`s3_trim_s`</td>
+                <td>`0.0001s`</td>
+                <td>`0.0001s`</td>
+                <td>`0.0003s`</td>
+                <td>`0.0003s`</td>
+                <td>≈0%</td>
+                <td>≈0%</td>
+                <td>negligible</td>
+              </tr>
+              <tr>
+                <td>`s3_inference_internal_s`</td>
+                <td>`4.7600s`</td>
+                <td>`2.1097s`</td>
+                <td>`3.3745s`</td>
+                <td>`6.8993s`</td>
+                <td>`+59.9%`</td>
+                <td>`+227.0%`</td>
+                <td>sum of internal stages</td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
+      </div>
+
+      <div class="section">
+        <div class="section-title">Contribution Share</div>
+        <div class="section-subtitle">
+          Token2mel vs HiFT share of total `stage_s3_s` time in the same run.
+        </div>
+        <div class="scroll">
+          <table>
+            <thead>
+              <tr>
+                <th>Concurrency</th>
+                <th>Token2Mel share</th>
+                <th>HiFT share</th>
+                <th>Read</th>
+              </tr>
+            </thead>
+            <tbody>
+              <tr>
+                <td>`c1`</td>
+                <td>73.8%</td>
+                <td>26.3%</td>
+                <td>token-to-mel dominates</td>
+              </tr>
+              <tr>
+                <td>`c2`</td>
+                <td>89.9%</td>
+                <td>9.9%</td>
+                <td>token-to-mel overwhelms HiFT</td>
+              </tr>
+              <tr>
+                <td>`c4`</td>
+                <td>92.2%</td>
+                <td>7.6%</td>
+                <td>almost entirely token-to-mel</td>
+              </tr>
+              <tr>
+                <td>`c8`</td>
+                <td>94.6%</td>
+                <td>5.3%</td>
+                <td>`token2mel` is the bottleneck</td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
+      </div>
+
+      <div class="section">
+        <div class="section-title">Architectural Takeaways</div>
+        <div class="section-subtitle">
+          Why the shapes matter and what the current risk bucket looks like for S3.
+        </div>
+        <div class="legend-row">
+          <span class="legend-chip">shared immutable</span>
+          <span class="legend-chip">per-request</span>
+          <span class="legend-chip">per-call cache</span>
+        </div>
+        <div class="scroll">
+          <div class="pipeline">
+            <div class="stage">
+              <div class="stage-head">
+                <h2 class="stage-title">Immutable / Shared</h2>
+                <div class="stage-path"><code>models/s3gen/s3gen.py:40</code></div>
+              </div>
+              <div class="stage-body">
+                <div class="cell">
+                  <span class="shape-line">model weights (`flow`, `mel2wav`, speaker encoder)</span>
+                </div>
+                <div class="cell">
+                  <span class="shape-line">registered vocoder buffers</span>
+                </div>
+                <div class="cell">
+                  <span class="shape-line">resampler cache utility</span>
+                </div>
+              </div>
+            </div>
+
+            <div class="arrow"><div class="arrow-label">per request</div></div>
+
+            <div class="stage">
+              <div class="stage-head">
+                <h2 class="stage-title">Request-Local Inputs</h2>
+                <div class="stage-path"><code>runtime/worker.py</code></div>
+              </div>
+              <div class="stage-body">
+                <div class="cell">
+                  <span class="shape-line">`active_conds.gen` dictionary</span>
+                  <span class="shape-line">`speech_tokens`, `speech_token_lens`</span>
+                </div>
+                <div class="cell">
+                  <span class="shape-line">`ref_dict` inside `S3.forward(...)`</span>
+                </div>
+              </div>
+            </div>
+
+            <div class="arrow"><div class="arrow-label">per call</div></div>
+
+            <div class="stage">
+              <div class="stage-head">
+                <h2 class="stage-title">Per-Call Cache Bits</h2>
+                <div class="stage-path"><code>models/s3gen/s3gen.py:270</code></div>
+              </div>
+              <div class="stage-body">
+                <div class="cell">
+                  <span class="shape-line"><code>hift_cache_source = zeros(1,1,0)</code></span>
+                </div>
+                <div class="cell">
+                  <span class="shape-line">temporary flow tensors per call</span>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+        <div class="footnote">
+          Unlike T3, S3 does not mutate reusable shared inference state per request. The risk is performance: `stage_s3_s`
+          balloons past `c4` while inputs remain sequential. Hydra tokens arrive cleanly, so the next step is profiling the
+          flow vs the HiFT path to decide if `S3` needs staging or batching similar to `T3`.
+        </div>
+      </div>
+    </div>
+  </body>
+</html>
