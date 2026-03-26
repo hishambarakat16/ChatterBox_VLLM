@@ -1,19 +1,35 @@
 # GPU MIGRATION SERVING PLAN
 
-_Last updated: 2026-03-20_
+_Last updated: 2026-03-26_
 
 ## Rules
 
 - this `vLLM` spike is Hydra-free
 - use the base multilingual `T3` weights, not Hydra heads
 - do not use `--hydra-checkpoint-dir`
-- keep `--cfg-weight 0`
+- **CFG is now implemented natively inside vLLM** — `--cfg-weight 0.5` (or any positive value) is now safe to use; the old "keep `--cfg-weight 0`" rule no longer applies
 - run these commands on the GPU server, not on the local edit machine
 - current branch no longer feeds full external `prompt_embeds` into `vLLM`
 - current branch sends token ids plus conditioning tensors and lets the served custom model rebuild the `T3` prompt internally
+- `vllm_turbo_s3` now applies CFG, EOS suppression, and token-repetition detection inside vLLM via `T3CFGLogitsProcessor` — the old HF replay pass is no longer needed and is not called
 - if preflight fails, read [VLLM_ENV_INCIDENT.md](/home/ubuntu/ChatterBox_S3_Concurrency/VLLM_ENV_INCIDENT.md) before changing packages or rebuilding the env
 - the most likely base checkpoint dir on Thunder is:
   `~/.cache/huggingface/hub/models--ResembleAI--chatterbox/snapshots/05e904af2b5c7f8e482687a9d7336c5c824467d9`
+
+## 0. Per-Shell Bootstrap (Do This Every New Terminal)
+
+```bash
+conda activate chatterbox-vllm
+export LD_LIBRARY_PATH=/usr/local/cuda/lib64${LD_LIBRARY_PATH:+:$LD_LIBRARY_PATH}
+export VLLM_WORKER_MULTIPROC_METHOD=spawn
+export PYTHONPATH=$PWD/external/chatterbox/src
+```
+
+Why this is mandatory:
+
+- new shells do not keep prior exports
+- if `LD_LIBRARY_PATH` is missing, `vLLM` fails with `ImportError: libcudart.so.12: cannot open shared object file`
+- if `VLLM_WORKER_MULTIPROC_METHOD` is missing on Thunder, worker startup can fail on `fork()`
 
 ## 1. Create The `vLLM` Environment
 
@@ -201,10 +217,13 @@ Important:
 - inspect the stop diagnostics in the benchmark output:
   - `stage_t3_finish_reason_length_mean > 0` means some rows hit the token cap instead of stopping cleanly
   - `stage_t3_tail_trimmed_mean > 0` means the fallback repetitive-tail trim activated on length-capped rows
-- current quality caveat:
-  - the present `vLLM` spike does not yet replicate the original multilingual alignment-based EOS controller
-  - that means throughput can look excellent while some saved WAVs still show lingering noisy tails
-  - the current code only adds diagnostics plus a conservative repetitive-tail trim for length-capped rows; this is mitigation, not full parity
+- current quality status:
+  - CFG, EOS suppression, and token-repetition detection are now all applied inside vLLM via `T3CFGLogitsProcessor`
+  - the old HF replay pass is eliminated — `vllm_turbo_s3` no longer has an O(N) serial post-generation stage
+  - still missing vs the original `AlignmentStreamAnalyzer` (requires attention maps not exposed by vLLM's optimized kernels):
+    - false-start suppression
+    - long-tail / alignment-repetition detection
+  - for N concurrent requests, expected behavior: `T_vllm(2N) ≈ T_vllm(N)` because vLLM shares weight loads across all 2N sequences
   - confirmed current constraint:
     - `vllm_turbo_s3` should run with prefix caching disabled by default
     - with prefix caching enabled, the strongest bad-case pattern was batch-position-specific:
@@ -474,10 +493,74 @@ export PYTHONPATH=$PWD/external/chatterbox/src
   - after that was fixed, the old exact text-length bucketing still produced singleton sequential requests that did not match the working benchmark shape
   - the current safe path is admission-batched cohorts plus eager mode, with grouping shaped around `vLLM` rather than the legacy custom scheduler
 
-`vLLM` command still using Hydra flags
+## 8. CFG-in-vLLM Test Commands
 
-- remove `--hydra-checkpoint-dir`
-- keep `--cfg-weight 0`
+CFG is now handled natively inside vLLM. Use `--cfg-weight 0.5` (or any positive value) instead of `0`.
+
+### Single-request CFG check
+
+```bash
+PYTHONPATH=external/chatterbox/src python external/chatterbox/compare_multilingual_runtime.py \
+  --impl vllm_turbo_s3 \
+  --device cuda \
+  --language-id ar \
+  --audio-prompt-path "$PROMPT_AUDIO" \
+  --text "مرحبا، هذا اختبار لمسار vllm الجديد." \
+  --vllm-model-dir runs/t3_vllm_export \
+  --vllm-gpu-memory-utilization 0.5 \
+  --vllm-max-model-len 2048 \
+  --no-vllm-prefix-caching \
+  --vllm-enforce-eager \
+  --cfg-weight 0.5 \
+  --temperature 0.8 \
+  --max-new-tokens 300
+```
+
+### Concurrency benchmark with CFG
+
+```bash
+PYTHONPATH=external/chatterbox/src python external/chatterbox/simulate_streaming_service.py \
+  --impl vllm_turbo_s3 \
+  --device cuda \
+  --language-id ar \
+  --audio-prompt-path "$PROMPT_AUDIO" \
+  --fixed-text "مرحباً، يسعدنا خدمتك اليوم. كيف يمكنني مساعدتك؟" \
+  --vllm-model-dir runs/t3_vllm_export \
+  --vllm-gpu-memory-utilization 0.5 \
+  --vllm-max-model-len 2048 \
+  --no-vllm-prefix-caching \
+  --vllm-enforce-eager \
+  --concurrency-levels 1 2 4 \
+  --rounds-per-level 3 \
+  --stagger-ms 0 \
+  --batching-window-ms 10 \
+  --save-mode all \
+  --warmup-runs 1 \
+  --cfg-weight 0.5 \
+  --temperature 0.8 \
+  --max-new-tokens 300 \
+  --allow-vllm-compiled-service-sim \
+  --output-dir streaming_sim_vllm_cfg05
+```
+
+What to look for:
+- `t3_s` should be similar at `c1`, `c2`, and `c4` — no longer multiplying with N
+- no `token_repetition` log warnings (handled by `T3CFGLogitsProcessor` now)
+- audio quality comparable to baseline `scheduled` path
+
+### How T3CFGLogitsProcessor works
+
+For each request with `cfg_weight > 0` the worker submits two vLLM sequences:
+- **cond**: full prompt (speaker + text + speech BOS), tagged with `extra_args={cfg_weight, is_uncond: false, pair_id}`
+- **uncond**: same speaker conditioning, but text = SOT + EOT only (empty text), tagged with `extra_args={cfg_weight, is_uncond: true, pair_id}`
+
+At every decode step, `T3CFGLogitsProcessor.apply(logits)` runs over all batch logits:
+1. `cfg_logits[cond] = cond_logits + w * (cond_logits - uncond_logits)`
+2. EOS suppression: block stop token for first `max(25, text_token_len * 3)` steps
+3. 3× token repetition → force EOS
+4. `logits[uncond]` = one-hot on argmax of cfg_logits (mirrors cond trajectory)
+
+For N concurrent requests this means 2N sequences run in one vLLM `generate()` call. vLLM's weight-sharing makes `T_vllm(2N) ≈ T_vllm(N)`, so the HF replay O(N) bottleneck is gone.
 
 ## Supporting Docs
 

@@ -1,6 +1,6 @@
 # Progress
 
-_Last updated: 2026-03-20_
+_Last updated: 2026-03-26_
 
 ## Done
 
@@ -767,6 +767,54 @@ Interpretation:
     - replay the prepared `prompt_embeds` directly into `vLLM`
     - then replay the same shapes with zeroed embeddings
     - if zeroed `82 -> 99` still fails, the bug is shape-transition state in the `vLLM` prompt-embeds path, not Chatterbox embed contents
+
+- completed a full step-by-step pipeline gap analysis comparing baseline, scheduled, and vLLM paths before S3:
+  - identified that the HF replay pass (`_replay_original_alignment_stop`) was carrying every quality guard in the vLLM path:
+    - CFG (`cond + w*(cond - uncond)`)
+    - EOS suppression (prevents early stop before text is complete)
+    - false-start detection (suppresses hallucinated leading frames)
+    - long-tail / alignment-repetition trim
+    - 3× token-repetition detection → forced EOS
+  - the replay pass was therefore the O(N) serial bottleneck for N concurrent requests:
+    - batch-4 HF replay ≈ 2× batch-2 wall-clock time (GPU memory-bandwidth bound; weight loads don't scale, but KV attention memory does)
+    - for N=7 concurrent requests the replay time was 7× a single request, removing all batching benefit from vLLM
+  - three nested fallback layers were masking failures silently:
+    - batched replay → serial fallback on shape mismatch or exception
+    - serial fallback → raw vLLM tokens (no CFG) on total exception
+    - raw tokens → noisy output with no trim
+  - also confirmed that token_repetition warnings at 50-60% rate in batched replay runs were caused by degraded attention patterns when N requests shared a single KV-cache context in the batched HF forward pass
+
+- implemented CFG natively inside vLLM using the batch-level `LogitsProcessor` API, eliminating the HF replay entirely:
+  - `T3CFGLogitsProcessor` added to `vllm_t3_model.py`:
+    - registered at engine startup via `LLM(logits_processors=[T3CFGLogitsProcessor])`
+    - reads `cfg_weight`, `is_uncond`, `pair_id`, `stop_token_id`, `min_speech_tokens` from `SamplingParams.extra_args`
+    - `update_state(BatchUpdate)` tracks cond↔uncond pairing across vLLM's continuous batching, handling `added`/`removed`/`SWAP`/`UNIDIRECTIONAL` moves
+    - `apply(logits)` at every decode step:
+      1. CFG: `cfg_logits = cond + w*(cond - uncond)`
+      2. EOS suppression: blocks stop token for the first `min_speech_tokens` steps (estimated as `max(25, text_token_len * 3)`)
+      3. Token repetition: 3× identical consecutive cond token → forces EOS immediately
+      4. Uncond mirroring: one-hot on cond's argmax so both sequences share a token trajectory
+    - no-op for requests without `extra_args` so all non-CFG requests are unaffected
+  - `build_vllm_uncond_prompt()` added to `vllm_t3_bridge.py`:
+    - same speaker/emotion conditioning as cond
+    - text replaced with just SOT + EOT (empty text), approximating the original `text_emb[uncond].zero_()` approach
+  - `make_cfg_pair_sampling_params()` added to `vllm_t3_bridge.py`:
+    - returns `(cond_sp, uncond_sp)` with matching `extra_args`; returns `(plain_sp, None)` for `cfg_weight == 0`
+  - `worker_vllm.py` refactored:
+    - `_build_vllm_inputs()` helper builds the joint prompt + sampling_params list: 1 entry per request when `cfg_weight == 0`, 2 entries (cond + uncond) when `cfg_weight > 0`
+    - `generate()` and `generate_many()` now call `_build_vllm_inputs`, submit all cond+uncond pairs in one `vllm_engine.generate()` call, collect only cond outputs directly — no HF replay
+    - `_replay_original_alignment_stop()`, `_replay_many_with_cfg()`, and `_finalize_request()` remain in the file but are no longer called from any live code path
+    - baseline `worker.py`, `worker_scheduled.py`, `t3.py`, and all non-vLLM files are untouched
+
+- expected speedup for N concurrent requests (same text):
+  - before: `T_total = T_vllm(N) + T_replay(N)` where `T_replay(N) ≈ N × T_replay(1)` (bottleneck)
+  - after: `T_total = T_vllm(2N)` where `T_vllm(2N) ≈ T_vllm(N)` (vLLM shares weights across all 2N sequences in one pass)
+  - the HF replay bottleneck is eliminated; all quality guards run inside vLLM at decode time
+
+- still not implemented inside vLLM (no attention maps available from vLLM's optimized kernels):
+  - false-start suppression (requires attention alignment position)
+  - long-tail / alignment-repetition detection (requires attention alignment position)
+  - these were provided by `AlignmentStreamAnalyzer` hooks in the HF replay; a future vLLM-side equivalent would need either eager attention output or a separate lightweight post-generation trim
 
 ## Not Current Work
 
