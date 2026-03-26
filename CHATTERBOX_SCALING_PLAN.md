@@ -159,6 +159,46 @@ If S3 is improved and concurrency is still poor:
 6. rerun concurrency benchmarks after the new `T3` scheduling shape
 7. only then attack `S3`
 
+## Current Boundary Decision
+
+We are deliberately not pushing more of the prompt/input assembly stack into `vLLM`.
+
+Rationale:
+
+- the earlier fixed-shape `vLLM` path scaled well and stayed relatively simple
+- the instability showed up when dynamic text and mixed prompt shapes were pushed through one reused engine
+- once prompt assembly and input-contract handling move deeper into `vLLM`, the serving path starts to sprawl across two libraries at once
+- that creates maintenance overhead, makes failures harder to localize, and turns `vLLM` into the place where every Chatterbox-specific detail must be reimplemented
+- that is not the cheapest architecture to maintain unless we are fully committing to a deep fork
+
+Current decision:
+
+- treat the current fixed-prompt-embed `vLLM` path as the serving core
+- keep dynamic ingestion and chunking outside `vLLM`
+- make the upstream ingestion layer produce stable, bounded request shapes before requests enter the engine
+- only revisit deeper `vLLM` integration if the simpler boundary fails on throughput or quality
+
+## Ingestion Policy
+
+The next optimization step is not a `vLLM` rewrite.
+
+It is an ingestion contract:
+
+- chunk input by text-token budget, not by raw character count
+- keep the target chunk size in the `64` to `128` token range
+- start calibration around `96` tokens as the middle point
+- set `max_new_tokens` to match the chosen chunk budget instead of leaving a large tail budget that turns into silence
+- split on whitespace and punctuation boundaries so words do not get cut mid-token when possible
+- if a boundary forces a short leftover gap, accept a small pause rather than overfilling the chunk
+- if needed, carry the cut text into the next chunk and allow a small inter-chunk pause to hide the seam
+
+Why this policy:
+
+- it keeps prompt-embed length and decode budget much more stable
+- it avoids wasting latency on extra low-information tail tokens
+- it lets us benchmark concurrency on a controlled serving shape
+- it preserves a cleaner separation of responsibilities: ingestion outside, fast batched decode inside
+
 ## Multiprocessing Note
 
 Process isolation is a deployment fallback, not the core fix.
