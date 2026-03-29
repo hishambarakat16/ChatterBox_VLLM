@@ -1,8 +1,16 @@
 # Progress
 
-_Last updated: 2026-03-19_
+_Last updated: 2026-03-29_
 
 ## Done
+
+- added dynamic `max_new_tokens` policy (`auto_max_new_tokens` / `auto_max_new_tokens_cap`) to `worker_vllm.py`:
+  - tiered content-token → speech-token budget: ≤8→32, ≤16→48, ≤32→64, ≤64→96, else→cap (default 128)
+  - opt-in via `auto_max_new_tokens=True`; existing behaviour unchanged
+  - diagnostic profile fields: `t3_max_new_tokens_requested`, `t3_max_new_tokens_effective`, `t3_auto_max_new_tokens_enabled`, `t3_auto_max_new_tokens_cap`
+  - simulator gains `--auto-max-new-tokens` / `--auto-max-new-tokens-cap` flags
+
+- added architecture board: `architecture/t3_shape_contract_flow_baseline_vs_vllm.html` to compare baseline vs vLLM flow
 
 - documented the serious `vLLM` environment incident in [VLLM_ENV_INCIDENT.md](/home/ubuntu/ChatterBox_S3_Concurrency/VLLM_ENV_INCIDENT.md) so later agents do not repeat the same multi-cause failure
 - fixed the cloud `vLLM` preflight path end to end on the `RTX A6000` box:
