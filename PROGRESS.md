@@ -1,14 +1,25 @@
 # Progress
 
-_Last updated: 2026-03-29_
+_Last updated: 2026-03-30_
 
 ## Done
+
+- fixed CUDA device-side assert crashing the FastAPI vLLM TTS service under concurrent load:
+  - root cause: `repetition_penalty=2.0` activates vLLM's penalty code path, which calls `_make_prompt_token_ids_tensor()` to read `token_ids_cpu` positions that are never written for embed-only requests (`prompt_token_ids=None`)
+  - in mixed prefill+decode batches (run 2 onward), stale values in those uninitialized positions exceed `vocab_size=8194`, causing `scatter_add_()` in `get_token_bin_counts_and_mask()` to write out-of-bounds on the GPU → CUDA device-side assert surfacing as `torch.AcceleratorError` at `.to("cpu")` in `AsyncGPUModelRunnerOutput`
+  - fix: hardcode `repetition_penalty=1.0` in `make_sampling_params()` in `vllm_t3_bridge.py`, activating the `no_penalties=True` fast path and bypassing `_make_prompt_token_ids_tensor()` entirely
+  - rationale: speech-token repetition is already guarded by the stop token id; the vLLM penalty path is not designed for embed-only prompts and should not be used here
+  - first run succeeded even with `repetition_penalty=2.0` because `token_ids_cpu` is zero-initialized at engine startup (zeros < 8194); run 2 crashed because later mixed batches had stale non-zero values from prior state
 
 - added dynamic `max_new_tokens` policy (`auto_max_new_tokens` / `auto_max_new_tokens_cap`) to `worker_vllm.py`:
   - tiered content-token → speech-token budget: ≤8→32, ≤16→48, ≤32→64, ≤64→96, else→cap (default 128)
   - opt-in via `auto_max_new_tokens=True`; existing behaviour unchanged
   - diagnostic profile fields: `t3_max_new_tokens_requested`, `t3_max_new_tokens_effective`, `t3_auto_max_new_tokens_enabled`, `t3_auto_max_new_tokens_cap`
   - simulator gains `--auto-max-new-tokens` / `--auto-max-new-tokens-cap` flags
+  - added `text_token_slack=7` in the dynamic cap resolver to avoid slight end-word clipping on borderline utterances while keeping the same tier map and cap guard
+
+- added `vLLM` FastAPI service wrapper (`external/chatterbox/fastapi_vllm_tts_service.py`) and documented end-to-end API startup/test flow in `GPU_MIGRATION_SERVING_PLAN.md`
+  - explicit runbook exports now include `HF_TOKEN`, `LD_LIBRARY_PATH`, and `PYTHONPATH` for reliable startup
 
 - added architecture board: `architecture/t3_shape_contract_flow_baseline_vs_vllm.html` to compare baseline vs vLLM flow
 
