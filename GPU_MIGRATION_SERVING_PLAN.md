@@ -1,6 +1,6 @@
 # GPU MIGRATION SERVING PLAN
 
-_Last updated: 2026-03-19_
+_Last updated: 2026-03-30_
 
 ## Rules
 
@@ -26,6 +26,8 @@ uv pip install vllm --torch-backend=auto
 python -m pip install huggingface_hub safetensors librosa soundfile sentencepiece
 python -m pip install -e external/chatterbox --no-deps
 python -m pip install conformer==0.3.2 diffusers==0.29.0 omegaconf s3tokenizer
+python -m pip install fastapi uvicorn
+export HF_TOKEN=hf_your_token_here
 export LD_LIBRARY_PATH=/usr/local/cuda/lib64${LD_LIBRARY_PATH:+:$LD_LIBRARY_PATH}
 export VLLM_WORKER_MULTIPROC_METHOD=spawn
 export PYTHONPATH=$PWD/external/chatterbox/src
@@ -321,6 +323,69 @@ PYTHONPATH=external/chatterbox/src python external/chatterbox/diagnose_vllm_prom
   --output-json prompt_embed_batched.json
 ```
 
+## 8. Run The FastAPI Service (Queued + Batched)
+
+This service is implemented in `external/chatterbox/fastapi_vllm_tts_service.py`.
+It keeps one shared model instance and batches queued requests over a short admission window.
+
+Start the API:
+
+```bash
+conda activate chatterbox-vllm
+cd /home/ubuntu/ChatterBox_S3_Concurrency
+export HF_TOKEN=hf_your_token_here
+export LD_LIBRARY_PATH=/usr/local/cuda/lib64${LD_LIBRARY_PATH:+:$LD_LIBRARY_PATH}
+export VLLM_WORKER_MULTIPROC_METHOD=spawn
+export PYTHONPATH=$PWD/external/chatterbox/src
+export VLLM_MODEL_DIR=$PWD/runs/t3_vllm_export
+export DEFAULT_AUDIO_PROMPT_PATH="$PROMPT_AUDIO"
+export VLLM_GPU_MEMORY_UTILIZATION=0.5
+export VLLM_MAX_MODEL_LEN=2048
+export VLLM_ENFORCE_EAGER=true
+export VLLM_ENABLE_PREFIX_CACHING=false
+export API_BATCH_WINDOW_MS=5
+export API_MAX_BATCH_SIZE=8
+python external/chatterbox/fastapi_vllm_tts_service.py
+```
+
+Notes:
+
+- keep `LD_LIBRARY_PATH` exported before starting the API, or `vLLM` may fail with `libcudart.so.12`
+- keep `HF_TOKEN` exported for first-time Hugging Face cache pulls (base checkpoint / model artifacts)
+- current `/v1/tts/stream` endpoint streams WAV bytes after synthesis completes (transport streaming), not token-level incremental synthesis
+
+Basic API checks:
+
+```bash
+curl -sS http://127.0.0.1:8000/health
+```
+
+Generate one WAV file:
+
+```bash
+curl -sS -X POST http://127.0.0.1:8000/v1/tts \
+  -H 'Content-Type: application/json' \
+  -d '{"text":"مرحبا، هذا اختبار لواجهة FastAPI مع vLLM.","language_id":"ar","auto_max_new_tokens":true,"auto_max_new_tokens_cap":128}' \
+  --output out_api.wav
+```
+
+Transport-streamed WAV endpoint:
+
+```bash
+curl -sS -N -X POST http://127.0.0.1:8000/v1/tts/stream \
+  -H 'Content-Type: application/json' \
+  -d '{"text":"مرحبا، هذا اختبار streaming endpoint.","language_id":"ar","auto_max_new_tokens":true,"auto_max_new_tokens_cap":128}' \
+  --output out_api_stream.wav
+```
+
+Quick concurrency-4 smoke:
+
+```bash
+seq 1 4 | xargs -I{} -P4 bash -lc 'curl -sS -X POST http://127.0.0.1:8000/v1/tts \
+  -H "Content-Type: application/json" \
+  -d "{\"text\":\"طلب {} لاختبار batching.\",\"language_id\":\"ar\",\"auto_max_new_tokens\":true,\"auto_max_new_tokens_cap\":128}" \
+  --output "out_api_c4_{}.wav"'
+```
 ## Common Failures
 
 `No module named 'vllm'`
@@ -346,6 +411,8 @@ uv pip install vllm --torch-backend=auto
 python -m pip install huggingface_hub safetensors librosa soundfile sentencepiece
 python -m pip install -e external/chatterbox --no-deps
 python -m pip install conformer==0.3.2 diffusers==0.29.0 omegaconf s3tokenizer
+python -m pip install fastapi uvicorn
+export HF_TOKEN=hf_your_token_here
 export LD_LIBRARY_PATH=/usr/local/cuda/lib64${LD_LIBRARY_PATH:+:$LD_LIBRARY_PATH}
 export VLLM_WORKER_MULTIPROC_METHOD=spawn
 export PYTHONPATH=$PWD/external/chatterbox/src
@@ -358,6 +425,15 @@ conda activate chatterbox-vllm
 python -m pip install conformer==0.3.2 diffusers==0.29.0 omegaconf s3tokenizer
 export PYTHONPATH=$PWD/external/chatterbox/src
 ```
+
+`401/403` or download/auth errors when loading model artifacts
+
+```bash
+export HF_TOKEN=hf_your_token_here
+```
+
+- if artifacts were never cached on this server, missing `HF_TOKEN` can block startup
+- after exporting `HF_TOKEN`, restart the API process
 
 `TorchCodec is required for save_with_torchcodec`
 
