@@ -1,8 +1,50 @@
 # Progress
 
-_Last updated: 2026-03-30_
+_Last updated: 2026-04-02_
 
 ## Done
+
+- **confirmed CUDA device-side assert is permanently closed — formal investigation with 200-request proof run:**
+  - conducted a structured 3-condition reproduction matrix (A: eager c4×8 ×5 runs, B: compiled c4×8 ×10 runs, C: compiled c8×16 ×5 runs) — zero failures, zero engine crashes, zero HTTP 500s across all 200 requests and 15 consecutive runs
+  - old trigger pattern (crash on run 2 due to mixed prefill+decode batch) was explicitly exercised many times — never reproduced
+  - verified the fix is structurally airtight and not just "hasn't crashed yet":
+    - `make_sampling_params()` is the **only** place `SamplingParams()` is constructed in the entire vLLM runtime path — confirmed by full codebase grep
+    - `repetition_penalty=1.0` is hardcoded there unconditionally — `options.repetition_penalty` is received but discarded for sampling params
+    - vLLM's `no_penalties` property returns `True` exactly when `repetition_penalties_reqs` is empty, which is guaranteed when every request has `repetition_penalty=1.0` — traced through `gpu_input_batch.py:371` (`if sampling_params.repetition_penalty != 1.0: self.repetition_penalties_reqs.add(req_id)`)
+    - `no_penalties=True` makes both the eager CPU sampler (`sampler.py:308`) and the GPU compiled Triton penalty kernel (`penalties.py:91`) return early before ever touching `_make_prompt_token_ids_tensor()` — the stale-token-ids read path is structurally dead
+    - the new chunked endpoint (`/v1/tts/stream_chunks`) uses `self.model.worker.generate_many()` which goes through the same `_prepare_request()` → `make_sampling_params()` path — same guarantee applies
+  - **why the old issue no longer applies given the new architecture:**
+    - old structure: `repetition_penalty` flowed from `TTSRequest → GenerationOptions → options.repetition_penalty → SamplingParams(repetition_penalty=float(options.repetition_penalty))` — user-supplied 2.0 reached vLLM verbatim
+    - new structure: `repetition_penalty` field still exists in `TTSRequest` and `GenerationOptions` for API compatibility, but `make_sampling_params()` now ignores it entirely and hardcodes 1.0 — the field is accepted at the API layer (no breaking change) but never forwarded to vLLM
+    - additionally, the chunked architecture splits each request into short independent text chunks before inference — individual chunks are smaller and complete faster, reducing the window during which a mixed prefill+decode batch can form; but this is defense-in-depth, not the primary fix
+  - **performance gain from unlocking CUDA graphs (`enforce_eager=false`):**
+    - previous stable config required `enforce_eager=true` because CUDA graphs were unsafe with the old penalty path (shape mismatches on mixed batches compounded the assert)
+    - with the assert closed, `enforce_eager=false` was tested and found fully stable
+    - measured at c=4: first_chunk_s dropped from **~3.0s → ~1.6s** (47% reduction) — free gain from CUDA graph kernel fusion with no code changes
+    - measured at c=8: first_chunk_s ~2.8–3.3s for 16 concurrent requests, all stable
+    - T3 decode infer_wall_s mean dropped from ~2.7s (eager) to ~1.9s (compiled) across the same batch sizes
+    - **recommended operating config going forward: `VLLM_ENFORCE_EAGER=false`**
+
+- added `/v1/tts/stream_chunks` chunked streaming endpoint to the FastAPI vLLM TTS service:
+  - text is split into natural-boundary chunks before inference using `split_text_for_streaming()` — hard punctuation (`.!?؟`) first, soft punctuation (`,،;؛:`) second, word-count fallback at 8 words, tiny trailing fragments merged into previous chunk
+  - each chunk is synthesised as an independent vLLM call and emitted as an NDJSON event immediately on completion — first audio arrives after one chunk latency (~1.5s at c=4 compiled) rather than full-text latency (~4.5s before)
+  - chunk jobs from concurrent requests are batched together by the shared scheduler into one `generate_many()` call — the vLLM engine still sees cross-request batches, not per-request sequential calls
+  - session created once per streaming request on its first chunk, reused for all subsequent chunks — voice conditioning is not repeated per chunk
+  - `chunk_auto_max_new_tokens_cap=64` limits per-chunk token budget independently of the full-request cap
+  - response format: `application/x-ndjson` — each line is a JSON event with `event`, `request_id`, `chunk_index`, `text`, `audio_wav_b64`, `sample_rate`, `queue_wait_s`, `t3_s`, `s3_s`, `chunk_total_s`, `is_final`
+  - `/v1/tts` and `/v1/tts/stream` are unchanged — existing clients unaffected
+  - `/v1/tts/split_preview` debug endpoint shows chunk boundaries without synthesising
+  - new client: `external/chatterbox/stream_chunks_client.py` — measures headers_s, first_chunk_s, per-chunk timings, saves individual chunk WAVs, supports concurrent load testing
+
+- added end-to-end stage timing instrumentation across the full vLLM TTS path:
+  - session build: `session_conditioning_s`, `session_voice_encoder_s`, `session_t3_cond_build_s`, and per-sub-stage S3 reference timings
+  - request prep: `request_conditionals_clone_s`, `t3_text_normalize_s`, `t3_text_tokenize_s`, `t3_prompt_embed_s` (and sub-stages)
+  - vLLM decode: `t3_vllm_generate_s`, `t3_s`, `t3_active_s`
+  - post-T3 handoff: `t3_output_extract_s`, `t3_tail_trim_s`, `t3_to_s3_tokens_s`
+  - S3 finalize: `s3_finalize_queue_delay_s` (time waiting for earlier items in the same batch to finish S3), `s3_token2mel_s`, `s3_hift_s`, `s3_s`
+  - scheduler batch traces: batch_id, batch_size, whole_count, chunk_count, infer_wall_s, model_generate_many_s — accessible via `GET /v1/tts/trace/recent?limit=N`
+  - confirmed S3 finalization is currently sequential per item after batched T3 decode — `s3_finalize_queue_delay_s` mean ~0.76s at c=4, growing with batch position — this is the next major optimization target
+  - confirmed `t3_alignment_analyzer_active=0` in the vLLM path (expected; Hydra/alignment analyzer is not active in this route)
 
 - fixed CUDA device-side assert crashing the FastAPI vLLM TTS service under concurrent load:
   - root cause: `repetition_penalty=2.0` activates vLLM's penalty code path, which calls `_make_prompt_token_ids_tensor()` to read `token_ids_cpu` positions that are never written for embed-only requests (`prompt_token_ids=None`)
