@@ -1,6 +1,13 @@
 # Cloud GPU Quickstart
 
-This is the shortest path to run the current Chatterbox baseline, the streaming runtime, the first-pass `concurrent` runtime, and the newer `scheduled` runtime on a GPU box.
+This guide covers two independent paths:
+
+- **Path A (sections 1–18)**: baseline, streaming, scheduled, speculative, Medusa, Hydra benchmarks using the `chatterbox-s3` conda environment
+- **Path B (sections 19–22)**: the production FastAPI TTS service using vLLM + turbo S3, using the `chatterbox-vllm` conda environment
+
+For the full vLLM serving reference (all env vars, endpoints, troubleshooting), see:
+
+- [GPU_MIGRATION_SERVING_PLAN.md](GPU_MIGRATION_SERVING_PLAN.md)
 
 Reference for the current tensor/state flow:
 
@@ -509,3 +516,157 @@ Current read:
   - `speedup = 14.09%`
   - `acceptance_rate = 0.7326`
 - Hydra `k3` is the current best overall speculative setting
+
+---
+
+## Path B — vLLM FastAPI Service
+
+This is the production serving path. It replaces the HF T3 decode loop with vLLM batched
+generation and uses the turbo S3 checkpoint (2-step meanflow CFM, ~5× faster than default).
+S3 finalize runs in parallel across up to 4 CUDA streams after the batched T3 decode.
+
+For the complete reference (all env vars, endpoint list, diagnostics, troubleshooting), see
+[GPU_MIGRATION_SERVING_PLAN.md](GPU_MIGRATION_SERVING_PLAN.md).
+
+## 19. Install The `chatterbox-vllm` Conda Environment
+
+This is a separate env from `chatterbox-s3`. Do NOT reuse `chatterbox-s3` — vLLM requires
+specific torch/cuda wheel versions that conflict with the chatterbox dependency stack.
+
+```bash
+conda create -n chatterbox-vllm python=3.11 -y
+conda activate chatterbox-vllm
+python -m pip install -U pip uv
+export UV_TORCH_BACKEND=cu128
+uv pip install vllm --torch-backend=auto
+python -m pip install huggingface_hub safetensors librosa soundfile sentencepiece
+python -m pip install -e external/chatterbox --no-deps
+python -m pip install conformer==0.3.2 diffusers==0.29.0 omegaconf s3tokenizer
+python -m pip install fastapi uvicorn psutil
+```
+
+The `--no-deps` editable install is critical. Plain `pip install -e external/chatterbox`
+downgrades `torch`, `torchaudio`, `transformers`, and `pydantic` and breaks vLLM.
+
+If you update the submodule or change any plugin entry point, re-run:
+
+```bash
+python -m pip install -e external/chatterbox --no-deps
+```
+
+## 20. Export The vLLM T3 Model Package
+
+Run once per checkout (or after pulling new submodule code):
+
+```bash
+conda activate chatterbox-vllm
+cd /home/ubuntu/ChatterBox_S3_Concurrency
+export PYTHONPATH=$PWD/external/chatterbox/src
+export LD_LIBRARY_PATH=/usr/local/cuda/lib64${LD_LIBRARY_PATH:+:$LD_LIBRARY_PATH}
+
+python external/chatterbox/export_vllm_t3_model.py \
+  --base-checkpoint-dir ~/.cache/huggingface/hub/models--ResembleAI--chatterbox/snapshots/05e904af2b5c7f8e482687a9d7336c5c824467d9 \
+  --output-dir runs/t3_vllm_export
+```
+
+Fallback if the HF cache path does not exist on this box:
+
+```bash
+python external/chatterbox/export_vllm_t3_model.py \
+  --from-pretrained \
+  --output-dir runs/t3_vllm_export
+```
+
+Verify the export worked:
+
+```bash
+python external/chatterbox/vllm_t3_preflight.py \
+  --model-dir runs/t3_vllm_export \
+  --gpu-memory-utilization 0.5
+```
+
+## 21. Start The FastAPI Service
+
+```bash
+conda activate chatterbox-vllm
+cd /home/ubuntu/ChatterBox_S3_Concurrency
+
+export HF_TOKEN=hf_your_token_here
+export LD_LIBRARY_PATH=/usr/local/cuda/lib64${LD_LIBRARY_PATH:+:$LD_LIBRARY_PATH}
+export VLLM_WORKER_MULTIPROC_METHOD=spawn
+export PYTHONPATH=$PWD/external/chatterbox/src
+
+# Model paths
+export VLLM_MODEL_DIR=$PWD/runs/t3_vllm_export
+export TURBO_S3_CHECKPOINT_DIR=~/.cache/huggingface/hub/models--ResembleAI--chatterbox-turbo/snapshots/749d1c1a46eb10492095d68fbcf55691ccf137cd
+export DEFAULT_AUDIO_PROMPT_PATH=$PWD/SPK_17_000003.wav
+
+# vLLM tuning — safe production defaults
+export VLLM_GPU_MEMORY_UTILIZATION=0.5   # 50% VRAM for KV cache; leaves room for S3 activations
+export VLLM_MAX_MODEL_LEN=2048
+export VLLM_ENFORCE_EAGER=false          # CUDA graphs: ~47% first_chunk_s reduction
+export VLLM_ENABLE_PREFIX_CACHING=false  # Must stay false — incompatible with embed-only prompts
+
+# Batching
+export API_BATCH_WINDOW_MS=5
+export API_MAX_BATCH_SIZE=8
+
+python external/chatterbox/fastapi_vllm_tts_service.py
+```
+
+The service binds on `0.0.0.0:8000` by default. Override with `API_HOST` and `API_PORT`.
+
+Ctrl+C triggers graceful drain → engine close (15s) → force-kill any surviving vLLM EngineCore
+child processes so VRAM is released cleanly.
+
+Health check after startup:
+
+```bash
+curl -sS http://127.0.0.1:8000/health
+```
+
+## 22. Test The Service With `stream_chunks_client.py`
+
+The `stream_chunks` endpoint is the primary production endpoint. It splits text into short
+phrases, synthesises each in batches, and streams each WAV chunk as it finishes — giving
+the lowest possible first-audio latency.
+
+Single request:
+
+```bash
+python external/chatterbox/stream_chunks_client.py \
+  --url http://127.0.0.1:8000/v1/tts/stream_chunks \
+  --concurrency 1 \
+  --text "صباح الخير. هذا اختبار قصير للصوت."
+```
+
+Concurrency-4 load test with saved output and JSON summary:
+
+```bash
+python external/chatterbox/stream_chunks_client.py \
+  --url http://127.0.0.1:8000/v1/tts/stream_chunks \
+  --concurrency 4 \
+  --num-requests 8 \
+  --text "صباح الخير. هذا اختبار قصير للصوت. أريد أن أسمع بداية الجملة ونهايتها بوضوح." \
+  --text "هل يبدو الصوت طبيعيًا عندما ينتقل من سؤال إلى جواب؟ هذا ما نريد التأكد منه الآن." \
+  --text "إذا كانت الجودة جيدة والزمن معقولًا، فسنكمل على تحسين الأداء تحت الضغط." \
+  --save-dir /tmp/tts_audit \
+  --summary-json /tmp/tts_audit/summary.json
+```
+
+Expected healthy summary numbers (c=4, N=8, on A6000):
+
+| Metric | Target |
+|---|---|
+| `first_chunk_s (client mean)` | `< 2.5s` |
+| `s3_finalize_wait_s (mean)` | `< 0.01s` |
+| `chunk_t3_active_s (mean)` | `0.7 – 1.5s` |
+| `s3_token2mel_s (mean)` | `0.8 – 1.2s` (2-step meanflow) |
+| `s3_hift_s (mean)` | `0.3 – 0.6s` |
+| `RTF (mean)` | `< 1.5×` for first wave |
+
+If `s3_finalize_wait_s` is large (> 0.1s), the S3 parallel finalize is not active — check
+that you are on the latest submodule commit and that `worker_vllm.py` uses `ThreadPoolExecutor`.
+
+If `first_chunk_s` is > 5s for the first wave, check that `VLLM_ENFORCE_EAGER=false`
+(CUDA graphs) and that the service has already completed its first warmup batch.
