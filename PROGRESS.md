@@ -4,6 +4,16 @@ _Last updated: 2026-04-02_
 
 ## Done
 
+- **finalized chunked-streaming Arabic edge-case fixes (listening-validated):**
+  - fixed `؟` mid-chunk suppression by splitting hard punctuation at `n>=1` so `جواب؟` becomes its own chunk instead of silencing continuation text
+  - improved split quality near conjunction/preposition boundaries with connective-aware overflow at the word-cap boundary (avoids unnatural clause starts)
+  - merged trailing 1-word final fragments back into the previous chunk to avoid isolated tail words (e.g. final `الجمل.`-only chunk)
+  - set chunk decode to flat cap for chunk sessions (`auto_max_new_tokens=False`, `max_new_tokens=chunk_cap`) so dense Arabic 8-9 word chunks are not clipped by dynamic tiers
+  - raised default `chunk_auto_max_new_tokens_cap` to `128` (service + client defaults) to absorb dense morphology without increasing chunk word counts
+  - reran `c=4, n=4` listening test and curated outputs under:
+    - `/tmp/tts_audit_samples/retest_same_20260402_125510`
+    - `/tmp/tts_audit_samples/updated_curated_20260402_125642`
+
 - **confirmed CUDA device-side assert is permanently closed — formal investigation with 200-request proof run:**
   - conducted a structured 3-condition reproduction matrix (A: eager c4×8 ×5 runs, B: compiled c4×8 ×10 runs, C: compiled c8×16 ×5 runs) — zero failures, zero engine crashes, zero HTTP 500s across all 200 requests and 15 consecutive runs
   - old trigger pattern (crash on run 2 due to mixed prefill+decode batch) was explicitly exercised many times — never reproduced
