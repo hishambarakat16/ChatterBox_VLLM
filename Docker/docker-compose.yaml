@@ -1,0 +1,44 @@
+services:
+  chatterbox-vllm:
+    build:
+      context: ..
+      dockerfile: Docker/Dockerfile
+    image: chatterbox-vllm:latest
+    container_name: chatterbox-vllm
+    init: true
+    gpus: all
+    ports:
+      - "8000:8000"
+    shm_size: "2gb"
+    environment:
+      HF_TOKEN: ${HF_TOKEN:-}
+      MODEL_ROOT: /models
+      HF_HOME: /models/.hf_home
+      CHECKPOINT_DIR: /models/chatterbox_base
+      BASE_CHECKPOINT_DIR: /models/chatterbox_base
+      TURBO_S3_CHECKPOINT_DIR: /models/chatterbox_turbo
+      VLLM_MODEL_DIR: /models/t3_vllm_export
+      DEFAULT_AUDIO_PROMPT_PATH: /app/SPK_17_000003.wav
+      API_HOST: 0.0.0.0
+      API_PORT: 8000
+      API_DEVICE: cuda
+      API_BATCH_WINDOW_MS: 5
+      API_MAX_BATCH_SIZE: 8
+      VLLM_WORKER_MULTIPROC_METHOD: spawn
+      VLLM_ENABLE_PREFIX_CACHING: "false"
+      VLLM_ENFORCE_EAGER: "false"
+      VLLM_GPU_MEMORY_UTILIZATION: 0.5
+      VLLM_MAX_MODEL_LEN: 2048
+      VLLM_EXPORT_COPY: "1"
+      AUTO_DOWNLOAD_BASE_CHECKPOINT: ${AUTO_DOWNLOAD_BASE_CHECKPOINT:-0}
+      AUTO_DOWNLOAD_TURBO_S3: ${AUTO_DOWNLOAD_TURBO_S3:-0}
+      AUTO_EXPORT_VLLM_MODEL: ${AUTO_EXPORT_VLLM_MODEL:-0}
+    volumes:
+      - ${MODEL_ROOT_HOST:-../models}:/models
+    healthcheck:
+      test: ["CMD", "curl", "-fsS", "http://127.0.0.1:8000/health"]
+      interval: 30s
+      timeout: 5s
+      retries: 10
+      start_period: 60s
+    command: ["serve"]

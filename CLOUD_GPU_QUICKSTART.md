@@ -8,6 +8,7 @@ This guide covers two independent paths:
 For the full vLLM serving reference (all env vars, endpoints, troubleshooting), see:
 
 - [GPU_MIGRATION_SERVING_PLAN.md](GPU_MIGRATION_SERVING_PLAN.md)
+- [Docker/README.md](/home/ubuntu/ChatterBox_S3_Concurrency/Docker/README.md)
 
 Reference for the current tensor/state flow:
 

@@ -9,6 +9,7 @@ Read this together with:
 - [CLOUD_GPU_QUICKSTART.md](/home/ubuntu/ChatterBox_S3_Concurrency/CLOUD_GPU_QUICKSTART.md)
 - [GPU_MIGRATION_SERVING_PLAN.md](/home/ubuntu/ChatterBox_S3_Concurrency/GPU_MIGRATION_SERVING_PLAN.md)
 - [VLLM_ENV_INCIDENT.md](/home/ubuntu/ChatterBox_S3_Concurrency/VLLM_ENV_INCIDENT.md)
+- [Docker/README.md](/home/ubuntu/ChatterBox_S3_Concurrency/Docker/README.md)
 
 ## Current Read
 
@@ -156,6 +157,17 @@ export API_MAX_BATCH_SIZE=8
 
 python external/chatterbox/fastapi_vllm_tts_service.py
 ```
+
+## Docker Packaging
+
+A containerized path now exists under [Docker/README.md](/home/ubuntu/ChatterBox_S3_Concurrency/Docker/README.md).
+
+Key design choices:
+
+- the image contains code + Python runtime, but not the large model artifacts by default
+- mounted `/models` is the default contract for `chatterbox_base`, `chatterbox_turbo`, and `t3_vllm_export`
+- the Docker entrypoint sets both `CHECKPOINT_DIR` and `BASE_CHECKPOINT_DIR` to the same base checkpoint path so the service stays on the local path and does not silently redownload
+- Docker model preparation can optionally auto-download the base/turbo checkpoints and export a self-contained vLLM package into the mounted `/models`
 
 ## Smoke Tests
 
