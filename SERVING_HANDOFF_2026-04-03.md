@@ -179,6 +179,41 @@ From a live `/v1/tts/meta` call:
 - `s3_hift_input_mel_frames = 4`
 - `s3_hift_output_samples = 1920`
 
+From a live `/v1/tts/stream_chunks` chunk trace:
+
+- `s3_token2mel_batch_size = 1`
+- `s3_token2mel_speech_token_len = 47`
+- `s3_token2mel_prompt_token_len = 150`
+- `s3_token2mel_total_token_len = 197`
+- `s3_token2mel_prompt_mel_frames = 300`
+- `s3_token2mel_generated_mel_frames = 94`
+- `s3_token2mel_total_mel_frames = 394`
+- `s3_token2mel_mel_channels = 80`
+- `s3_token2mel_embedding_dim = 192`
+- `s3_token2mel_ratio = 2`
+- `s3_token2mel_finalize = 1`
+- `s3_hift_input_batch_size = 1`
+- `s3_hift_input_mel_channels = 80`
+- `s3_hift_input_mel_frames = 94`
+- `s3_hift_output_samples = 45120`
+
+Sanity checks from that same run:
+
+- `generated_mel_frames (94) ~= speech_token_len (47) * ratio (2)`
+- `hift_input_mel_frames (94) == generated_mel_frames (94)`
+
+Additional live chunk-trace sample while the API was still up (`2026-04-03`, 8 observed chunks across 3 requests):
+
+- shortest observed chunk in the sample: `speech_token_len=2`, `total_token_len=152`, `generated_mel_frames=4`, `total_mel_frames=304`, `hift_output_samples=1920`
+- longest observed chunk in the sample: `speech_token_len=54`, `total_token_len=204`, `generated_mel_frames=108`, `total_mel_frames=408`, `hift_output_samples=51840`
+- other observed points in the same sample included:
+  - `speech_token_len=8`, `total_token_len=158`, `generated_mel_frames=16`, `hift_output_samples=7680`
+  - `speech_token_len=12`, `total_token_len=162`, `generated_mel_frames=24`, `hift_output_samples=11520`
+  - `speech_token_len=28`, `total_token_len=178`, `generated_mel_frames=56`, `hift_output_samples=26880`
+  - `speech_token_len=47`, `total_token_len=197`, `generated_mel_frames=94`, `hift_output_samples=45120`
+- across that sample, the prompt-side constants remained stable at `prompt_token_len=150` and `prompt_mel_frames=300`
+- the live relationship continued to hold: `generated_mel_frames ~= 2 * speech_token_len` and `hift_input_mel_frames == generated_mel_frames`
+
 From a live `stream_chunks_client.py` smoke (`c=2`, `n=4`):
 
 - `first_chunk_s (client mean) = 1.7104s`
