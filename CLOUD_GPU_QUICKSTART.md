@@ -11,7 +11,7 @@ For the full vLLM serving reference (all env vars, endpoints, troubleshooting), 
 
 Reference for the current tensor/state flow:
 
-- [CHATTERBOX_STATE_FLOW.md](/Users/hisham/Code/Bahraini_TTS/CHATTERBOX_STATE_FLOW.md)
+- [CHATTERBOX_STATE_FLOW.md](/home/ubuntu/ChatterBox_S3_Concurrency/CHATTERBOX_STATE_FLOW.md)
 
 ## 1. If You Already Have An Old Cloud Checkout
 
@@ -624,6 +624,22 @@ Health check after startup:
 ```bash
 curl -sS http://127.0.0.1:8000/health
 ```
+
+Inspect the current S3 shape metadata after startup:
+
+```bash
+curl -sS -H 'Content-Type: application/json' \
+  -d '{"text":"صباح الخير. هذا اختبار قصير للصوت.","language_id":"ar","auto_max_new_tokens":true,"auto_max_new_tokens_cap":128}' \
+  http://127.0.0.1:8000/v1/tts/meta | jq '.profile._trace.stage_meta'
+```
+
+Inspect recent scheduler traces:
+
+```bash
+curl -sS http://127.0.0.1:8000/v1/tts/trace/recent?limit=5 | jq '.batches'
+```
+
+Use the `s3_token2mel_*` and `s3_hift_*` fields for bucket design. Do not size buckets from raw text length alone; the real token-to-mel axis is what matters for TRT planning.
 
 ## 22. Test The Service With `stream_chunks_client.py`
 

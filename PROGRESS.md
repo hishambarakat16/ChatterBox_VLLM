@@ -1,8 +1,14 @@
 # Progress
 
-_Last updated: 2026-04-02_
+_Last updated: 2026-04-03_
 
 ## Done
+
+- **captured live token-to-mel / HiFT geometry and refreshed the serving handoff docs:**
+  - added `s3_token2mel_*` and `s3_hift_*` shape metadata to API `stage_meta` so bucket sizing can use the real S3 input axis instead of raw text length guesses
+  - verified live `/v1/tts/stream_chunks` and `/v1/tts/meta` responses now expose these fields end to end
+  - confirmed on `2026-04-03` with a live `c=2, n=4` chunk-stream smoke: `first_chunk_s(mean)=1.7104`, `s3_finalize_wait_s(mean)=0.0009`, `s3_token2mel_s(mean)=0.3831`, `s3_hift_s(mean)=0.1766`
+  - wrote [SERVING_HANDOFF_2026-04-03.md](/home/ubuntu/ChatterBox_S3_Concurrency/SERVING_HANDOFF_2026-04-03.md) and refreshed the quickstart + serving plan so setup, export, startup, instrumentation checks, and VRAM troubleshooting all match the current code
 
 - **finalized chunked-streaming Arabic edge-case fixes (listening-validated):**
   - fixed `؟` mid-chunk suppression by splitting hard punctuation at `n>=1` so `جواب؟` becomes its own chunk instead of silencing continuation text
@@ -40,7 +46,7 @@ _Last updated: 2026-04-02_
   - each chunk is synthesised as an independent vLLM call and emitted as an NDJSON event immediately on completion — first audio arrives after one chunk latency (~1.5s at c=4 compiled) rather than full-text latency (~4.5s before)
   - chunk jobs from concurrent requests are batched together by the shared scheduler into one `generate_many()` call — the vLLM engine still sees cross-request batches, not per-request sequential calls
   - session created once per streaming request on its first chunk, reused for all subsequent chunks — voice conditioning is not repeated per chunk
-  - `chunk_auto_max_new_tokens_cap=64` limits per-chunk token budget independently of the full-request cap
+  - `chunk_auto_max_new_tokens_cap=128` limits per-chunk token budget independently of the full-request cap
   - response format: `application/x-ndjson` — each line is a JSON event with `event`, `request_id`, `chunk_index`, `text`, `audio_wav_b64`, `sample_rate`, `queue_wait_s`, `t3_s`, `s3_s`, `chunk_total_s`, `is_final`
   - `/v1/tts` and `/v1/tts/stream` are unchanged — existing clients unaffected
   - `/v1/tts/split_preview` debug endpoint shows chunk boundaries without synthesising

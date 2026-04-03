@@ -239,9 +239,9 @@ PYTHONPATH=external/chatterbox/src python external/chatterbox/simulate_streaming
 
 Benchmark-vs-simulator comparison points for `vllm_turbo_s3`:
 
-- the working benchmark path in [benchmark_multilingual_concurrency.py](/Users/hisham/Code/Bahraini_TTS/external/chatterbox/benchmark_multilingual_concurrency.py) sends one call shaped like:
+- the working benchmark path in [benchmark_multilingual_concurrency.py](/home/ubuntu/ChatterBox_S3_Concurrency/external/chatterbox/benchmark_multilingual_concurrency.py) sends one call shaped like:
   - `generate_many_with_sessions(sessions, [text] * concurrency, ...)`
-- the simulator path in [simulate_streaming_service.py](/Users/hisham/Code/Bahraini_TTS/external/chatterbox/simulate_streaming_service.py) is intentionally different:
+- the simulator path in [simulate_streaming_service.py](/home/ubuntu/ChatterBox_S3_Concurrency/external/chatterbox/simulate_streaming_service.py) is intentionally different:
   - it can stagger arrivals
   - it can rotate through different sentences
   - it can group ready arrivals into cohorts before calling `generate_many_with_sessions(...)`
@@ -365,7 +365,7 @@ the default 10-step S3Gen). Set `TURBO_S3_CHECKPOINT_DIR` so the service loads i
 | `API_HOST` | `0.0.0.0` | Uvicorn bind host |
 | `API_PORT` | `8000` | Uvicorn bind port |
 | `API_SHUTDOWN_TIMEOUT_S` | `15.0` | Seconds to wait for graceful shutdown before force-killing vLLM children |
-| `API_TRACE_RECENT_BATCHES` | `200` | How many recent batch profiles to keep in memory for `/v1/tts/diagnostics` |
+| `API_TRACE_RECENT_BATCHES` | `200` | How many recent batch profiles to keep in memory for `/v1/tts/trace/recent` |
 | `HF_TOKEN` | _(optional)_ | Hugging Face token — only needed for first-time artifact downloads |
 
 ### 8c. Start The Service
@@ -411,7 +411,7 @@ Notes:
 | `/v1/tts/stream` | POST | Transport-stream WAV bytes after synthesis completes |
 | `/v1/tts/stream_chunks` | POST | **Chunked streaming** — splits text into short phrases, streams each as a separate WAV chunk; lowest first-chunk latency |
 | `/v1/tts/meta` | POST | Return synthesis profile/timing without audio |
-| `/v1/tts/diagnostics` | GET | Recent batch profiles (last `API_TRACE_RECENT_BATCHES` batches) |
+| `/v1/tts/trace/recent` | GET | Recent batch profiles (last `API_TRACE_RECENT_BATCHES` batches) |
 
 ### 8e. Basic Smoke Tests
 
@@ -488,6 +488,35 @@ Key metrics to check in the summary:
 - `chunk_t3_active_s (mean)` — T3 decode time per chunk (shared across batch; expected `~0.7-1.5s` depending on batch size)
 - `s3_token2mel_s (mean)` — CFM mel synthesis time (2-step meanflow; expected `~0.8-1.2s`)
 - `s3_hift_s (mean)` — HiFiGAN vocoder time (expected `~0.3-0.6s`)
+
+### 8f.1 Inspect The Token-To-Mel / HiFT Geometry
+
+Use the metadata endpoint when you want the current S3 input/output sizes without audio payloads:
+
+```bash
+curl -sS -H 'Content-Type: application/json' \
+  -d '{"text":"صباح الخير. هذا اختبار قصير للصوت.","language_id":"ar","auto_max_new_tokens":true,"auto_max_new_tokens_cap":128}' \
+  http://127.0.0.1:8000/v1/tts/meta | jq '.profile._trace.stage_meta'
+```
+
+For the chunked endpoint, inspect the first NDJSON event:
+
+```bash
+curl -sS -N -H 'Content-Type: application/json' \
+  -d '{"text":"صباح الخير. هذا اختبار قصير للصوت.","chunk_target_words":6,"chunk_max_words":12}' \
+  http://127.0.0.1:8000/v1/tts/stream_chunks | sed -n '1p' | jq '.trace.stage_meta'
+```
+
+The fields to bucket around are the S3-side ones, not raw text length:
+
+- `s3_token2mel_speech_token_len` — generated speech-token length for this chunk
+- `s3_token2mel_prompt_token_len` — prompt/reference speech-token length
+- `s3_token2mel_total_token_len` — full token length seen by the token-to-mel flow encoder
+- `s3_token2mel_generated_mel_frames` — mel frames actually produced for this chunk
+- `s3_hift_input_mel_frames` — mel length consumed by HiFT (normally matches generated mel frames)
+- `s3_hift_output_samples` — final waveform sample count
+
+These are the metrics to use for TRT bucketing and real traffic histograms. Frontend/API text length should only be treated as an upstream heuristic.
 
 ### 8g. S3 Parallel Finalize
 
@@ -582,6 +611,25 @@ export PYTHONPATH=$PWD/external/chatterbox/src
 - use `--vllm-gpu-memory-utilization 0.5` and `--vllm-max-model-len 2048` for this spike
 - the single-request path already works; if this still stalls after lowering both values, the next suspect is the threaded benchmark pattern rather than raw model loading
 
+`Killed a request but VRAM is still stuck`
+
+- first check whether an orphan process is still visible in the container:
+
+```bash
+ps -ef | rg 'VLLM::EngineCore|vllm|uvicorn|fastapi_vllm_tts_service'
+```
+
+- if the orphan PID is visible, kill it explicitly:
+
+```bash
+kill -TERM <pid>
+kill -9 <pid>
+```
+
+- if `nvidia-smi` still shows large VRAM use after the PID is gone, and `nvidia-smi --gpu-reset -i 0` fails with the primary-GPU error, the remaining allocation is outside the container's control
+- that case is common on third-party containerized GPU services and Thunder prototyping instances; container-local process kill is not always enough to release the provider-side context
+- the practical fallback is container restart or provider-side GPU reset / eviction
+
 `Only the first row in a batched run sounds right; later rows linger`
 
 - check the benchmark diagnostics first
@@ -614,6 +662,6 @@ export PYTHONPATH=$PWD/external/chatterbox/src
 
 ## Supporting Docs
 
-- [t3_engine_migration_memo.md](/Users/hisham/Code/Bahraini_TTS/architecture/t3_engine_migration_memo.md)
-- [t3_serving_stack_layering_memo.md](/Users/hisham/Code/Bahraini_TTS/architecture/t3_serving_stack_layering_memo.md)
-- [t3_mixed_traffic_scheduler_research_memo.md](/Users/hisham/Code/Bahraini_TTS/architecture/t3_mixed_traffic_scheduler_research_memo.md)
+- [t3_engine_migration_memo.md](/home/ubuntu/ChatterBox_S3_Concurrency/architecture/t3_engine_migration_memo.md)
+- [t3_serving_stack_layering_memo.md](/home/ubuntu/ChatterBox_S3_Concurrency/architecture/t3_serving_stack_layering_memo.md)
+- [t3_mixed_traffic_scheduler_research_memo.md](/home/ubuntu/ChatterBox_S3_Concurrency/architecture/t3_mixed_traffic_scheduler_research_memo.md)
