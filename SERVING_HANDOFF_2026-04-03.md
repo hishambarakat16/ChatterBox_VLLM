@@ -214,6 +214,17 @@ Additional live chunk-trace sample while the API was still up (`2026-04-03`, 8 o
 - across that sample, the prompt-side constants remained stable at `prompt_token_len=150` and `prompt_mel_frames=300`
 - the live relationship continued to hold: `generated_mel_frames ~= 2 * speech_token_len` and `hift_input_mel_frames == generated_mel_frames`
 
+Larger live chunk sample (`2026-04-03`, 32 chunks across 12 requests, same chunking config):
+
+- `s3_token2mel_speech_token_len`: `min=2`, `p50=8`, `p90=32.5`, `max=54`
+- `s3_token2mel_total_token_len`: `min=152`, `p50=158`, `p90=182.5`, `max=204`
+- `s3_token2mel_generated_mel_frames`: `min=4`, `p50=16`, `p90=65`, `max=108`
+- `s3_hift_output_samples`: `min=1920`, `p50=7680`, `p90=31200`, `max=51840`
+- prompt-side constants were still fixed at `prompt_token_len=150` and `prompt_mel_frames=300`
+- most frequent live pair in this sample was `speech_token_len=2 -> generated_mel_frames=4` (`13/32` chunks)
+- next most frequent pairs were `8 -> 16` (`5/32`) and `12 -> 24` (`3/32`)
+- full sampled JSON snapshot was saved during capture at `/tmp/live_s3_boundary_sample.json`
+
 From a live `stream_chunks_client.py` smoke (`c=2`, `n=4`):
 
 - `first_chunk_s (client mean) = 1.7104s`
