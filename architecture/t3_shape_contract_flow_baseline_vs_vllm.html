@@ -1,0 +1,331 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>T3 Shape Contract Flow: Baseline vs vLLM</title>
+    <style>
+      :root {
+        --bg: #efefef;
+        --panel: #ffffff;
+        --ink: #1a1a1a;
+        --muted: #616161;
+        --line: #cfcfcf;
+        --line-strong: #9a9a9a;
+        --chip: #f3f3f3;
+        --accent: #2b2b2b;
+      }
+
+      * {
+        box-sizing: border-box;
+      }
+
+      body {
+        margin: 0;
+        background: var(--bg);
+        color: var(--ink);
+        font-family: ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+      }
+
+      code,
+      .mono {
+        font-family: ui-monospace, "SFMono-Regular", Menlo, Consolas, monospace;
+      }
+
+      .page {
+        max-width: 1400px;
+        margin: 0 auto;
+        padding: 22px 20px 28px;
+      }
+
+      .hero,
+      .panel {
+        background: var(--panel);
+        border: 1px solid var(--line);
+        box-shadow: 0 1px 0 rgba(0, 0, 0, 0.04);
+      }
+
+      .hero {
+        padding: 18px 20px;
+        margin-bottom: 14px;
+      }
+
+      h1 {
+        margin: 0;
+        font-size: 28px;
+        letter-spacing: -0.02em;
+      }
+
+      .subtitle {
+        margin: 8px 0 0;
+        color: var(--muted);
+        font-size: 13px;
+        line-height: 1.5;
+      }
+
+      .source-list {
+        margin: 12px 0 0;
+        padding: 0;
+        list-style: none;
+        display: grid;
+        grid-template-columns: repeat(2, minmax(0, 1fr));
+        gap: 6px 12px;
+        font-size: 11px;
+        color: var(--muted);
+      }
+
+      .summary {
+        display: grid;
+        grid-template-columns: repeat(3, minmax(0, 1fr));
+        gap: 12px;
+        margin-bottom: 14px;
+      }
+
+      .card {
+        padding: 12px 14px;
+      }
+
+      .card h3 {
+        margin: 0;
+        font-size: 11px;
+        letter-spacing: 0.08em;
+        text-transform: uppercase;
+        color: var(--muted);
+      }
+
+      .card p {
+        margin: 8px 0 0;
+        font-size: 13px;
+        line-height: 1.45;
+      }
+
+      .flow {
+        padding: 16px 18px;
+        margin-bottom: 14px;
+      }
+
+      .flow h2 {
+        margin: 0 0 10px;
+        font-size: 12px;
+        letter-spacing: 0.08em;
+        text-transform: uppercase;
+        color: var(--muted);
+      }
+
+      .lane {
+        display: grid;
+        grid-template-columns: 160px 1fr;
+        gap: 12px;
+        align-items: flex-start;
+        margin-bottom: 14px;
+      }
+
+      .lane-title {
+        font-size: 12px;
+        text-transform: uppercase;
+        letter-spacing: 0.08em;
+        color: var(--muted);
+        padding-top: 8px;
+      }
+
+      .pipeline {
+        display: flex;
+        align-items: stretch;
+        gap: 10px;
+        flex-wrap: wrap;
+      }
+
+      .node {
+        border: 1px solid var(--line);
+        background: #fafafa;
+        padding: 8px 10px;
+        min-width: 170px;
+        font-size: 12px;
+        line-height: 1.4;
+      }
+
+      .node strong {
+        display: block;
+        font-size: 12px;
+        margin-bottom: 4px;
+      }
+
+      .arrow {
+        align-self: center;
+        color: var(--line-strong);
+        font-size: 18px;
+      }
+
+      .scope {
+        border: 1px dashed var(--line-strong);
+        padding: 8px;
+        display: flex;
+        gap: 10px;
+        align-items: stretch;
+      }
+
+      .scope-label {
+        font-size: 10px;
+        text-transform: uppercase;
+        letter-spacing: 0.08em;
+        color: var(--muted);
+        margin-bottom: 6px;
+      }
+
+      .notes {
+        padding: 14px 16px;
+      }
+
+      .notes h3 {
+        margin: 0 0 8px;
+        font-size: 11px;
+        letter-spacing: 0.08em;
+        text-transform: uppercase;
+        color: var(--muted);
+      }
+
+      .notes ul {
+        margin: 0;
+        padding-left: 18px;
+        font-size: 12px;
+        line-height: 1.5;
+        color: var(--ink);
+      }
+
+      .footer {
+        color: var(--muted);
+        font-size: 11px;
+        padding: 10px 0 0;
+      }
+    </style>
+  </head>
+  <body>
+    <div class="page">
+      <section class="hero">
+        <h1>T3 Shape Contract Flow: Baseline vs vLLM</h1>
+        <p class="subtitle">
+          Left-to-right pipeline comparison showing what moved into vLLM in the current spike. Prompt embeds and
+          conditionals remain in Chatterbox; only the speech-token decode step is delegated to vLLM.
+        </p>
+        <ul class="source-list mono">
+          <li>/home/ubuntu/ChatterBox_S3_Concurrency/architecture/t3_shape_contract_flow.html</li>
+          <li>/home/ubuntu/ChatterBox_S3_Concurrency/external/chatterbox/src/chatterbox/mtl_tts.py</li>
+          <li>/home/ubuntu/ChatterBox_S3_Concurrency/external/chatterbox/src/chatterbox/mtl_tts_vllm_turbo_s3.py</li>
+          <li>/home/ubuntu/ChatterBox_S3_Concurrency/external/chatterbox/src/chatterbox/runtime/worker_vllm.py</li>
+          <li>/home/ubuntu/ChatterBox_S3_Concurrency/external/chatterbox/src/chatterbox/vllm_t3_bridge.py</li>
+          <li>/home/ubuntu/ChatterBox_S3_Concurrency/external/chatterbox/src/chatterbox/vllm_t3_model.py</li>
+        </ul>
+      </section>
+
+      <section class="summary">
+        <div class="panel card">
+          <h3>Moved Into vLLM</h3>
+          <p>Speech-token autoregressive decode (T3 speech decoder) now runs through <span class="mono">vllm_engine.generate</span>.</p>
+        </div>
+        <div class="panel card">
+          <h3>Still In Chatterbox</h3>
+          <p>Prompt conditioning, text normalization, prompt-embed assembly, S3 vocoder, and watermarking.</p>
+        </div>
+        <div class="panel card">
+          <h3>Current Limits</h3>
+          <p>CFG and Hydra disabled in vLLM path; prompt embeds are computed outside vLLM; mixed embed shapes require bucketing.</p>
+        </div>
+      </section>
+
+      <section class="panel flow">
+        <h2>Pipeline Comparison</h2>
+
+        <div class="lane">
+          <div class="lane-title">Baseline</div>
+          <div class="pipeline">
+            <div class="node">
+              <strong>Audio prompt + conditionals</strong>
+              Prepare speaker/conditioning tensors.
+            </div>
+            <div class="arrow">→</div>
+            <div class="node">
+              <strong>Text normalize + tokenize</strong>
+              Local tokenizer, CFG duplication, add start/stop tokens.
+            </div>
+            <div class="arrow">→</div>
+            <div class="node">
+              <strong>T3 inference (HF path)</strong>
+              Patched HF backend + AlignmentStreamAnalyzer during decode.
+            </div>
+            <div class="arrow">→</div>
+            <div class="node">
+              <strong>Speech tokens</strong>
+              Drop invalid tokens, keep conditional batch.
+            </div>
+            <div class="arrow">→</div>
+            <div class="node">
+              <strong>S3 vocoder</strong>
+              Token-to-mel + HiFT rendering.
+            </div>
+            <div class="arrow">→</div>
+            <div class="node">
+              <strong>Waveform + watermark</strong>
+              Final audio output.
+            </div>
+          </div>
+        </div>
+
+        <div class="lane">
+          <div class="lane-title">vLLM Spike</div>
+          <div class="pipeline">
+            <div class="node">
+              <strong>Audio prompt + conditionals</strong>
+              Same conditional prep in Chatterbox.
+            </div>
+            <div class="arrow">→</div>
+            <div class="node">
+              <strong>Text normalize + tokenize</strong>
+              Local tokenizer, add start/stop text tokens.
+            </div>
+            <div class="arrow">→</div>
+            <div>
+              <div class="scope-label mono">vLLM scope</div>
+              <div class="scope">
+                <div class="node">
+                  <strong>Prompt embeds</strong>
+                  <span class="mono">prepare_input_embeds</span> on prompt builder.
+                </div>
+                <div class="arrow">→</div>
+                <div class="node">
+                  <strong>vLLM generate</strong>
+                  <span class="mono">LLM.generate</span> on speech decoder.
+                </div>
+              </div>
+            </div>
+            <div class="arrow">→</div>
+            <div class="node">
+              <strong>Speech tokens</strong>
+              Tail trim + invalid token drop.
+            </div>
+            <div class="arrow">→</div>
+            <div class="node">
+              <strong>S3 vocoder</strong>
+              Same local inference as baseline.
+            </div>
+            <div class="arrow">→</div>
+            <div class="node">
+              <strong>Waveform + watermark</strong>
+              Final audio output.
+            </div>
+          </div>
+        </div>
+      </section>
+
+      <section class="panel notes">
+        <h3>Key Notes</h3>
+        <ul>
+          <li>Baseline uses AlignmentStreamAnalyzer during T3 inference; current vLLM path does not replicate that loop.</li>
+          <li>Prompt embeds are built outside vLLM (<span class="mono">build_prompt_embeds</span>), then passed via <span class="mono">prompt_embeds</span>.</li>
+          <li>vLLM model adapter maps speech weights into a Llama-style head and applies a speech position embedding.</li>
+          <li>Mixed prompt-embed lengths should be bucketed or constrained to avoid engine instability in this snapshot.</li>
+        </ul>
+        <div class="footer mono">Flow direction: left-to-right.</div>
+      </section>
+    </div>
+  </body>
+</html>
