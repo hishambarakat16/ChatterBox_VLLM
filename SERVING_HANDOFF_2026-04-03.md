@@ -274,6 +274,25 @@ From a live `stream_chunks_client.py` smoke (`c=2`, `n=4`):
 
 This is the latest checked state before the current GPU became unavailable.
 
+## Remote Backup
+
+A persistent backup of the current runnable artifacts was uploaded on `2026-04-03` to:
+
+- `https://huggingface.co/Hishambarakat/ChatterBox_VLLM`
+
+Backed-up contents:
+
+- `runs/t3_vllm_export/`
+- `hf_cache/chatterbox_base_snapshot_05e904af2b5c7f8e482687a9d7336c5c824467d9/`
+- `hf_cache/chatterbox_turbo_s3_snapshot_749d1c1a46eb10492095d68fbcf55691ccf137cd/`
+- `SERVING_HANDOFF_2026-04-03.md`
+- `CLOUD_GPU_QUICKSTART.md`
+- `GPU_MIGRATION_SERVING_PLAN.md`
+- `VLLM_ENV_INCIDENT.md`
+- `PROGRESS.md`
+
+The Hugging Face repo README was rewritten to describe the current `vLLM T3 + turbo S3` stack rather than the older Medusa framing.
+
 ## Operational Notes
 
 - `Ctrl+C` should drain requests, close the engine, and force-kill lingering `EngineCore` child processes.

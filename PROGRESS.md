@@ -8,6 +8,7 @@ _Last updated: 2026-04-03_
   - added `s3_token2mel_*` and `s3_hift_*` shape metadata to API `stage_meta` so bucket sizing can use the real S3 input axis instead of raw text length guesses
   - verified live `/v1/tts/stream_chunks` and `/v1/tts/meta` responses now expose these fields end to end
   - confirmed on `2026-04-03` with a live `c=2, n=4` chunk-stream smoke: `first_chunk_s(mean)=1.7104`, `s3_finalize_wait_s(mean)=0.0009`, `s3_token2mel_s(mean)=0.3831`, `s3_hift_s(mean)=0.1766`
+  - backed up the current runnable artifacts and runbooks to `https://huggingface.co/Hishambarakat/ChatterBox_VLLM`, including `runs/t3_vllm_export/`, the base Chatterbox snapshot files, and the turbo `s3gen_meanflow.safetensors` checkpoint
   - wrote [SERVING_HANDOFF_2026-04-03.md](/home/ubuntu/ChatterBox_S3_Concurrency/SERVING_HANDOFF_2026-04-03.md) and refreshed the quickstart + serving plan so setup, export, startup, instrumentation checks, and VRAM troubleshooting all match the current code
 
 - **finalized chunked-streaming Arabic edge-case fixes (listening-validated):**
