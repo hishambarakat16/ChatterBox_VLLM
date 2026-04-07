@@ -127,15 +127,15 @@ Direct comparison on the same **RTX 4060 Ti (16 GB)** using `/v1/tts`:
 - Request volume per run: `num_requests = 4 * concurrency`.
 - vLLM run policy: one single-request warmup sent before each measured run.
 
-| Concurrency | Baseline mean total (s) | vLLM mean total (s) | Speedup | Baseline req/s | vLLM req/s |
-|-------------|--------------------------|---------------------|---------|----------------|------------|
-| 1 | 4.64 | 1.32 | 3.52x | 0.215 | 0.759 |
-| 2 | 9.07 | 1.30 | 6.97x | 0.205 | 1.536 |
-| 4 | 18.04 | 1.83 | 9.84x | 0.200 | 2.180 |
-| 8 | 38.06 | 3.13 | 12.14x | 0.186 | 2.371 |
-| 16 | 81.09 | 5.40 | 15.02x | 0.173 | 2.817 |
+| C | Baseline mean total (s) | Ours mean total (s) | Mean speedup | Baseline req/s | Ours req/s |
+|---|--------------------------|---------------------|--------------|----------------|------------|
+| 1 | 4.642 | 1.318 | 3.52x | 0.215 | 0.759 |
+| 2 | 9.072 | 1.301 | 6.97x | 0.205 | 1.536 |
+| 4 | 18.038 | 1.834 | 9.84x | 0.200 | 2.180 |
+| 8 | 38.065 | 3.135 | 12.14x | 0.186 | 2.371 |
+| 16 | 81.092 | 5.400 | 15.02x | 0.173 | 2.817 |
 
-Observed behavior:
+Key read:
 
 - vLLM is faster at every tested concurrency level, and the advantage grows with load.
 - At `c=16`, baseline queue wait dominates (`~75.31s` mean server queue wait), while vLLM remains much lower (`~2.28s`).
