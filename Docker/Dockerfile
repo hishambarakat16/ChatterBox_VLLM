@@ -68,7 +68,9 @@ RUN set -eux; \
     find /opt/conda -name "__pycache__" -type d -exec rm -rf {} + 2>/dev/null || true
 
 # ── Stage 2: runtime ─────────────────────────────────────────────────────────
-# Only installs what the service needs at run time. No compilers, no git.
+# Only installs what the service needs at run time. Keep the toolchain minimal,
+# but include a C/C++ compiler because Triton/Inductor may JIT-compile helper
+# modules during vLLM engine startup.
 FROM nvidia/cuda:12.8.1-cudnn-runtime-ubuntu22.04
 
 ENV DEBIAN_FRONTEND=noninteractive \
@@ -101,8 +103,10 @@ ENV DEBIAN_FRONTEND=noninteractive \
     AUTO_DOWNLOAD_TURBO_S3=0 \
     AUTO_EXPORT_VLLM_MODEL=0
 
-# Runtime-only apt packages — no build-essential, no git, no wget
+# Runtime-only apt packages. A compiler is required here for Triton runtime
+# builds even though the Python environment itself is copied from the builder.
 RUN apt-get update && apt-get install -y --no-install-recommends \
+    build-essential \
     ca-certificates \
     ffmpeg \
     libsndfile1 \
