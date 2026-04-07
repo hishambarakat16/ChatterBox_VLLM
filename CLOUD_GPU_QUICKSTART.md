@@ -544,6 +544,14 @@ python -m pip install huggingface_hub safetensors librosa soundfile sentencepiec
 python -m pip install -e external/chatterbox --no-deps
 python -m pip install conformer==0.3.2 diffusers==0.29.0 omegaconf s3tokenizer
 python -m pip install fastapi uvicorn psutil
+export TORCH_LIB="$CONDA_PREFIX/lib/python3.11/site-packages/torch/lib"
+if [ -d /usr/local/cuda/lib64 ]; then
+  export LD_LIBRARY_PATH="/usr/local/cuda/lib64:$TORCH_LIB${LD_LIBRARY_PATH:+:$LD_LIBRARY_PATH}"
+else
+  python -m pip install --no-cache-dir nvidia-cuda-runtime-cu12==12.4.127
+  export CUDART12_DIR="$CONDA_PREFIX/lib/python3.11/site-packages/nvidia/cuda_runtime/lib"
+  export LD_LIBRARY_PATH="$TORCH_LIB:$CUDART12_DIR${LD_LIBRARY_PATH:+:$LD_LIBRARY_PATH}"
+fi
 ```
 
 The `--no-deps` editable install is critical. Plain `pip install -e external/chatterbox`
@@ -563,7 +571,7 @@ Run once per checkout (or after pulling new submodule code):
 conda activate chatterbox-vllm
 cd /home/ubuntu/ChatterBox_S3_Concurrency
 export PYTHONPATH=$PWD/external/chatterbox/src
-export LD_LIBRARY_PATH=/usr/local/cuda/lib64${LD_LIBRARY_PATH:+:$LD_LIBRARY_PATH}
+# keep LD_LIBRARY_PATH from step 19 in this shell session
 
 python external/chatterbox/export_vllm_t3_model.py \
   --base-checkpoint-dir ~/.cache/huggingface/hub/models--ResembleAI--chatterbox/snapshots/05e904af2b5c7f8e482687a9d7336c5c824467d9 \
@@ -593,7 +601,7 @@ conda activate chatterbox-vllm
 cd /home/ubuntu/ChatterBox_S3_Concurrency
 
 export HF_TOKEN=hf_your_token_here
-export LD_LIBRARY_PATH=/usr/local/cuda/lib64${LD_LIBRARY_PATH:+:$LD_LIBRARY_PATH}
+# keep LD_LIBRARY_PATH from step 19 in this shell session
 export VLLM_WORKER_MULTIPROC_METHOD=spawn
 export PYTHONPATH=$PWD/external/chatterbox/src
 

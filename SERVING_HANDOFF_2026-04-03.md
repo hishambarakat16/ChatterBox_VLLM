@@ -9,6 +9,7 @@ Read this together with:
 - [CLOUD_GPU_QUICKSTART.md](/home/ubuntu/ChatterBox_S3_Concurrency/CLOUD_GPU_QUICKSTART.md)
 - [GPU_MIGRATION_SERVING_PLAN.md](/home/ubuntu/ChatterBox_S3_Concurrency/GPU_MIGRATION_SERVING_PLAN.md)
 - [VLLM_ENV_INCIDENT.md](/home/ubuntu/ChatterBox_S3_Concurrency/VLLM_ENV_INCIDENT.md)
+- [LOCAL_VLLM_ENV_LESSONS_2026-04-07.md](/home/ubuntu/ChatterBox_S3_Concurrency/LOCAL_VLLM_ENV_LESSONS_2026-04-07.md)
 - [Docker/README.md](/home/ubuntu/ChatterBox_S3_Concurrency/Docker/README.md)
 
 ## Current Read
@@ -105,7 +106,14 @@ Export the vLLM `T3` package:
 conda activate chatterbox-vllm
 cd /home/ubuntu/ChatterBox_S3_Concurrency
 export PYTHONPATH=$PWD/external/chatterbox/src
-export LD_LIBRARY_PATH=/usr/local/cuda/lib64${LD_LIBRARY_PATH:+:$LD_LIBRARY_PATH}
+export TORCH_LIB="$CONDA_PREFIX/lib/python3.11/site-packages/torch/lib"
+if [ -d /usr/local/cuda/lib64 ]; then
+  export LD_LIBRARY_PATH="/usr/local/cuda/lib64:$TORCH_LIB${LD_LIBRARY_PATH:+:$LD_LIBRARY_PATH}"
+else
+  python -m pip install --no-cache-dir nvidia-cuda-runtime-cu12==12.4.127
+  export CUDART12_DIR="$CONDA_PREFIX/lib/python3.11/site-packages/nvidia/cuda_runtime/lib"
+  export LD_LIBRARY_PATH="$TORCH_LIB:$CUDART12_DIR${LD_LIBRARY_PATH:+:$LD_LIBRARY_PATH}"
+fi
 
 python external/chatterbox/export_vllm_t3_model.py \
   --base-checkpoint-dir ~/.cache/huggingface/hub/models--ResembleAI--chatterbox/snapshots/05e904af2b5c7f8e482687a9d7336c5c824467d9 \
@@ -140,7 +148,14 @@ conda activate chatterbox-vllm
 cd /home/ubuntu/ChatterBox_S3_Concurrency
 
 export HF_TOKEN=hf_your_token_here
-export LD_LIBRARY_PATH=/usr/local/cuda/lib64${LD_LIBRARY_PATH:+:$LD_LIBRARY_PATH}
+export TORCH_LIB="$CONDA_PREFIX/lib/python3.11/site-packages/torch/lib"
+if [ -d /usr/local/cuda/lib64 ]; then
+  export LD_LIBRARY_PATH="/usr/local/cuda/lib64:$TORCH_LIB${LD_LIBRARY_PATH:+:$LD_LIBRARY_PATH}"
+else
+  python -m pip install --no-cache-dir nvidia-cuda-runtime-cu12==12.4.127
+  export CUDART12_DIR="$CONDA_PREFIX/lib/python3.11/site-packages/nvidia/cuda_runtime/lib"
+  export LD_LIBRARY_PATH="$TORCH_LIB:$CUDART12_DIR${LD_LIBRARY_PATH:+:$LD_LIBRARY_PATH}"
+fi
 export VLLM_WORKER_MULTIPROC_METHOD=spawn
 export PYTHONPATH=$PWD/external/chatterbox/src
 
@@ -168,6 +183,7 @@ Key design choices:
 - mounted `/models` is the default contract for `chatterbox_base`, `chatterbox_turbo`, and `t3_vllm_export`
 - the Docker entrypoint sets both `CHECKPOINT_DIR` and `BASE_CHECKPOINT_DIR` to the same base checkpoint path so the service stays on the local path and does not silently redownload
 - Docker model preparation can optionally auto-download the base/turbo checkpoints and export a self-contained vLLM package into the mounted `/models`
+- Docker entrypoint now also fronts `/opt/conda/lib` in `LD_LIBRARY_PATH` to prevent `CXXABI_1.3.15` loader failures from system `libstdc++.so.6`
 
 ## Smoke Tests
 

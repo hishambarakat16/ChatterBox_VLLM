@@ -36,34 +36,36 @@ RUN wget -qO /tmp/miniforge.sh \
 # into the builder layer unnecessarily.
 COPY external/chatterbox /build/chatterbox
 
-RUN python -m pip install --upgrade pip uv \
-    && uv pip install --system "vllm==0.17.1" --torch-backend=auto \
-    && python -m pip install --no-cache-dir \
-         "numpy>=1.24.0,<1.26.0" \
-         "librosa==0.11.0" \
-         "s3tokenizer" \
-         "torchaudio==2.6.0" \
-         "transformers==4.46.3" \
-         "diffusers==0.29.0" \
-         "resemble-perth==1.0.1" \
-         "conformer==0.3.2" \
-         "safetensors==0.5.3" \
-         "spacy-pkuseg" \
-         "pykakasi==2.3.0" \
-         "pyloudnorm" \
-         "omegaconf" \
-         "huggingface_hub" \
-         "soundfile" \
-         "sentencepiece" \
-         "fastapi" \
-         "uvicorn" \
-         "psutil" \
-    # Install non-editable so the runtime image doesn't need the source tree
-    && python -m pip install --no-deps /build/chatterbox \
-    # Scrub everything that bloats the layer before we COPY it out
-    && conda clean -afy \
-    && find /opt/conda -name "*.pyc" -delete \
-    && find /opt/conda -name "__pycache__" -type d -exec rm -rf {} + 2>/dev/null || true
+RUN set -eux; \
+    python -m pip install --upgrade pip uv; \
+    # Mirror the local conda recovery path: let vLLM own the torch-family stack.
+    uv pip install --system "vllm==0.17.1" --torch-backend=auto; \
+    python -m pip install --no-cache-dir \
+      "omegaconf" \
+      "huggingface_hub" \
+      "safetensors" \
+      "librosa==0.11.0" \
+      "soundfile" \
+      "sentencepiece" \
+      "conformer==0.3.2" \
+      "diffusers==0.29.0" \
+      "s3tokenizer" \
+      "fastapi" \
+      "uvicorn" \
+      "psutil" \
+      "resemble-perth==1.0.1" \
+      "spacy-pkuseg" \
+      "pykakasi==2.3.0" \
+      "pyloudnorm"; \
+    python -m pip install --no-cache-dir "nvidia-cuda-runtime-cu12==12.4.127"; \
+    # Install non-editable so the runtime image doesn't need the source tree.
+    python -m pip install --no-deps /build/chatterbox; \
+    # Fail the build early if critical runtime packages are missing.
+    python -c 'import importlib.metadata as m; [print(pkg, m.version(pkg)) for pkg in ["vllm", "torch", "torchaudio", "torchvision", "transformers", "chatterbox-tts"]]'; \
+    # Scrub everything that bloats the layer before we COPY it out.
+    conda clean -afy; \
+    find /opt/conda -name "*.pyc" -delete; \
+    find /opt/conda -name "__pycache__" -type d -exec rm -rf {} + 2>/dev/null || true
 
 # ── Stage 2: runtime ─────────────────────────────────────────────────────────
 # Only installs what the service needs at run time. No compilers, no git.

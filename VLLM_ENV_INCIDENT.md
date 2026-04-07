@@ -78,7 +78,14 @@ Use this exact setup in the `chatterbox-vllm` env:
 ```bash
 conda activate chatterbox-vllm
 python -m pip install -e external/chatterbox --no-deps
-export LD_LIBRARY_PATH=/usr/local/cuda/lib64${LD_LIBRARY_PATH:+:$LD_LIBRARY_PATH}
+export TORCH_LIB="$CONDA_PREFIX/lib/python3.11/site-packages/torch/lib"
+if [ -d /usr/local/cuda/lib64 ]; then
+  export LD_LIBRARY_PATH="/usr/local/cuda/lib64:$TORCH_LIB${LD_LIBRARY_PATH:+:$LD_LIBRARY_PATH}"
+else
+  python -m pip install --no-cache-dir nvidia-cuda-runtime-cu12==12.4.127
+  export CUDART12_DIR="$CONDA_PREFIX/lib/python3.11/site-packages/nvidia/cuda_runtime/lib"
+  export LD_LIBRARY_PATH="$TORCH_LIB:$CUDART12_DIR${LD_LIBRARY_PATH:+:$LD_LIBRARY_PATH}"
+fi
 export VLLM_WORKER_MULTIPROC_METHOD=spawn
 export PYTHONPATH=$PWD/external/chatterbox/src
 ```

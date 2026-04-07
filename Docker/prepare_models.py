@@ -29,9 +29,6 @@ EXPORT_FILES = (
     "config.json",
     "generation_config.json",
     "model.safetensors",
-    "special_tokens_map.json",
-    "tokenizer.json",
-    "tokenizer_config.json",
     "chatterbox_vllm_export.json",
 )
 

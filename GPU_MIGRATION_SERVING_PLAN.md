@@ -28,7 +28,14 @@ python -m pip install -e external/chatterbox --no-deps
 python -m pip install conformer==0.3.2 diffusers==0.29.0 omegaconf s3tokenizer
 python -m pip install fastapi uvicorn
 export HF_TOKEN=hf_your_token_here
-export LD_LIBRARY_PATH=/usr/local/cuda/lib64${LD_LIBRARY_PATH:+:$LD_LIBRARY_PATH}
+export TORCH_LIB="$CONDA_PREFIX/lib/python3.11/site-packages/torch/lib"
+if [ -d /usr/local/cuda/lib64 ]; then
+  export LD_LIBRARY_PATH="/usr/local/cuda/lib64:$TORCH_LIB${LD_LIBRARY_PATH:+:$LD_LIBRARY_PATH}"
+else
+  python -m pip install --no-cache-dir nvidia-cuda-runtime-cu12==12.4.127
+  export CUDART12_DIR="$CONDA_PREFIX/lib/python3.11/site-packages/nvidia/cuda_runtime/lib"
+  export LD_LIBRARY_PATH="$TORCH_LIB:$CUDART12_DIR${LD_LIBRARY_PATH:+:$LD_LIBRARY_PATH}"
+fi
 export VLLM_WORKER_MULTIPROC_METHOD=spawn
 export PYTHONPATH=$PWD/external/chatterbox/src
 ```
@@ -112,7 +119,10 @@ PYTHONPATH=external/chatterbox/src python external/chatterbox/vllm_t3_preflight.
 Expected direction:
 
 - if this says `No module named 'vllm'`, your active env is wrong or `vllm` is not installed yet
-- if this says `libcudart.so.12`, first export `LD_LIBRARY_PATH=/usr/local/cuda/lib64${LD_LIBRARY_PATH:+:$LD_LIBRARY_PATH}` and retry
+- if this says `libcudart.so.12`, verify your loader path:
+  - include `"$CONDA_PREFIX/lib/python3.11/site-packages/torch/lib"` in `LD_LIBRARY_PATH`
+  - if `/usr/local/cuda/lib64` is missing on this host, install `nvidia-cuda-runtime-cu12==12.4.127` and include `"$CONDA_PREFIX/lib/python3.11/site-packages/nvidia/cuda_runtime/lib"`
+  - then retry preflight
 - if this says Thunder does not support `fork()`, export `VLLM_WORKER_MULTIPROC_METHOD=spawn` and retry
 - if this says `Model architectures ['ChatterboxT3ForCausalLM'] are not supported for now`, the local `chatterbox` package is not installed into the env with `--no-deps`, so the spawned vLLM worker did not load the custom model plugin
 
@@ -557,7 +567,14 @@ python -m pip install -e external/chatterbox --no-deps
 python -m pip install conformer==0.3.2 diffusers==0.29.0 omegaconf s3tokenizer
 python -m pip install fastapi uvicorn
 export HF_TOKEN=hf_your_token_here
-export LD_LIBRARY_PATH=/usr/local/cuda/lib64${LD_LIBRARY_PATH:+:$LD_LIBRARY_PATH}
+export TORCH_LIB="$CONDA_PREFIX/lib/python3.11/site-packages/torch/lib"
+if [ -d /usr/local/cuda/lib64 ]; then
+  export LD_LIBRARY_PATH="/usr/local/cuda/lib64:$TORCH_LIB${LD_LIBRARY_PATH:+:$LD_LIBRARY_PATH}"
+else
+  python -m pip install --no-cache-dir nvidia-cuda-runtime-cu12==12.4.127
+  export CUDART12_DIR="$CONDA_PREFIX/lib/python3.11/site-packages/nvidia/cuda_runtime/lib"
+  export LD_LIBRARY_PATH="$TORCH_LIB:$CUDART12_DIR${LD_LIBRARY_PATH:+:$LD_LIBRARY_PATH}"
+fi
 export VLLM_WORKER_MULTIPROC_METHOD=spawn
 export PYTHONPATH=$PWD/external/chatterbox/src
 ```

@@ -13,6 +13,18 @@ The image does **not** bake the large model artifacts into the container by
 default. Instead, it expects a mounted `/models` directory so the same image can
 be reused across machines.
 
+## CUDA Contract
+
+This image is intentionally aligned to a CUDA 12 runtime contract.
+
+- base image: `nvidia/cuda:12.8.1-cudnn-runtime-ubuntu22.04`
+- Docker mirrors the local conda recovery flow that passed preflight
+- `UV_TORCH_BACKEND=cu128` is set before installing `vllm==0.17.1`
+- `vLLM` is installed via `uv pip install vllm==0.17.1 --torch-backend=auto`
+- CUDA 12 runtime libs are installed in Python site-packages as a fallback (`nvidia-cuda-runtime-cu12`)
+
+This keeps startup behavior deterministic for `vllm._C` (`libcudart.so.12`) even when `/usr/local/cuda/lib64` is absent, while still letting the torch-family versions come from the `vLLM` install instead of hard-pinning an older stack.
+
 ## Files
 
 - `Dockerfile`: GPU runtime image for the FastAPI service
@@ -39,9 +51,6 @@ Mount a host directory to `/models` with this shape:
     ├── config.json
     ├── generation_config.json
     ├── model.safetensors
-    ├── special_tokens_map.json
-    ├── tokenizer.json
-    ├── tokenizer_config.json
     └── chatterbox_vllm_export.json
 ```
 
@@ -72,6 +81,10 @@ python external/chatterbox/export_vllm_t3_model.py \
 ```
 
 The container helper also defaults to `VLLM_EXPORT_COPY=1` for the same reason.
+
+Tokenizer JSON files are not required for the current vLLM bridge path because
+the service uses the multilingual grapheme tokenizer from
+`/models/chatterbox_base/grapheme_mtl_merged_expanded_v1.json`.
 
 ## Easiest Source For `/models`
 
@@ -171,3 +184,8 @@ curl -sS -H 'Content-Type: application/json' \
 - `VLLM_WORKER_MULTIPROC_METHOD=spawn` is set by default.
 - `prepare_models.py` is run automatically before `serve` and fails fast if the model contract is incomplete.
 - The container keeps the same service entrypoint as the manual path: `external/chatterbox/fastapi_vllm_tts_service.py`.
+- If startup fails with `RuntimeError: operator torchvision::nms does not exist` or `cannot import name 'Gemma3Config' from 'transformers'`, rebuild from this repo's current Dockerfile. It avoids downgrading the `vLLM` torch/transformers stack and keeps those packages mutually compatible.
+- `entrypoint.sh` now fronts `/opt/conda/lib` before system libraries, then builds `LD_LIBRARY_PATH` from multiple CUDA 12 locations (`torch/lib`, pip CUDA runtime dirs, and system CUDA paths), and fails fast if `vllm._C` cannot import.
+- If startup fails with `CXXABI_1.3.15 not found` from `libstdc++.so.6`, the process is picking the system C++ runtime instead of the Conda one. Rebuild from this repo's current Dockerfile/entrypoint so `/opt/conda/lib` is preferred.
+- The builder now hard-fails if `vllm`, `torch`, `torchaudio`, `torchvision`, `transformers`, or `chatterbox-tts` are missing, so a “successful” image cannot silently omit the runtime stack.
+- Cross-GPU support: this image can run on different NVIDIA GPUs (e.g., RTX 4060 Ti, RTX A6000) as long as the host driver supports the CUDA 12 user-space stack used by the container.
