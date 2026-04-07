@@ -60,7 +60,9 @@ Text is split at natural boundaries (sentence punctuation → clause punctuation
 
 ## Performance
 
-All measurements on a single **NVIDIA RTX A6000 (48 GB)**.
+Historical optimization measurements were run on **NVIDIA RTX A6000 (48 GB)**.
+Latest validation also includes **NVIDIA RTX 4060 Ti (16 GB)** to show how the
+same stack behaves on a smaller-memory card.
 
 ### Before vs After (c=4 concurrent requests)
 
@@ -90,6 +92,54 @@ s3_hift_s (mean):            0.177 s
 | 16          | 16           | ~1.1s          | ~7.4s           | **~9.9×**       |
 
 T3 decode time barely increases from c=1 to c=16 — that's the vLLM batching effect.
+
+### Cross-GPU Validation (Arabic stream_chunks, April 2026)
+
+Workload used for the table below:
+
+- endpoint: `/v1/tts/stream_chunks`
+- texts:
+  - `صباح الخير. هذا اختبار قصير للصوت.`
+  - `هل يبدو الصوت طبيعيًا عندما ينتقل من سؤال إلى جواب؟ هذا ما نريد التأكد منه.`
+
+| GPU | Concurrency | Requests | first_chunk_s (mean) | total_s (mean) | RTF (mean) | wall_s |
+|-----|-------------|----------|----------------------|----------------|------------|--------|
+| RTX A6000 (historical baseline) | 4 | n/a | ~1.6s | ~3.5s | ~5.4x | n/a |
+| RTX A6000 (historical baseline) | 16 | n/a | n/a | ~7.4s | ~9.9x | n/a |
+| RTX 4060 Ti (16 GB) | 4 | 8 | 2.08s | 5.02s | 0.51x | 11.89s |
+| RTX 4060 Ti (16 GB) | 8 | 16 | 4.15s | 7.04s | 0.37x | 15.28s |
+| RTX 4060 Ti (16 GB) | 16 | 32 | 5.59s | 10.15s | 0.26x | 22.79s |
+
+Interpretation:
+
+- The system still scales correctly on 4060 Ti (all requests completed at c=16).
+- On 16 GB VRAM, higher concurrency pushes queueing and S3 finalize wait up, so
+  first-chunk latency rises faster than on A6000.
+- This is capacity-limited scaling, not a scheduler correctness issue.
+
+### Baseline vs vLLM (Same GPU, April 2026)
+
+Direct comparison on the same **RTX 4060 Ti (16 GB)** using `/v1/tts`:
+
+- Baseline endpoint: `http://127.0.0.1:8001/v1/tts` (basic local FastAPI).
+- Optimized endpoint: `http://127.0.0.1:8000/v1/tts` (vLLM + scheduler path).
+- Workload: same two Arabic prompts used above.
+- Request volume per run: `num_requests = 4 * concurrency`.
+- vLLM run policy: one single-request warmup sent before each measured run.
+
+| Concurrency | Baseline mean total (s) | vLLM mean total (s) | Speedup | Baseline req/s | vLLM req/s |
+|-------------|--------------------------|---------------------|---------|----------------|------------|
+| 1 | 4.64 | 1.32 | 3.52x | 0.215 | 0.759 |
+| 2 | 9.07 | 1.30 | 6.97x | 0.205 | 1.536 |
+| 4 | 18.04 | 1.83 | 9.84x | 0.200 | 2.180 |
+| 8 | 38.06 | 3.13 | 12.14x | 0.186 | 2.371 |
+| 16 | 81.09 | 5.40 | 15.02x | 0.173 | 2.817 |
+
+Observed behavior:
+
+- vLLM is faster at every tested concurrency level, and the advantage grows with load.
+- At `c=16`, baseline queue wait dominates (`~75.31s` mean server queue wait), while vLLM remains much lower (`~2.28s`).
+- This validates that the optimized path is not just lower-latency at `c=1`; it preserves throughput as concurrency increases.
 
 ### Performance Chart
 
