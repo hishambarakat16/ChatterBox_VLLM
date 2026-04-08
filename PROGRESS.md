@@ -2,6 +2,26 @@
 
 _Last updated: 2026-04-08_
 
+## Current Status
+
+- the last known-good vLLM API branch inside `external/chatterbox` is
+  `pre-vllm-api` at commit `d1e3d32`
+- the root README now documents the helper flow based on
+  `prepare_local_vllm_models.py --copy`, including the stream client smoke
+  checks and the branch-selection step for a fresh machine
+- `external/chatterbox` `master` was replayed from the full `pre-vllm-api`
+  file set at commit `8e7fb90` so we can converge back to `master`, but we did
+  not finish revalidating that branch on this host because the GPU runtime went
+  unhealthy and started failing with `cudaGetDeviceCount()` / CUDA error `804`
+- if we need to recreate the working vLLM path on another machine right now,
+  the safest sequence is:
+  `git submodule update --init --recursive` ->
+  `cd external/chatterbox && git switch pre-vllm-api` ->
+  follow the README install + model-prep + API startup steps
+- once GPU access is healthy again, the next validation step is to rerun the
+  FastAPI warmup and the `stream_chunks_client.py` smoke on `external/chatterbox`
+  `master` to confirm it matches `pre-vllm-api` out of the box
+
 ## Done
 
 - **fixed the main vLLM multilingual correctness blocker and rebalanced the streaming test client:**

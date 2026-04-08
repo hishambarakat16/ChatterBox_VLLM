@@ -164,151 +164,197 @@ The "scheduled T3 batching" phase is what first enabled multiple requests to sha
 
 ## Installation
 
+### Current status for recreation
+
+If you are recreating the vLLM API on a fresh machine today, the most recently
+validated `external/chatterbox` branch is `pre-vllm-api` (commit `d1e3d32`).
+The `external/chatterbox` `master` branch was later rebuilt so it replays the
+full `pre-vllm-api` file set (`8e7fb90`), but that replay was not revalidated
+on this host because the GPU runtime went unhealthy (`cudaGetDeviceCount()`
+error `804`) before the final smoke test.
+
+Practical recommendation:
+
+- use `pre-vllm-api` first when you need the last known-good vLLM API setup
+- treat `master` as the branch we are aligning to that setup, but re-smoke-test
+  it on the new machine before assuming parity
+
+### 0. Sync the repo and set the Chatterbox branch
+
+```bash
+cd /path/to/ChatterBox_S3_Concurrency
+git submodule update --init --recursive
+
+cd external/chatterbox
+git fetch origin
+git switch pre-vllm-api
+cd ../..
+```
+
+If you specifically want to test the replayed `master` branch instead, replace
+the `git switch pre-vllm-api` line with `git switch master`.
+
 ### Prerequisites
 
 - NVIDIA GPU (tested on RTX A6000 48GB)
-- CUDA 12.1+
-- Python 3.10+
-- `conda` or `venv`
+- CUDA 12.x-class host driver / runtime
+- Python 3.11
+- `conda`
 
-### 1. Create environment
+### 1. Create the environment
 
 ```bash
-conda create -n chatterbox-vllm python=3.10 -y
+cd /path/to/ChatterBox_S3_Concurrency
+
+# If `conda activate` is unavailable, initialize conda for your own installation first.
+
+conda create -n chatterbox-vllm python=3.11 -y
 conda activate chatterbox-vllm
+python -m pip install -U pip uv
 ```
 
-### 2. Install PyTorch
+### 2. Install the runtime stack
 
 ```bash
-pip install torch==2.5.1 torchvision torchaudio --index-url https://download.pytorch.org/whl/cu121
+export UV_TORCH_BACKEND=cu128
+uv pip install vllm==0.17.1 --torch-backend=auto
+
+python -m pip install \
+  huggingface_hub safetensors librosa soundfile sentencepiece \
+  conformer==0.3.2 diffusers==0.29.0 omegaconf s3tokenizer \
+  fastapi uvicorn psutil
+
+python -m pip install -e external/chatterbox --no-deps
 ```
 
-### 3. Install vLLM
-
-```bash
-pip install vllm==0.17.1
-```
-
-### 4. Install Chatterbox (no-deps editable install)
-
-```bash
-# From the repo root:
-pip install -e external/chatterbox --no-deps
-pip install -r external/chatterbox/requirements.txt
-```
-
-### 5. Set environment variables
+### 3. Set runtime environment variables
 
 ```bash
 export HF_TOKEN=your_huggingface_token
-export LD_LIBRARY_PATH=/usr/local/cuda/lib64${LD_LIBRARY_PATH:+:$LD_LIBRARY_PATH}
+export PYTHONPATH=$PWD/external/chatterbox/src
 export VLLM_WORKER_MULTIPROC_METHOD=spawn
+
+export TORCH_LIB="$CONDA_PREFIX/lib/python3.11/site-packages/torch/lib"
+if [ -d /usr/local/cuda/lib64 ]; then
+  export LD_LIBRARY_PATH="/usr/local/cuda/lib64:$TORCH_LIB${LD_LIBRARY_PATH:+:$LD_LIBRARY_PATH}"
+else
+  python -m pip install --no-cache-dir nvidia-cuda-runtime-cu12==12.4.127
+  export CUDART12_DIR="$CONDA_PREFIX/lib/python3.11/site-packages/nvidia/cuda_runtime/lib"
+  export LD_LIBRARY_PATH="$TORCH_LIB:$CUDART12_DIR${LD_LIBRARY_PATH:+:$LD_LIBRARY_PATH}"
+fi
 ```
 
----
+### 4. Prepare local model artifacts
 
-## Setup: Export T3 for vLLM
-
-The T3 transformer must be exported to a vLLM-compatible format before the service can start. This only needs to be done once.
+Use the local helper script instead of manually downloading files and exporting the model package:
 
 ```bash
-python -c "
-from chatterbox.vllm_t3_bridge import export_vllm_t3_model
-export_vllm_t3_model(
-    ckpt_dir='path/to/chatterbox/weights',
-    output_dir='runs/vllm_t3_export',
-)
-print('Export complete: runs/vllm_t3_export')
-"
+python prepare_local_vllm_models.py --copy
 ```
 
-The export creates a directory with model weights + a `config.json` that registers the custom `ChatterboxT3ForCausalLM` architecture with vLLM.
+By default this creates:
 
----
+- `runs/models/chatterbox_base`
+- `runs/models/chatterbox_turbo`
+- `runs/models/t3_vllm_export`
 
-## Setup: Turbo S3 Checkpoint
+The helper depends on `HF_TOKEN` and is the expected way to reproduce the local
+artifact layout from scratch.
 
-Download the meanflow S3 checkpoint from HuggingFace:
+### 5. Optional preflight
 
 ```bash
-python -c "
-from huggingface_hub import snapshot_download
-import os
-path = snapshot_download(
-    repo_id='ResembleAI/chatterbox-turbo',
-    allow_patterns=['s3gen_meanflow.safetensors'],
-    token=os.getenv('HF_TOKEN'),
-)
-print('Turbo S3 cached at:', path)
-"
+python external/chatterbox/vllm_t3_preflight.py \
+  --model-dir "$PWD/runs/models/t3_vllm_export" \
+  --gpu-memory-utilization 0.5
 ```
 
----
-
-## Starting the API
+### 6. Start the API
 
 ```bash
-export VLLM_ENFORCE_EAGER=false          # enable CUDA graphs (~47% speedup)
-export VLLM_ENABLE_PREFIX_CACHING=false  # required: prefix caching breaks embed-only prompts
-export VLLM_GPU_MEMORY_UTILIZATION=0.85
+export MODEL_ROOT="$PWD/runs/models"
+
+export CHECKPOINT_DIR="$MODEL_ROOT/chatterbox_base"
+export BASE_CHECKPOINT_DIR="$MODEL_ROOT/chatterbox_base"
+export TURBO_S3_CHECKPOINT_DIR="$MODEL_ROOT/chatterbox_turbo"
+export VLLM_MODEL_DIR="$MODEL_ROOT/t3_vllm_export"
+export VLLM_EXPORT_DIR="$MODEL_ROOT/t3_vllm_export"
+
+export DEFAULT_AUDIO_PROMPT_PATH="$PWD/SPK_17_000003.wav"
+export API_DEVICE=cuda
+export API_PORT=8000
+
+export VLLM_TP_SIZE=1
+export VLLM_GPU_MEMORY_UTILIZATION=0.8
 export VLLM_MAX_MODEL_LEN=2048
-export CHATTERBOX_CKPT_DIR=path/to/chatterbox/weights
-export CHATTERBOX_VLLM_MODEL_DIR=runs/vllm_t3_export
+export VLLM_ENABLE_PREFIX_CACHING=false
+export VLLM_ENFORCE_EAGER=false
 
-uvicorn external.chatterbox.fastapi_vllm_tts_service:app \
-    --host 0.0.0.0 --port 8000 --workers 1
+python external/chatterbox/fastapi_vllm_tts_service.py
 ```
 
-The service prints `Model loaded` when ready (typically 30–60s for vLLM engine init).
+The service is ready when Uvicorn reports startup complete.
 
 ---
 
 ## Testing the API
 
+In a new terminal:
+
+```bash
+cd /path/to/ChatterBox_S3_Concurrency
+conda activate chatterbox-vllm
+export PYTHONPATH=$PWD/external/chatterbox/src
+```
+
 ### Health check
 
 ```bash
-curl http://localhost:8000/health
+curl http://127.0.0.1:8000/health
 ```
 
-### Single request (full text)
+### Single warmup request
 
 ```bash
-curl -X POST http://localhost:8000/v1/tts \
+curl -sS -o /tmp/vllm_warmup.wav \
+  -X POST http://127.0.0.1:8000/v1/tts \
   -H "Content-Type: application/json" \
-  -d '{"text": "Hello, this is a test of the TTS system.", "language_id": "en"}' \
-  --output output.wav
+  -d '{
+    "text":"صباح الخير. هذا طلب تهيئة أولي.",
+    "language_id":"ar",
+    "audio_prompt_path":"'"$PWD"'/SPK_17_000003.wav"
+  }'
 ```
 
-### Chunked streaming (low latency)
+### Chunked streaming check
 
 ```bash
 python external/chatterbox/stream_chunks_client.py \
-  --url http://localhost:8000/v1/tts/stream_chunks \
-  --text "Hello, this is a test of the chunked streaming endpoint." \
-  --language-id en \
-  --output-dir /tmp/chunks
+  --url http://127.0.0.1:8000/v1/tts/stream_chunks \
+  --language-id ar \
+  --text "صباح الخير. هذا اختبار قصير للصوت." \
+  --save-dir /tmp/chunks
 ```
 
 ### Concurrent load test
 
 ```bash
 python external/chatterbox/stream_chunks_client.py \
-  --url http://localhost:8000/v1/tts/stream_chunks \
-  --text "This sentence will be synthesized concurrently by multiple clients." \
-  --language-id en \
+  --url http://127.0.0.1:8000/v1/tts/stream_chunks \
+  --language-id ar \
   --concurrency 8 \
-  --requests 16 \
-  --output-dir /tmp/load_test
+  --num-requests 16 \
+  --text "صباح الخير. هذا اختبار قصير للصوت." \
+  --text "هل يبدو الصوت طبيعيًا عندما ينتقل من سؤال إلى جواب؟ هذا ما نريد التأكد منه." \
+  --summary-json /tmp/tts_chunks_summary.json
 ```
 
-### Preview chunk boundaries (debug)
+### Preview chunk boundaries
 
 ```bash
-curl -X POST http://localhost:8000/v1/tts/split_preview \
+curl -X POST http://127.0.0.1:8000/v1/tts/split_preview \
   -H "Content-Type: application/json" \
-  -d '{"text": "Hello world. How are you today? I am doing great.", "language_id": "en"}'
+  -d '{"text":"صباح الخير. هذا اختبار قصير للصوت. هل يبدو الصوت طبيعيًا؟","language_id":"ar"}'
 ```
 
 ---
@@ -320,10 +366,10 @@ curl -X POST http://localhost:8000/v1/tts/split_preview \
 | GET | `/health` | Service health check |
 | POST | `/v1/tts` | Synthesize full text, return WAV |
 | POST | `/v1/tts/stream` | Synthesize full text, stream audio bytes |
+| POST | `/v1/tts/meta` | Synthesize full text and return timing metadata |
 | POST | `/v1/tts/stream_chunks` | Split + synthesize per chunk, stream NDJSON events |
 | POST | `/v1/tts/split_preview` | Preview chunk boundaries without synthesis |
 | GET | `/v1/tts/trace/recent` | Last N batch scheduler traces |
-| GET | `/v1/tts/meta` | Service metadata and model config |
 
 ### Chunked streaming event format
 
@@ -383,14 +429,22 @@ NDJSON stream (one event per chunk per request)
 
 | Environment Variable | Default | Description |
 |---------------------|---------|-------------|
+| `CHECKPOINT_DIR` | — | Base multilingual Chatterbox checkpoint directory |
+| `BASE_CHECKPOINT_DIR` | — | Same as `CHECKPOINT_DIR`; keep both set for this service |
+| `TURBO_S3_CHECKPOINT_DIR` | — | Turbo S3 checkpoint directory containing `s3gen_meanflow.safetensors` |
+| `VLLM_MODEL_DIR` | — | Exported vLLM T3 package directory |
+| `VLLM_EXPORT_DIR` | — | Export destination used if the service needs to export locally |
+| `DEFAULT_AUDIO_PROMPT_PATH` | `SPK_17_000003.wav` | Default reference voice clip used when requests omit `audio_prompt_path` |
+| `API_DEVICE` | `cuda` | Device used for the runtime |
+| `API_PORT` | `8000` | FastAPI port |
 | `VLLM_ENFORCE_EAGER` | `false` | Set `true` to disable CUDA graphs (slower but safer for debugging) |
 | `VLLM_ENABLE_PREFIX_CACHING` | `false` | Must remain `false` — prefix caching is incompatible with embed-only prompts |
-| `VLLM_GPU_MEMORY_UTILIZATION` | `0.85` | Fraction of VRAM for vLLM KV cache |
+| `VLLM_GPU_MEMORY_UTILIZATION` | `0.5` | Fraction of VRAM reserved for the vLLM KV cache |
 | `VLLM_MAX_MODEL_LEN` | `2048` | Maximum T3 sequence length |
-| `VLLM_TENSOR_PARALLEL_SIZE` | `1` | Tensor parallel shards (multi-GPU) |
-| `CHATTERBOX_CKPT_DIR` | — | Path to base Chatterbox weights |
-| `CHATTERBOX_VLLM_MODEL_DIR` | — | Path to exported vLLM T3 model |
-| `CHATTERBOX_TURBO_S3_DIR` | — | Path to turbo S3 checkpoint (auto-downloaded if unset) |
+| `VLLM_TP_SIZE` | `1` | Tensor parallel shards (multi-GPU) |
+| `VLLM_PROMPT_BUILDER_DEVICE` | `cpu` | Device used for the non-vLLM prompt builder T3 pieces |
+| `API_BATCH_WINDOW_MS` | `5.0` | Admission batching window for request grouping |
+| `API_MAX_BATCH_SIZE` | `8` | Maximum requests per scheduler batch |
 | `HF_TOKEN` | — | HuggingFace token for checkpoint download |
 
 ---
@@ -398,6 +452,8 @@ NDJSON stream (one event per chunk per request)
 ## Repository Layout
 
 ```
+prepare_local_vllm_models.py      ← local helper: download base/turbo artifacts + export vLLM package
+
 external/chatterbox/
   src/chatterbox/
     runtime/
