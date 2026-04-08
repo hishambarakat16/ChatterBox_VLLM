@@ -1,8 +1,30 @@
 # Progress
 
-_Last updated: 2026-04-03_
+_Last updated: 2026-04-08_
 
 ## Done
+
+- **fixed the main vLLM multilingual correctness blocker and rebalanced the streaming test client:**
+  - added end-to-end `chatterbox.shape` tracing across the vLLM path:
+    - prompt/text token tracing in `vllm_t3_bridge.py`
+    - raw token / post-trim / post-filter tracing in `worker_vllm.py`
+    - in-memory trace capture plus `GET /v1/tts/trace/shapes` in `fastapi_vllm_tts_service.py`
+  - isolated an early post-processing bug where a length-capped vLLM output of `96` tokens was being aggressively trimmed to `2` tokens before `S3`; hardened the repeated-suffix trim so it cannot erase almost the whole sequence
+  - identified the deeper correctness bug in the vLLM spike:
+    - decode-side speech positions were using approximate prompt-absolute positions instead of native speech-relative positions
+    - native `T3` expects speech positions `0, 1, 2, ...` relative to the speech segment after BOS
+    - the broken vLLM path was effectively decoding against learned positions like `67, 68, 69, ...`, which produced degenerate repeated-token loops
+  - fixed `src/chatterbox/vllm_t3_model.py` so decode positions are mapped back to speech-relative positions; after this change the Arabic warmup request stopped on EOS, emitted diverse token IDs, and produced correct-sounding audio
+  - updated the FastAPI request defaults away from greedy decoding (`temperature` no longer defaults to `0.0`), which made the earlier failure mode much harsher
+  - added compatibility fixes around the native scheduled path while debugging:
+    - `DynamicCache` conversion in `t3_hf_backend.py`
+    - eager-attention fallback in `alignment_stream_analyzer_scheduled.py`
+    - reduced trace spam in `scheduled_decode.py` and `t3_scheduler.py`
+  - updated `external/chatterbox/stream_chunks_client.py` so the benchmark client again supports `--use-language-patterns` and chooses `max_new_tokens`, `auto_max_new_tokens_cap`, and `chunk_auto_max_new_tokens_cap` dynamically from the actual input text plus language-specific heuristics instead of always sending flat defaults
+  - committed and pushed the code in `external/chatterbox` on branch `pre-vllm-api`:
+    - commit `522b4f3` — `Fix vLLM speech decode and add dynamic stream client caps`
+  - committed and pushed the parent repo submodule pointer update on `main`:
+    - commit `751baa3` — `Update chatterbox submodule with vLLM decode fixes`
 
 - **captured live token-to-mel / HiFT geometry and refreshed the serving handoff docs:**
   - added `s3_token2mel_*` and `s3_hift_*` shape metadata to API `stage_meta` so bucket sizing can use the real S3 input axis instead of raw text length guesses
